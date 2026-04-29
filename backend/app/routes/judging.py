@@ -732,7 +732,20 @@ async def get_judging_queue(
     all_submissions = {str(s.id): s for s in subs_result.scalars().all()}
 
     if not all_submissions:
-        return {"queue": [], "message": "No completed submissions yet"}
+        return {"queue": [], "scored_by_you": 0, "message": "No completed submissions yet"}
+
+    # Look up pending assignments for this judge (needed in all code paths below)
+    pending_assignments_result = await db.execute(
+        select(JudgeAssignment).where(
+            JudgeAssignment.session_id == session.id,
+            JudgeAssignment.judge_id == judge_uuid,
+            JudgeAssignment.is_completed == 0,
+        )
+    )
+    pending_assignment_map = {
+        str(a.submission_id): str(a.id)
+        for a in pending_assignments_result.scalars().all()
+    }
 
     # If no completed assignments, all projects have zero coverage
     if not assignments:
@@ -740,6 +753,7 @@ async def get_judging_queue(
         queue = []
         for sid, sub in all_submissions.items():
             queue.append({
+                "assignment_id": pending_assignment_map.get(sid),
                 "submission_id": sid,
                 "project_title": sub.project_title,
                 "devpost_url": sub.devpost_url,
@@ -754,7 +768,7 @@ async def get_judging_queue(
                 "judge_count": 0,
                 "reasons": ["needs_coverage"],
             })
-        return {"queue": queue, "min_judges": min_judges, "total_submissions": len(queue)}
+        return {"queue": queue, "min_judges": min_judges, "total_submissions": len(queue), "scored_by_you": 0}
 
     # Step 1: raw weighted scores per (judge, submission)
     raw_scores: dict = {}
@@ -818,25 +832,11 @@ async def get_judging_queue(
                 outcome = 0.0
             elo[a_sid], elo[b_sid] = _elo_update(elo[a_sid], elo[b_sid], outcome, k=16)
 
-    # Step 4: find submissions the requesting judge has already scored,
-    # and look up pending assignments for this judge
+    # Step 4: find submissions the requesting judge has already scored
     scored_by_judge = set()
     for a in assignments:
         if str(a.judge_id) == judge_id:
             scored_by_judge.add(str(a.submission_id))
-
-    # Look up pending assignments for this judge
-    pending_assignments_result = await db.execute(
-        select(JudgeAssignment).where(
-            JudgeAssignment.session_id == session.id,
-            JudgeAssignment.judge_id == judge_uuid,
-            JudgeAssignment.is_completed == 0,
-        )
-    )
-    pending_assignment_map = {
-        str(a.submission_id): str(a.id)
-        for a in pending_assignments_result.scalars().all()
-    }
 
     # Step 5: compute uncertainty scores
     # Sort ELOs for proximity calculation

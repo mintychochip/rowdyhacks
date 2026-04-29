@@ -1,63 +1,115 @@
 """Tests for the hackathon discovery crawler (discovery.py)."""
-
 import uuid
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from app.models import CrawledHackathon
 from app.crawler.discovery import discover_hackathons
+
+
+def _make_mock_page(cards_data: list[dict]):
+    """Create a mock Playwright page that returns given card data from evaluate()."""
+    mock_page = AsyncMock()
+    mock_page.evaluate = AsyncMock(return_value=cards_data)
+    mock_page.goto = AsyncMock()
+    mock_page.wait_for_selector = AsyncMock()
+    mock_page.add_init_script = AsyncMock()
+    mock_page.wait_for_function = AsyncMock(
+        side_effect=Exception("no more content")  # Stop infinite scroll
+    )
+    return mock_page
+
+
+def _make_mock_playwright(mock_page):
+    """Create mock Playwright object that returns mock_page."""
+    mock_browser = AsyncMock()
+    mock_context = MagicMock()
+    mock_context.new_page = AsyncMock(return_value=mock_page)
+
+    mock_browser.new_context = AsyncMock(return_value=mock_context)
+    mock_browser.close = AsyncMock()
+
+    mock_p = AsyncMock()
+    mock_p.chromium.launch = AsyncMock(return_value=mock_browser)
+
+    mock_playwright_ctx = AsyncMock()
+    mock_playwright_ctx.__aenter__ = AsyncMock(return_value=mock_p)
+    mock_playwright_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    return mock_playwright_ctx
 
 
 @pytest.mark.asyncio
 async def test_discover_hackathons_inserts_new(db_session, engine):
     """New hackathon URLs should be inserted, duplicates skipped."""
-    page_html = """
-    <html><body>
-    <div class="hackathon-card">
-        <a href="/hackathons/new-fest-2025">New Fest 2025</a>
-        <span class="date">Jun 1 - Jun 3, 2025</span>
-    </div>
-    <div class="hackathon-card">
-        <a href="/hackathons/known-discovery-2024">Known Discovery 2024</a>
-        <span class="date">Jan 1 - Jan 3, 2024</span>
-    </div>
-    </body></html>
-    """
+    cards_data = [
+        {
+            "url": "https://disco-new-fest.devpost.com",
+            "name": "New Fest 2025",
+            "dates": "Jun 01 - Jun 03, 2025",
+            "participants": 100,
+        },
+        {
+            "url": "https://disco-known.devpost.com",
+            "name": "Known Discovery 2024",
+            "dates": "Jan 01 - Jan 03, 2024",
+            "participants": 50,
+        },
+    ]
 
-    # Seed DB with known hackathon to test dedup
+    # Seed DB with known hackathon
     db_session.add(CrawledHackathon(
         id=uuid.uuid4(),
-        devpost_url="https://devpost.com/hackathons/known-discovery-2024",
+        devpost_url="https://disco-known.devpost.com",
         name="Known Discovery 2024",
     ))
     await db_session.commit()
 
-    # Create a session maker that uses the test engine (same as conftest)
-    test_async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    mock_page = _make_mock_page(cards_data)
 
-    mock_to_thread = AsyncMock(return_value=page_html)
+    test_async_session = AsyncMock()
+    test_async_session.__aenter__ = AsyncMock(return_value=db_session)
+    test_async_session.__aexit__ = AsyncMock(return_value=False)
+
     with (
-        patch("app.crawler.discovery.asyncio.to_thread", mock_to_thread),
-        patch("app.crawler.discovery.async_session", test_async_session),
+        patch("app.crawler.discovery.async_playwright", return_value=_make_mock_playwright(mock_page)),
+        patch("app.crawler.discovery.async_session", return_value=test_async_session),
     ):
         result = await discover_hackathons()
-        # Only the NEW hackathon (new-fest-2025) should be returned
-        assert len(result) == 1
 
-    # Verify the new hackathon was inserted in the DB
+        assert len(result) == 1  # Only the new one
+
+    # Verify new hackathon inserted
     new_hack = await db_session.execute(
         select(CrawledHackathon).where(
-            CrawledHackathon.devpost_url == "https://devpost.com/hackathons/new-fest-2025"
+            CrawledHackathon.devpost_url == "https://disco-new-fest.devpost.com"
         )
     )
-    assert new_hack.scalar_one_or_none() is not None
+    new_row = new_hack.scalar_one_or_none()
+    assert new_row is not None
+    assert new_row.name == "New Fest 2025"
 
-    # Verify the duplicate was NOT inserted again
+    # Verify duplicate was not re-inserted
     known_query = await db_session.execute(
         select(CrawledHackathon).where(
-            CrawledHackathon.devpost_url == "https://devpost.com/hackathons/known-discovery-2024"
+            CrawledHackathon.devpost_url == "https://disco-known.devpost.com"
         )
     )
-    known_rows = known_query.scalars().all()
-    assert len(known_rows) == 1  # Only the one we seeded
+    assert len(known_query.scalars().all()) == 1
+
+
+@pytest.mark.asyncio
+async def test_discover_hackathons_empty_page(db_session):
+    """Empty cards should return no new hackathons."""
+    mock_page = _make_mock_page([])
+
+    test_async_session = AsyncMock()
+    test_async_session.__aenter__ = AsyncMock(return_value=db_session)
+    test_async_session.__aexit__ = AsyncMock(return_value=False)
+
+    with (
+        patch("app.crawler.discovery.async_playwright", return_value=_make_mock_playwright(mock_page)),
+        patch("app.crawler.discovery.async_session", return_value=test_async_session),
+    ):
+        result = await discover_hackathons()
+        assert len(result) == 0

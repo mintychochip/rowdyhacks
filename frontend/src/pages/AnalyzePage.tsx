@@ -6,6 +6,17 @@ import CheckResultRow from '../components/CheckResultRow';
 import { useAnalysis } from '../hooks/useAnalysis';
 import { PRIMARY, PRIMARY_DISABLED, SUCCESS, ERROR_TEXT, TEXT_PRIMARY, TEXT_MUTED, TEXT_DIM, TEXT_WHITE, INPUT_BG, INPUT_BORDER, BORDER, CARD_BG } from '../theme';
 
+function groupByCategory(checks: Array<{ check_category: string; score: number }>) {
+  const groups: Record<string, number[]> = {};
+  for (const c of checks) {
+    (groups[c.check_category] ||= []).push(c.score);
+  }
+  return Object.entries(groups).map(([category, scores]) => ({
+    category,
+    score: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
+  }));
+}
+
 function ElapsedTimer({ running }: { running: boolean }) {
   const [elapsed, setElapsed] = useState(0);
   const ref = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -152,7 +163,7 @@ export default function AnalyzePage() {
       )}
       {status === 'done' && result && (() => {
         const checks = (result.check_results || []);
-        const cats = checks.map(cr => ({ category: cr.check_category, score: cr.score }));
+        const cats = groupByCategory(checks);
         return (
           <div>
             <ReportCard

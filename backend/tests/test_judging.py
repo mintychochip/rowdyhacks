@@ -548,3 +548,301 @@ async def test_rerun_judging(client: AsyncClient, db_session: AsyncSession):
     assert data["created"] >= 0
     assert data["flagged_submissions"] >= 1  # sub_b has 0 judges, sub_a has 1 (< 3)
     print(f"  [OK] Rerun flagged {data['flagged_submissions']} submissions, created {data['created']} assignments")
+
+
+@pytest.mark.asyncio
+async def test_judge_workflow_queue_to_score(client: AsyncClient, db_session: AsyncSession):
+    """Full judge workflow: activate → queue → score via queue → queue shrinks → results."""
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+
+    organizer = await _create_user(db_session, "floworg@test.com", "Flow Org", UserRole.organizer)
+    judge1 = await _create_user(db_session, "flowjudge1@test.com", "Flow Judge 1", UserRole.judge)
+    judge2 = await _create_user(db_session, "flowjudge2@test.com", "Flow Judge 2", UserRole.judge)
+    hackathon = await _create_hackathon(db_session, "Workflow Test", organizer_id=organizer.id)
+
+    sub_a = await _create_submission(db_session, hackathon.id, "Flow Alpha", "https://devpost.com/fa")
+    sub_b = await _create_submission(db_session, hackathon.id, "Flow Beta", "https://devpost.com/fb")
+    sub_c = await _create_submission(db_session, hackathon.id, "Flow Gamma", "https://devpost.com/fg")
+
+    # Create session + activate (auto-assigns)
+    resp = await client.post(
+        f"/api/hackathons/{hackathon.id}/judging/session",
+        json={
+            "start_time": (now - timedelta(hours=1)).isoformat(),
+            "end_time": (now + timedelta(hours=2)).isoformat(),
+            "per_project_seconds": 300,
+            "criteria": [
+                {"name": "Innovation", "max_score": 10, "weight": 50},
+                {"name": "Execution", "max_score": 10, "weight": 50},
+            ],
+        },
+    )
+    assert resp.status_code == 201
+
+    resp = await client.post(f"/api/hackathons/{hackathon.id}/judging/activate")
+    assert resp.status_code == 200
+    print("  [OK] Session activated with auto-assignment")
+
+    # ── Step 1: Judge1 checks queue — should see all 3 projects ──
+    resp = await client.get(
+        f"/api/hackathons/{hackathon.id}/judging/queue?judge_id={judge1.id}"
+    )
+    assert resp.status_code == 200
+    queue = resp.json()["queue"]
+    assert len(queue) == 3
+    assert resp.json()["scored_by_you"] == 0
+    # Every item must have an assignment_id for scoring
+    for item in queue:
+        assert item["assignment_id"] is not None, f"Missing assignment_id for {item['project_title']}"
+        assert "needs_coverage" in item["reasons"]
+    print(f"  [OK] Queue shows {len(queue)} projects, all have assignment_ids")
+
+    # ── Step 2: Score first project from the queue ──
+    first = queue[0]
+    aid = first["assignment_id"]
+    assert aid is not None
+
+    await client.post(f"/api/judging/assignments/{aid}/open")
+    resp = await client.get(f"/api/judging/assignments/{aid}")
+    detail = resp.json()
+    criteria_ids = [c["id"] for c in detail["criteria"]]
+    assert len(criteria_ids) == 2
+
+    resp = await client.post(
+        f"/api/judging/assignments/{aid}/score",
+        json={
+            "scores": [
+                {"criterion_id": criteria_ids[0], "score": 8},
+                {"criterion_id": criteria_ids[1], "score": 7},
+            ],
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["is_completed"] is True
+    print(f"  [OK] Scored '{first['project_title']}' via queue assignment_id")
+
+    # ── Step 3: Queue should now have 2 projects (scored one removed) ──
+    resp = await client.get(
+        f"/api/hackathons/{hackathon.id}/judging/queue?judge_id={judge1.id}"
+    )
+    assert resp.status_code == 200
+    queue = resp.json()["queue"]
+    assert len(queue) == 2
+    assert resp.json()["scored_by_you"] == 1
+    scored_titles = [first["project_title"]]
+    for item in queue:
+        assert item["project_title"] not in scored_titles
+    print(f"  [OK] Queue down to {len(queue)} after scoring, scored_by_you=1")
+
+    # ── Step 4: Score the remaining two ──
+    for item in queue:
+        await client.post(f"/api/judging/assignments/{item['assignment_id']}/open")
+        resp = await client.get(f"/api/judging/assignments/{item['assignment_id']}")
+        cids = [c["id"] for c in resp.json()["criteria"]]
+        await client.post(
+            f"/api/judging/assignments/{item['assignment_id']}/score",
+            json={"scores": [{"criterion_id": cids[0], "score": 6}, {"criterion_id": cids[1], "score": 6}]},
+        )
+    print("  [OK] Scored remaining 2 projects")
+
+    # ── Step 5: Queue should be empty for judge1 ──
+    resp = await client.get(
+        f"/api/hackathons/{hackathon.id}/judging/queue?judge_id={judge1.id}"
+    )
+    assert resp.status_code == 200
+    queue = resp.json()["queue"]
+    assert len(queue) == 0
+    assert resp.json()["scored_by_you"] == 3
+    print("  [OK] Queue empty — judge1 has scored everything")
+
+    # ── Step 6: Judge2 still sees all 3 in queue ──
+    resp = await client.get(
+        f"/api/hackathons/{hackathon.id}/judging/queue?judge_id={judge2.id}"
+    )
+    assert resp.status_code == 200
+    queue = resp.json()["queue"]
+    assert len(queue) == 3
+    assert resp.json()["scored_by_you"] == 0
+    # Coverage should now show 1 judge each (judge1 scored all 3)
+    for item in queue:
+        assert item["judge_count"] == 1
+    print(f"  [OK] Judge2 still sees {len(queue)} projects, each with 1 existing judge")
+
+    # ── Step 7: Judge2 scores one project ──
+    j2_first = queue[0]
+    await client.post(f"/api/judging/assignments/{j2_first['assignment_id']}/open")
+    resp = await client.get(f"/api/judging/assignments/{j2_first['assignment_id']}")
+    cids = [c["id"] for c in resp.json()["criteria"]]
+    await client.post(
+        f"/api/judging/assignments/{j2_first['assignment_id']}/score",
+        json={"scores": [{"criterion_id": cids[0], "score": 9}, {"criterion_id": cids[1], "score": 9}]},
+    )
+
+    # ── Step 8: Verify results endpoint works ──
+    resp = await client.get(f"/api/hackathons/{hackathon.id}/judging/results")
+    assert resp.status_code == 200
+    results = resp.json()
+    assert len(results["rankings"]) >= 1
+    assert len(results["judge_stats"]) >= 1
+    print(f"  [OK] Results computed: {len(results['rankings'])} projects ranked by {len(results['judge_stats'])} judges")
+
+    # ── Step 9: Rerun — should flag projects with < 3 judges ──
+    resp = await client.post(f"/api/hackathons/{hackathon.id}/judging/rerun")
+    assert resp.status_code == 200
+    rerun_data = resp.json()
+    assert rerun_data["flagged_submissions"] >= 1
+    print(f"  [OK] Rerun flagged {rerun_data['flagged_submissions']} submissions")
+
+    # ── Step 10: Queue for judge2 now excludes the one they scored ──
+    resp = await client.get(
+        f"/api/hackathons/{hackathon.id}/judging/queue?judge_id={judge2.id}"
+    )
+    assert resp.status_code == 200
+    queue = resp.json()["queue"]
+    assert resp.json()["scored_by_you"] == 1
+    # The project judge2 scored should not be in the queue
+    j2_titles = [item["project_title"] for item in queue]
+    assert j2_first["project_title"] not in j2_titles
+    print(f"  [OK] Judge2 queue correctly excludes already-scored project")
+
+
+@pytest.mark.asyncio
+async def test_elo_corrects_judge_severity(client: AsyncClient, db_session: AsyncSession):
+    """ELO z-score normalization corrects for harsh vs generous judges.
+
+    Scenario:
+      - Judge Harsh scores everything low (2-5), prefers Alpha > Beta > Gamma
+      - Judge Generous scores everything high (7-9), prefers Beta > Gamma > Alpha
+      - Raw score averages rank Alpha and Beta equally (both avg 6.0)
+      - ELO should resolve this: within-judge z-scores capture each judge's
+        relative preferences, so the generous judge's preference for Beta
+        is not diluted by their high absolute scores.
+    """
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+
+    organizer = await _create_user(db_session, "elocorrectorg@test.com", "ELO Org", UserRole.organizer)
+    judge_harsh = await _create_user(db_session, "harsh@test.com", "Judge Harsh", UserRole.judge)
+    judge_generous = await _create_user(db_session, "generous@test.com", "Judge Generous", UserRole.judge)
+    hackathon = await _create_hackathon(db_session, "ELO Correction Test", organizer_id=organizer.id)
+
+    sub_a = await _create_submission(db_session, hackathon.id, "Alpha", "https://devpost.com/alpha")
+    sub_b = await _create_submission(db_session, hackathon.id, "Beta", "https://devpost.com/beta")
+    sub_g = await _create_submission(db_session, hackathon.id, "Gamma", "https://devpost.com/gamma")
+
+    # Create session with single criterion (weight=100) for clean analysis
+    resp = await client.post(
+        f"/api/hackathons/{hackathon.id}/judging/session",
+        json={
+            "start_time": (now - timedelta(hours=1)).isoformat(),
+            "end_time": (now + timedelta(hours=2)).isoformat(),
+            "per_project_seconds": 300,
+            "criteria": [{"name": "Overall", "max_score": 10, "weight": 100}],
+        },
+    )
+    assert resp.status_code == 201
+
+    # Assign both judges to all 3 submissions
+    resp = await client.post(
+        f"/api/hackathons/{hackathon.id}/judging/assign",
+        json={
+            "judge_ids": [str(judge_harsh.id), str(judge_generous.id)],
+            "submission_ids": [str(sub_a.id), str(sub_b.id), str(sub_g.id)],
+        },
+    )
+    assert resp.status_code == 201
+
+    # Get criterion id
+    criteria_list = resp.json()
+    # Get assignments for both judges
+    resp = await client.get(
+        f"/api/hackathons/{hackathon.id}/judging/assignments?judge_id={judge_harsh.id}"
+    )
+    harsh_assignments = {a["submission_id"]: a for a in resp.json()}
+
+    resp = await client.get(
+        f"/api/hackathons/{hackathon.id}/judging/assignments?judge_id={judge_generous.id}"
+    )
+    generous_assignments = {a["submission_id"]: a for a in resp.json()}
+
+    # Get criterion ID from any assignment
+    first_aid = list(harsh_assignments.values())[0]["id"]
+    await client.post(f"/api/judging/assignments/{first_aid}/open")
+    resp = await client.get(f"/api/judging/assignments/{first_aid}")
+    cid = resp.json()["criteria"][0]["id"]
+
+    async def score(assignments_map, sub, score_val):
+        aid = assignments_map[str(sub.id)]["id"]
+        await client.post(f"/api/judging/assignments/{aid}/open")
+        await client.post(
+            f"/api/judging/assignments/{aid}/score",
+            json={"scores": [{"criterion_id": cid, "score": score_val}]},
+        )
+
+    # Judge Harsh: low scores, prefers Alpha(5) > Beta(3) > Gamma(1)
+    # Judge Generous: high scores, prefers Beta(9) > Gamma(8) > Alpha(7)
+    await score(harsh_assignments, sub_a, 5)
+    await score(harsh_assignments, sub_b, 3)
+    await score(harsh_assignments, sub_g, 1)
+    print("  Harsh judge: Alpha=5, Beta=3, Gamma=1 (mean=3)")
+
+    await score(generous_assignments, sub_a, 7)
+    await score(generous_assignments, sub_b, 9)
+    await score(generous_assignments, sub_g, 8)
+    print("  Generous judge: Alpha=7, Beta=9, Gamma=8 (mean=8)")
+
+    # Raw score averages (both judges weighted equally):
+    #   Alpha = (5+7)/2 = 6.0
+    #   Beta  = (3+9)/2 = 6.0
+    #   Gamma = (1+8)/2 = 4.5
+    # Raw averages can't separate Alpha and Beta — they're tied.
+    print("\n  Raw score averages: Alpha=6.0, Beta=6.0, Gamma=4.5 (Alpha and Beta tied)")
+
+    # Z-score normalization (within-judge):
+    #   Judge Harsh: mean=3, std≈2
+    #     Alpha z = (5-3)/2 = +1.0
+    #     Beta  z = (3-3)/2 =  0.0
+    #     Gamma z = (1-3)/2 = -1.0
+    #   Judge Generous: mean=8, std≈1
+    #     Alpha z = (7-8)/1 = -1.0
+    #     Beta  z = (9-8)/1 = +1.0
+    #     Gamma z = (8-8)/1 =  0.0
+    #   Average z: Alpha=0, Beta=0.5, Gamma=-0.5
+    #   → Beta wins because the generous judge's strong preference for Beta
+    #     is preserved without being diluted by high absolute scores.
+    print("  Z-score normalization:")
+    print("    Harsh:  Alpha z=+1.0, Beta z=0.0, Gamma z=-1.0")
+    print("    Generous: Alpha z=-1.0, Beta z=+1.0, Gamma z=0.0")
+    print("    Average z: Alpha=0.0, Beta=0.5, Gamma=-0.5 → Beta wins")
+
+    # Get ELO results
+    resp = await client.get(f"/api/hackathons/{hackathon.id}/judging/results")
+    assert resp.status_code == 200
+    results = resp.json()
+    rankings = results["rankings"]
+    assert len(rankings) == 3
+
+    # Verify judge severity: Harsh has lower mean than Generous
+    judge_stats = {s["name"]: s for s in results["judge_stats"]}
+    assert judge_stats["Judge Harsh"]["mean"] < judge_stats["Judge Generous"]["mean"]
+    print(f"\n  Judge severity: Harsh mean={judge_stats['Judge Harsh']['mean']}, "
+          f"Generous mean={judge_stats['Judge Generous']['mean']}")
+    assert judge_stats["Judge Harsh"]["mean"] < judge_stats["Judge Generous"]["mean"]
+    print("  [OK] Harsh judge detected (lower mean)")
+
+    # Beta should rank #1 — the ELO correction preserved the generous judge's
+    # preference signal without being diluted by scale
+    print(f"\n  Rankings:")
+    for r in rankings:
+        print(f"    #{r['rank']} {r['project_title']}: ELO={r['elo']}")
+
+    assert rankings[0]["project_title"] == "Beta", \
+        f"Expected Beta #1 (z-score advantage), got {rankings[0]['project_title']}"
+    assert rankings[0]["elo"] > 1500  # Above baseline
+    print("  [OK] Beta ranked #1 — ELO corrected for judge severity")
+
+    # Gamma should be last (both judges agree it's worst or second-worst)
+    assert rankings[2]["project_title"] == "Gamma"
+    print("  [OK] Gamma ranked #3 — both judges agree it's worst")
+

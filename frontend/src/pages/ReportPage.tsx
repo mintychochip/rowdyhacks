@@ -5,6 +5,17 @@ import CheckResultRow from '../components/CheckResultRow';
 import * as api from '../services/api';
 import { PRIMARY, ERROR_TEXT, TEXT_MUTED, INPUT_BG, INPUT_BORDER } from '../theme';
 
+function groupByCategory(checks: Array<{ check_category: string; score: number }>) {
+  const groups: Record<string, number[]> = {};
+  for (const c of checks) {
+    (groups[c.check_category] ||= []).push(c.score);
+  }
+  return Object.entries(groups).map(([category, scores]) => ({
+    category,
+    score: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
+  }));
+}
+
 export default function ReportPage() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<any>(null);
@@ -33,10 +44,7 @@ export default function ReportPage() {
         projectTitle={sub.project_title}
         riskScore={sub.risk_score ?? 0}
         verdict={sub.verdict ?? 'unknown'}
-        categories={(data.check_results || []).map((cr: any) => ({
-          category: cr.check_category,
-          score: cr.score,
-        }))}
+        categories={groupByCategory(data.check_results || [])}
       />
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <h3 style={{ fontSize: 18 }}>Check Details</h3>
