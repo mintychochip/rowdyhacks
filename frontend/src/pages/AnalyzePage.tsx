@@ -78,8 +78,53 @@ function ProgressSteps({ currentStage }: { currentStage: string }) {
   );
 }
 
+function CheckProgressBars({ progress, labels }: { progress: any; labels: Record<string, string> }) {
+  if (!progress) return null;
+  const { completed, pending, current } = progress;
+  const all = [...completed, ...pending];
+  const done = completed.length;
+  const total = all.length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  return (
+    <div style={{ maxWidth: 360, margin: '20px auto 0' }}>
+      <div style={{ fontSize: 12, color: '#808090', marginBottom: 6 }}>
+        Checks: {done}/{total} ({pct}%)
+      </div>
+      <div style={{ height: 4, background: '#1a1a2e', borderRadius: 2, marginBottom: 12, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: '#6c5ce7', borderRadius: 2, transition: 'width 0.3s ease' }} />
+      </div>
+      {all.map((name: string) => {
+        const isDone = completed.includes(name);
+        const isCurrent = name === current;
+        const label = labels[name] || name.replace(/_/g, ' ');
+        return (
+          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: 12 }}>
+            <span style={{
+              width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+              background: isDone ? '#00c853' : isCurrent ? '#6c5ce7' : '#1a1a2e',
+              border: !isDone && !isCurrent ? '1.5px solid #333' : 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 9, color: '#fff',
+            }}>
+              {isDone ? '\u2713' : isCurrent ? '\u25CF' : ''}
+            </span>
+            <span style={{
+              color: isCurrent ? '#fff' : isDone ? '#00c853' : '#555',
+              fontWeight: isCurrent ? 500 : 400,
+            }}>
+              {label}
+              {isCurrent && <span style={{ color: '#6c5ce7', marginLeft: 6, fontSize: 10 }}>running...</span>}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function AnalyzePage() {
-  const { submit, reset, result, status, stage, error } = useAnalysis();
+  const { submit, reset, result, status, stage, checkProgress, CHECK_LABELS, error } = useAnalysis();
 
   return (
     <div>
@@ -95,6 +140,7 @@ export default function AnalyzePage() {
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ fontSize: 18, marginBottom: 24, fontWeight: 600 }}>Analyzing Submission</div>
           <ProgressSteps currentStage={stage} />
+          {stage === 'checking' && <CheckProgressBars progress={checkProgress} labels={CHECK_LABELS} />}
           <ElapsedTimer running={true} />
         </div>
       )}

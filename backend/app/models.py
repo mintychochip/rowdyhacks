@@ -194,6 +194,7 @@ class Submission(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
     access_token = Column(String(36), nullable=True)
     stage = Column(String(50), nullable=True)  # progress stage: scraping, cloning, checking, scoring
+    check_progress = Column(JsonType, nullable=True)  # {completed: ["check1"], pending: ["check2", ...], current: "check name"}
 
     hackathon = relationship("Hackathon", back_populates="submissions")
     submitter = relationship("User", back_populates="submissions")

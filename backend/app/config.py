@@ -88,7 +88,7 @@ class Settings(BaseSettings):
             raise ValueError(f"Invalid cron expression: {e}") from e
         return v
 
-    model_config = {"env_prefix": "HACKVERIFY_"}
+    model_config = {"env_prefix": "HACKVERIFY_", "env_file": ".env"}
 
 
 settings = Settings()

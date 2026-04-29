@@ -92,20 +92,30 @@ async def analyze_submission(submission_id: uuid.UUID) -> None:
                 hackathon=hackathon_info,
             )
 
-            # 4. Run checks and time each one
+            # 4. Run checks and track progress
             sub.stage = "checking"
+            # Init progress tracking
+            check_names = [c.__module__.split(".")[-1] for c in CHECKS]
+            sub.check_progress = {"completed": [], "pending": check_names[:], "current": None}
             await db.commit()
             t3 = time.monotonic()
             check_timings = {}
             results = []
-            for check_fn in CHECKS:
+            for i, check_fn in enumerate(CHECKS):
+                name = check_names[i]
+                sub.check_progress["current"] = name
+                await db.commit()
                 ct0 = time.monotonic()
                 try:
                     r = await check_fn(ctx)
                     results.append(r)
                 except Exception as e:
                     results.append(e)
-                check_timings[check_fn.__module__.split(".")[-1]] = round(time.monotonic() - ct0, 2)
+                check_timings[name] = round(time.monotonic() - ct0, 2)
+                sub.check_progress["completed"].append(name)
+                sub.check_progress["pending"].remove(name)
+            sub.check_progress["current"] = None
+            await db.commit()
             timings["checks_total"] = round(time.monotonic() - t3, 2)
             timings["checks"] = check_timings
 

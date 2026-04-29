@@ -681,6 +681,357 @@ async def get_judging_results(
     }
 
 
+# ── ELO re-judging queue ─────────────────────────────────────────────────────
+
+@router.get("/hackathons/{hackathon_id}/judging/queue")
+async def get_judging_queue(
+    hackathon_id: uuid.UUID,
+    judge_id: str,
+    min_judges: int = 3,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return a priority-ordered list of submissions that need more judging.
+
+    Query params:
+      - judge_id (required): only return projects this judge hasn't scored
+      - min_judges (default 3): minimum judge count before coverage is satisfied
+
+    Each item includes:
+      - submission info (id, title, url)
+      - current ELO
+      - uncertainty breakdown (variance, proximity, coverage)
+      - priority score (higher = needs judging more urgently)
+    """
+    session = await _get_judging_session(hackathon_id, db)
+    judge_uuid = uuid.UUID(judge_id)
+
+    # Build criteria map
+    criteria_map = {}
+    if session.rubric:
+        for c in session.rubric.criteria:
+            criteria_map[c.id] = c
+
+    # Load all completed assignments with scores
+    assignments_result = await db.execute(
+        select(JudgeAssignment)
+        .where(
+            JudgeAssignment.session_id == session.id,
+            JudgeAssignment.is_completed == 1,
+        )
+        .options(selectinload(JudgeAssignment.scores))
+    )
+    assignments = assignments_result.scalars().all()
+
+    # Get all completed submissions for this hackathon
+    subs_result = await db.execute(
+        select(Submission).where(
+            Submission.hackathon_id == hackathon_id,
+            Submission.status == SubmissionStatus.completed,
+        )
+    )
+    all_submissions = {str(s.id): s for s in subs_result.scalars().all()}
+
+    if not all_submissions:
+        return {"queue": [], "message": "No completed submissions yet"}
+
+    # If no completed assignments, all projects have zero coverage
+    if not assignments:
+        # Return all submissions the judge hasn't scored, ordered by submission time
+        queue = []
+        for sid, sub in all_submissions.items():
+            queue.append({
+                "submission_id": sid,
+                "project_title": sub.project_title,
+                "devpost_url": sub.devpost_url,
+                "github_url": sub.github_url,
+                "elo": 1500.0,
+                "uncertainty": {
+                    "total": 100.0,
+                    "variance": 0.0,
+                    "proximity": 0.0,
+                    "coverage": 100.0,
+                },
+                "judge_count": 0,
+                "reasons": ["needs_coverage"],
+            })
+        return {"queue": queue, "min_judges": min_judges, "total_submissions": len(queue)}
+
+    # Step 1: raw weighted scores per (judge, submission)
+    raw_scores: dict = {}
+    for a in assignments:
+        jid = str(a.judge_id)
+        sid = str(a.submission_id)
+        raw = _compute_raw_score(a.scores, criteria_map)
+        raw_scores.setdefault(jid, {})[sid] = raw
+
+    # Step 2: z-score normalize within each judge
+    norm_scores: dict = {}  # (judge_id, submission_id) -> z_score
+    for jid, scores_map in raw_scores.items():
+        vals = list(scores_map.values())
+        n = len(vals)
+        mean = sum(vals) / n
+        variance = sum((v - mean) ** 2 for v in vals) / n
+        stddev = math.sqrt(variance) if variance > 0 else 1.0
+        for sid, raw in scores_map.items():
+            norm_scores[(jid, sid)] = (raw - mean) / stddev if stddev > 0 else 0.0
+
+    # Step 3: compute ELO (same algorithm as results endpoint)
+    all_scored_ids = set()
+    for jid, scores_map in raw_scores.items():
+        all_scored_ids.update(scores_map.keys())
+
+    elo = {sid: float(BASE_ELO) for sid in all_scored_ids}
+
+    # Within-judge pairwise ELO updates
+    for jid, scores_map in raw_scores.items():
+        sub_list = list(scores_map.keys())
+        for i in range(len(sub_list)):
+            for j in range(i + 1, len(sub_list)):
+                a_sid, b_sid = sub_list[i], sub_list[j]
+                z_a = norm_scores.get((jid, a_sid), 0.0)
+                z_b = norm_scores.get((jid, b_sid), 0.0)
+                if abs(z_a - z_b) < 0.1:
+                    outcome = 0.5
+                elif z_a > z_b:
+                    outcome = 1.0
+                else:
+                    outcome = 0.0
+                elo[a_sid], elo[b_sid] = _elo_update(elo[a_sid], elo[b_sid], outcome)
+
+    # Cross-judge bridging
+    sub_z_scores: dict[str, list[float]] = {}
+    for (jid, sid), z in norm_scores.items():
+        sub_z_scores.setdefault(sid, []).append(z)
+    sub_avg_z = {sid: sum(zs) / len(zs) for sid, zs in sub_z_scores.items()}
+
+    sub_ids = list(elo.keys())
+    for i in range(len(sub_ids)):
+        for j in range(i + 1, len(sub_ids)):
+            a_sid, b_sid = sub_ids[i], sub_ids[j]
+            z_a = sub_avg_z.get(a_sid, 0.0)
+            z_b = sub_avg_z.get(b_sid, 0.0)
+            if abs(z_a - z_b) < 0.05:
+                outcome = 0.5
+            elif z_a > z_b:
+                outcome = 1.0
+            else:
+                outcome = 0.0
+            elo[a_sid], elo[b_sid] = _elo_update(elo[a_sid], elo[b_sid], outcome, k=16)
+
+    # Step 4: find submissions the requesting judge has already scored
+    scored_by_judge = set()
+    for a in assignments:
+        if str(a.judge_id) == judge_id:
+            scored_by_judge.add(str(a.submission_id))
+
+    # Step 5: compute uncertainty scores
+    # Sort ELOs for proximity calculation
+    elo_sorted = sorted(elo.items(), key=lambda x: x[1])
+
+    # Per-submission z-score variance
+    sub_z_variance: dict[str, float] = {}
+    for sid, zs in sub_z_scores.items():
+        if len(zs) > 1:
+            mean_z = sum(zs) / len(zs)
+            sub_z_variance[sid] = sum((z - mean_z) ** 2 for z in zs) / len(zs)
+        else:
+            sub_z_variance[sid] = 0.0
+
+    # Count judges per submission (coverage)
+    judge_counts: dict[str, int] = {}
+    for (jid, sid) in norm_scores:
+        judge_counts[sid] = judge_counts.get(sid, 0) + 1
+
+    # For submissions with no scores yet but exist in hackathon, they need coverage
+    queue_items = []
+    max_variance = max(sub_z_variance.values()) if sub_z_variance else 1.0
+    max_proximity = 0.0
+
+    # Compute proximity scores for scored submissions
+    proximity_scores: dict[str, float] = {}
+    for idx, (sid, e) in enumerate(elo_sorted):
+        if idx == 0:
+            gap = elo_sorted[1][1] - e if len(elo_sorted) > 1 else 0
+        elif idx == len(elo_sorted) - 1:
+            gap = e - elo_sorted[-2][1]
+        else:
+            gap = min(e - elo_sorted[idx - 1][1], elo_sorted[idx + 1][1] - e)
+        proximity_scores[sid] = max(0.0, 25.0 - gap) / 25.0  # 0-1, 1 = very close to neighbor
+        max_proximity = max(max_proximity, proximity_scores[sid])
+
+    for sid, sub in all_submissions.items():
+        # Skip if judge already scored this
+        if sid in scored_by_judge:
+            continue
+
+        judge_count = judge_counts.get(sid, 0)
+
+        # Variance component (0-1)
+        variance_raw = sub_z_variance.get(sid, 0.0)
+        variance_score = variance_raw / max(max_variance, 0.001)
+
+        # Proximity component (0-1)
+        proximity_score = proximity_scores.get(sid, 0.0)
+        if max_proximity > 0:
+            proximity_score = proximity_score / max_proximity
+
+        # Coverage component (0-1): 1.0 = no judges, 0.0 = meets threshold
+        coverage_score = max(0.0, 1.0 - judge_count / min_judges)
+
+        # Total uncertainty (weighted, 0-100 scale)
+        total = (variance_score * 35.0 + proximity_score * 30.0 + coverage_score * 35.0)
+
+        reasons = []
+        if variance_raw > 0.3:
+            reasons.append("high_variance")
+        if proximity_score > 0.5:
+            reasons.append("close_race")
+        if judge_count < min_judges:
+            reasons.append("needs_coverage")
+        if not reasons:
+            reasons.append("low_priority")
+
+        queue_items.append({
+            "submission_id": sid,
+            "project_title": sub.project_title,
+            "devpost_url": sub.devpost_url,
+            "github_url": sub.github_url,
+            "elo": round(elo.get(sid, BASE_ELO), 1),
+            "uncertainty": {
+                "total": round(total, 1),
+                "variance": round(variance_score * 100, 1),
+                "proximity": round(proximity_score * 100, 1),
+                "coverage": round(coverage_score * 100, 1),
+            },
+            "judge_count": judge_count,
+            "reasons": reasons,
+        })
+
+    # Sort by uncertainty total descending (most uncertain first)
+    queue_items.sort(key=lambda x: x["uncertainty"]["total"], reverse=True)
+
+    return {
+        "queue": queue_items,
+        "min_judges": min_judges,
+        "total_submissions": len(all_submissions),
+        "scored_by_you": len(scored_by_judge),
+    }
+
+
+@router.post("/hackathons/{hackathon_id}/judging/rerun")
+async def rerun_judging(
+    hackathon_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create new assignments for projects flagged by the ELO uncertainty engine.
+
+    For each submission with fewer than min_judges scores, creates a new
+    JudgeAssignment for every judge who hasn't scored it yet.
+    Preserves existing scores (each round gets new assignment records).
+    """
+    session = await _get_judging_session(hackathon_id, db)
+
+    # Get all judges
+    judges_result = await db.execute(
+        select(User.id).where(User.role == UserRole.judge)
+    )
+    all_judge_ids = [row[0] for row in judges_result.all()]
+
+    if not all_judge_ids:
+        return {"created": 0, "message": "No judges found"}
+
+    # Get all completed submissions
+    subs_result = await db.execute(
+        select(Submission.id).where(
+            Submission.hackathon_id == hackathon_id,
+            Submission.status == SubmissionStatus.completed,
+        )
+    )
+    all_submission_ids = [row[0] for row in subs_result.all()]
+
+    if not all_submission_ids:
+        return {"created": 0, "message": "No completed submissions"}
+
+    # Get all completed assignments to determine who scored what
+    assignments_result = await db.execute(
+        select(JudgeAssignment).where(
+            JudgeAssignment.session_id == session.id,
+            JudgeAssignment.is_completed == 1,
+        )
+    )
+    completed_assignments = assignments_result.scalars().all()
+
+    # Build map: submission_id -> set of judge_ids who scored it
+    scored_by: dict = {}
+    for a in completed_assignments:
+        scored_by.setdefault(a.submission_id, set()).add(a.judge_id)
+
+    # Build criteria map for uncertainty calculation
+    criteria_map = {}
+    if session.rubric:
+        for c in session.rubric.criteria:
+            criteria_map[c.id] = c
+
+    # Use queue logic to identify which submissions need more judging
+    # Simple heuristic: coverage-based — submissions with < 3 judges get flagged
+    min_judges = 3
+    flagged_submissions = []
+    for sid in all_submission_ids:
+        count = len(scored_by.get(sid, set()))
+        if count < min_judges:
+            flagged_submissions.append((sid, count))
+
+    # Also flag submissions with high variance if they have >= min_judges scores
+    if completed_assignments:
+        # Compute variance per submission
+        sub_z_scores: dict = {}
+        for a in completed_assignments:
+            raw = _compute_raw_score(a.scores, criteria_map)
+            sub_z_scores.setdefault(a.submission_id, []).append(raw)
+
+        for sid, raws in sub_z_scores.items():
+            if len(raws) >= 2 and sid not in {fs[0] for fs in flagged_submissions}:
+                mean = sum(raws) / len(raws)
+                stddev = math.sqrt(sum((r - mean) ** 2 for r in raws) / len(raws))
+                # Normalize by mean to get coefficient of variation
+                cv = stddev / mean if mean > 0 else 0
+                if cv > 0.15:  # > 15% variation among judges
+                    flagged_submissions.append((sid, len(raws)))
+
+    # Get existing pending assignments to avoid duplicates
+    existing_pending = await db.execute(
+        select(JudgeAssignment.judge_id, JudgeAssignment.submission_id).where(
+            JudgeAssignment.session_id == session.id,
+            JudgeAssignment.is_completed == 0,
+        )
+    )
+    existing_pairs = {(row[0], row[1]) for row in existing_pending.all()}
+
+    created = 0
+    for submission_id, current_count in flagged_submissions:
+        judges_who_scored = scored_by.get(submission_id, set())
+        for judge_id in all_judge_ids:
+            if judge_id not in judges_who_scored and (judge_id, submission_id) not in existing_pairs:
+                db.add(JudgeAssignment(
+                    session_id=session.id,
+                    judge_id=judge_id,
+                    submission_id=submission_id,
+                ))
+                existing_pairs.add((judge_id, submission_id))
+                created += 1
+
+    await db.commit()
+
+    return {
+        "created": created,
+        "flagged_submissions": len(flagged_submissions),
+        "details": [
+            {"submission_id": str(sid), "current_judges": count}
+            for sid, count in flagged_submissions
+        ],
+    }
+
+
 # ── session lifecycle ────────────────────────────────────────────────────────
 
 @router.post("/hackathons/{hackathon_id}/judging/activate")
@@ -688,11 +1039,63 @@ async def activate_judging(
     hackathon_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Manually activate judging (or it auto-activates based on start_time)."""
+    """Activate judging and auto-assign all judges to all completed submissions."""
     session = await _get_judging_session(hackathon_id, db)
     session.status = JudgingSessionStatus.active
+    await db.flush()
+
+    # Auto-assign: find all judges and all completed submissions
+    judges_result = await db.execute(
+        select(User.id).where(User.role == UserRole.judge)
+    )
+    judge_ids = [row[0] for row in judges_result.all()]
+
+    subs_result = await db.execute(
+        select(Submission.id).where(
+            Submission.hackathon_id == hackathon_id,
+            Submission.status == SubmissionStatus.completed,
+        )
+    )
+    submission_ids = [row[0] for row in subs_result.all()]
+
+    created = 0
+    if judge_ids and submission_ids:
+        # Check for existing active assignments to avoid duplicates
+        existing_result = await db.execute(
+            select(JudgeAssignment.judge_id, JudgeAssignment.submission_id).where(
+                JudgeAssignment.session_id == session.id,
+                JudgeAssignment.is_completed == 0,
+            )
+        )
+        existing_pairs = {(row[0], row[1]) for row in existing_result.all()}
+
+        for judge_id in judge_ids:
+            # Ensure judge rating record exists
+            rating_result = await db.execute(
+                select(JudgeRating).where(
+                    JudgeRating.judge_id == judge_id,
+                    JudgeRating.hackathon_id == hackathon_id,
+                )
+            )
+            if not rating_result.scalar_one_or_none():
+                db.add(JudgeRating(judge_id=judge_id, hackathon_id=hackathon_id))
+
+            for submission_id in submission_ids:
+                if (judge_id, submission_id) not in existing_pairs:
+                    db.add(JudgeAssignment(
+                        session_id=session.id,
+                        judge_id=judge_id,
+                        submission_id=submission_id,
+                    ))
+                    created += 1
+
     await db.commit()
-    return {"status": "active"}
+    return {
+        "status": "active",
+        "auto_assigned": created,
+        "judges": len(judge_ids),
+        "submissions": len(submission_ids),
+    }
 
 
 @router.post("/hackathons/{hackathon_id}/judging/close")

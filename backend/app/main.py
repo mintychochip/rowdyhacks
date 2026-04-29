@@ -26,7 +26,11 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    await _seed_demo_data()
+    try:
+        await _seed_demo_data()
+    except Exception:
+        import traceback
+        traceback.print_exc()
 
     # Start the crawler scheduler
     scheduler = AsyncIOScheduler()
@@ -49,7 +53,7 @@ async def lifespan(app: FastAPI):
 
 
 async def _seed_demo_data():
-    """Create demo accounts if they don't exist."""
+    """Create or update demo accounts on startup so they always work."""
     from app.database import async_session
     from app.models import User, UserRole
     from app.auth import hash_password
@@ -63,7 +67,13 @@ async def _seed_demo_data():
             ("dave@demo.com", "Dave", UserRole.judge),
         ]:
             result = await db.execute(select(User).where(User.email == email))
-            if not result.scalar_one_or_none():
+            user = result.scalar_one_or_none()
+            if user:
+                # Update existing demo account — reset password and role
+                user.name = name
+                user.role = role
+                user.password_hash = hash_password("demo1234")
+            else:
                 db.add(User(email=email, name=name, role=role, password_hash=hash_password("demo1234")))
         await db.commit()
 

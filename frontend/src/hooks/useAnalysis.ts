@@ -1,11 +1,18 @@
 import { useState, useRef, useCallback } from 'react';
 import * as api from '../services/api';
 
+interface CheckProgress {
+  completed: string[];
+  pending: string[];
+  current: string | null;
+}
+
 interface AnalysisResult {
   id: string;
   project_title?: string;
   status: string;
   stage?: string;
+  check_progress?: CheckProgress;
   risk_score: number | null;
   verdict: string | null;
   check_results: Array<{
@@ -18,9 +25,23 @@ interface AnalysisResult {
   }>;
 }
 
+const CHECK_LABELS: Record<string, string> = {
+  timeline: 'Commit analysis',
+  commit_quality: 'Commit quality',
+  devpost_alignment_ai: 'AI claim verification',
+  dead_deps: 'Dead dependencies',
+  submission_history: 'Submission history',
+  contributor_audit: 'Contributor audit',
+  asset_integrity: 'Asset integrity',
+  ai_detection: 'AI pattern detection',
+  cross_hackathon: 'Cross-hackathon check',
+  repeat_offender: 'Repeat offender',
+};
+
 export function useAnalysis() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'polling' | 'done' | 'error'>('idle');
   const [stage, setStage] = useState<string>('');
+  const [checkProgress, setCheckProgress] = useState<CheckProgress | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string>('');
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -39,6 +60,7 @@ export function useAnalysis() {
         try {
           const statusData = await api.getCheckStatus(submissionId, accessToken);
           if (statusData.stage) setStage(statusData.stage);
+          if (statusData.check_progress) setCheckProgress(statusData.check_progress);
           if (statusData.status === 'completed' || statusData.status === 'failed') {
             if (pollingRef.current) clearInterval(pollingRef.current);
             setResult(statusData);
@@ -60,9 +82,10 @@ export function useAnalysis() {
     if (pollingRef.current) clearInterval(pollingRef.current);
     setStatus('idle');
     setStage('');
+    setCheckProgress(null);
     setResult(null);
     setError('');
   }, []);
 
-  return { submit, reset, result, status, stage, error };
+  return { submit, reset, result, status, stage, checkProgress, CHECK_LABELS, error };
 }

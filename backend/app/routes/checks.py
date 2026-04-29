@@ -109,6 +109,7 @@ async def get_check_status(
         "project_title": sub.project_title,
         "status": sub.status.value,
         "stage": sub.stage,
+        "check_progress": sub.check_progress,
         "risk_score": sub.risk_score,
         "verdict": sub.verdict.value if sub.verdict else None,
         "created_at": sub.created_at.isoformat(),
