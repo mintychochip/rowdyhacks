@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.worktrees/
+.claude/
+.superpowers/
+.playwright-mcp/
+.vscode/
+dev.db
+node_modules/
+dist/
+*.log
