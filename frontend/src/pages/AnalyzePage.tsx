@@ -150,29 +150,42 @@ export default function AnalyzePage() {
           <button onClick={reset} style={{ padding: '10px 20px', background: PRIMARY, border: 'none', borderRadius: 8, color: TEXT_WHITE, cursor: 'pointer' }}>Try Again</button>
         </div>
       )}
-      {status === 'done' && result && (
-        <div>
-          <ReportCard
-            projectTitle={result.project_title || undefined}
-            riskScore={result.risk_score ?? 0}
-            verdict={result.verdict ?? 'unknown'}
-            categories={(result.check_results || []).map(cr => ({
-              category: cr.check_category,
-              score: cr.score,
-            }))}
-          />
-          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: 18 }}>Check Details</h3>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Link to={`/report/${result.id}`} style={{ color: PRIMARY, textDecoration: 'none', fontSize: 14 }}>Full Report</Link>
+      {status === 'done' && result && (() => {
+        const checks = (result.check_results || []);
+        const cats = checks.map(cr => ({ category: cr.check_category, score: cr.score }));
+        return (
+          <div>
+            <ReportCard
+              projectTitle={result.project_title || undefined}
+              riskScore={result.risk_score ?? 0}
+              verdict={result.verdict ?? 'unknown'}
+              categories={cats}
+              checks={checks}
+            />
+
+            {/* Drill down */}
+            <details style={{ marginTop: 8 }}>
+              <summary style={{
+                cursor: 'pointer', padding: '12px 16px', background: CARD_BG,
+                border: `1px solid ${BORDER}`, borderRadius: 10, fontSize: 13,
+                color: TEXT_MUTED, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1,
+              }}>
+                Drill Down — All {checks.length} Checks
+              </summary>
+              <div style={{ marginTop: 8 }}>
+                {checks.map(cr => (
+                  <CheckResultRow key={cr.check_name} check={cr} />
+                ))}
+              </div>
+            </details>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 20 }}>
+              <Link to={`/report/${result.id}`} style={{ color: PRIMARY, textDecoration: 'none', fontSize: 13 }}>Full Report</Link>
               <button onClick={reset} style={{ background: 'none', border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, padding: '4px 12px', color: TEXT_MUTED, cursor: 'pointer', fontSize: 13 }}>New Check</button>
             </div>
           </div>
-          {(result.check_results || []).map(cr => (
-            <CheckResultRow key={cr.check_name} check={cr} />
-          ))}
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
