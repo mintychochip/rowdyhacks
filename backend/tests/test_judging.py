@@ -369,3 +369,180 @@ async def test_soft_deadline_auto_submit(client: AsyncClient, db_session: AsyncS
     assert result["is_late"] is True
     assert result["is_auto_submitted"] is True
     print("  [OK] Soft deadline: scores auto-submitted when past time limit")
+
+
+@pytest.mark.asyncio
+async def test_auto_assign_on_activate(client: AsyncClient, db_session: AsyncSession):
+    """Activating a judging session auto-assigns all judges to all completed submissions."""
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+
+    organizer = await _create_user(db_session, "autoorg@test.com", "Auto Org", UserRole.organizer)
+    judge1 = await _create_user(db_session, "autojudge1@test.com", "Auto Judge 1", UserRole.judge)
+    judge2 = await _create_user(db_session, "autojudge2@test.com", "Auto Judge 2", UserRole.judge)
+    hackathon = await _create_hackathon(db_session, "Auto-Assign Test", organizer_id=organizer.id)
+
+    sub_a = await _create_submission(db_session, hackathon.id, "Project A", "https://devpost.com/a")
+    sub_b = await _create_submission(db_session, hackathon.id, "Project B", "https://devpost.com/b")
+
+    # Create session
+    resp = await client.post(
+        f"/api/hackathons/{hackathon.id}/judging/session",
+        json={
+            "start_time": (now - timedelta(hours=1)).isoformat(),
+            "end_time": (now + timedelta(hours=2)).isoformat(),
+            "per_project_seconds": 300,
+            "criteria": [{"name": "Innovation", "max_score": 10, "weight": 100}],
+        },
+    )
+    assert resp.status_code == 201
+
+    # Activate — should auto-assign
+    resp = await client.post(f"/api/hackathons/{hackathon.id}/judging/activate")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "active"
+    assert data["auto_assigned"] == 4  # 2 judges * 2 submissions
+    assert data["judges"] == 2
+    assert data["submissions"] == 2
+    print(f"  [OK] Auto-assigned {data['auto_assigned']} judge-submission pairs on activation")
+
+    # Verify assignments exist
+    resp = await client.get(
+        f"/api/hackathons/{hackathon.id}/judging/assignments?judge_id={judge1.id}"
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()) == 2
+    print("  [OK] Judge 1 has 2 assignments")
+
+    # Activate again — should not create duplicates
+    resp = await client.post(f"/api/hackathons/{hackathon.id}/judging/activate")
+    assert resp.status_code == 200
+    assert resp.json()["auto_assigned"] == 0  # No new assignments
+    print("  [OK] Re-activation skipped duplicates")
+
+
+@pytest.mark.asyncio
+async def test_judging_queue(client: AsyncClient, db_session: AsyncSession):
+    """Queue endpoint returns priority-ordered projects needing judging."""
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+
+    organizer = await _create_user(db_session, "queueorg@test.com", "Queue Org", UserRole.organizer)
+    judge1 = await _create_user(db_session, "qjudge1@test.com", "Queue Judge 1", UserRole.judge)
+    judge2 = await _create_user(db_session, "qjudge2@test.com", "Queue Judge 2", UserRole.judge)
+    judge3 = await _create_user(db_session, "qjudge3@test.com", "Queue Judge 3", UserRole.judge)
+    hackathon = await _create_hackathon(db_session, "Queue Test", organizer_id=organizer.id)
+
+    sub_a = await _create_submission(db_session, hackathon.id, "Queue Alpha", "https://devpost.com/qa")
+    sub_b = await _create_submission(db_session, hackathon.id, "Queue Beta", "https://devpost.com/qb")
+
+    # Create session
+    resp = await client.post(
+        f"/api/hackathons/{hackathon.id}/judging/session",
+        json={
+            "start_time": (now - timedelta(hours=1)).isoformat(),
+            "end_time": (now + timedelta(hours=2)).isoformat(),
+            "per_project_seconds": 300,
+            "criteria": [{"name": "Innovation", "max_score": 10, "weight": 100}],
+        },
+    )
+    assert resp.status_code == 201
+
+    # Auto-assign via activation
+    resp = await client.post(f"/api/hackathons/{hackathon.id}/judging/activate")
+    assert resp.status_code == 200
+
+    # Judge3 hasn't scored anything yet — queue should show both projects
+    resp = await client.get(
+        f"/api/hackathons/{hackathon.id}/judging/queue?judge_id={judge3.id}"
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["queue"]) == 2
+    # Both should have "needs_coverage" reason
+    for item in data["queue"]:
+        assert "needs_coverage" in item["reasons"]
+    print(f"  [OK] Queue shows {len(data['queue'])} projects for judge with no scores")
+
+    # Score one project as judge1
+    resp = await client.get(
+        f"/api/hackathons/{hackathon.id}/judging/assignments?judge_id={judge1.id}"
+    )
+    aid = resp.json()[0]["id"]
+    await client.post(f"/api/judging/assignments/{aid}/open")
+    resp = await client.get(f"/api/judging/assignments/{aid}")
+    cid = resp.json()["criteria"][0]["id"]
+    await client.post(
+        f"/api/judging/assignments/{aid}/score",
+        json={"scores": [{"criterion_id": cid, "score": 8}]},
+    )
+
+    # Queue for judge3 should still show both (judge3 hasn't scored either)
+    resp = await client.get(
+        f"/api/hackathons/{hackathon.id}/judging/queue?judge_id={judge3.id}"
+    )
+    assert len(resp.json()["queue"]) == 2
+    print("  [OK] Queue still shows 2 projects for unscored judge")
+
+    # Queue for judge1 should only show unscored project
+    resp = await client.get(
+        f"/api/hackathons/{hackathon.id}/judging/queue?judge_id={judge1.id}"
+    )
+    queue_j1 = resp.json()["queue"]
+    assert len(queue_j1) == 1  # Only the un-scored project
+    print(f"  [OK] Queue for judge1 shows {len(queue_j1)} remaining project")
+
+
+@pytest.mark.asyncio
+async def test_rerun_judging(client: AsyncClient, db_session: AsyncSession):
+    """Rerun creates assignments for under-scored projects."""
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+
+    organizer = await _create_user(db_session, "rerunorg@test.com", "Rerun Org", UserRole.organizer)
+    judge1 = await _create_user(db_session, "rjudge1@test.com", "Rerun Judge 1", UserRole.judge)
+    judge2 = await _create_user(db_session, "rjudge2@test.com", "Rerun Judge 2", UserRole.judge)
+    hackathon = await _create_hackathon(db_session, "Rerun Test", organizer_id=organizer.id)
+
+    sub_a = await _create_submission(db_session, hackathon.id, "Rerun Alpha", "https://devpost.com/ra")
+    sub_b = await _create_submission(db_session, hackathon.id, "Rerun Beta", "https://devpost.com/rb")
+
+    # Create session
+    resp = await client.post(
+        f"/api/hackathons/{hackathon.id}/judging/session",
+        json={
+            "start_time": (now - timedelta(hours=1)).isoformat(),
+            "end_time": (now + timedelta(hours=2)).isoformat(),
+            "per_project_seconds": 300,
+            "criteria": [{"name": "Innovation", "max_score": 10, "weight": 100}],
+        },
+    )
+    assert resp.status_code == 201
+
+    # Auto-assign via activation
+    resp = await client.post(f"/api/hackathons/{hackathon.id}/judging/activate")
+    assert resp.status_code == 200
+    assert resp.json()["auto_assigned"] == 4  # 2 judges * 2 submissions
+
+    # Only judge1 scores sub_a
+    resp = await client.get(
+        f"/api/hackathons/{hackathon.id}/judging/assignments?judge_id={judge1.id}"
+    )
+    assignments = resp.json()
+    aid_a = next(a["id"] for a in assignments if a["submission_id"] == str(sub_a.id))
+    await client.post(f"/api/judging/assignments/{aid_a}/open")
+    resp = await client.get(f"/api/judging/assignments/{aid_a}")
+    cid = resp.json()["criteria"][0]["id"]
+    await client.post(
+        f"/api/judging/assignments/{aid_a}/score",
+        json={"scores": [{"criterion_id": cid, "score": 7}]},
+    )
+
+    # Rerun — should flag sub_b (0 judges) and possibly sub_a (< 3 judges)
+    resp = await client.post(f"/api/hackathons/{hackathon.id}/judging/rerun")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["created"] >= 0
+    assert data["flagged_submissions"] >= 1  # sub_b has 0 judges, sub_a has 1 (< 3)
+    print(f"  [OK] Rerun flagged {data['flagged_submissions']} submissions, created {data['created']} assignments")

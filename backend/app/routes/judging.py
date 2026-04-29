@@ -818,11 +818,25 @@ async def get_judging_queue(
                 outcome = 0.0
             elo[a_sid], elo[b_sid] = _elo_update(elo[a_sid], elo[b_sid], outcome, k=16)
 
-    # Step 4: find submissions the requesting judge has already scored
+    # Step 4: find submissions the requesting judge has already scored,
+    # and look up pending assignments for this judge
     scored_by_judge = set()
     for a in assignments:
         if str(a.judge_id) == judge_id:
             scored_by_judge.add(str(a.submission_id))
+
+    # Look up pending assignments for this judge
+    pending_assignments_result = await db.execute(
+        select(JudgeAssignment).where(
+            JudgeAssignment.session_id == session.id,
+            JudgeAssignment.judge_id == judge_uuid,
+            JudgeAssignment.is_completed == 0,
+        )
+    )
+    pending_assignment_map = {
+        str(a.submission_id): str(a.id)
+        for a in pending_assignments_result.scalars().all()
+    }
 
     # Step 5: compute uncertainty scores
     # Sort ELOs for proximity calculation
@@ -892,6 +906,7 @@ async def get_judging_queue(
             reasons.append("low_priority")
 
         queue_items.append({
+            "assignment_id": pending_assignment_map.get(sid),
             "submission_id": sid,
             "project_title": sub.project_title,
             "devpost_url": sub.devpost_url,

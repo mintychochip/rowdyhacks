@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import * as api from '../services/api';
@@ -17,29 +17,50 @@ interface Criterion {
   score: number | null;
 }
 
-interface Assignment {
-  id: string;
-  judge_id: string;
+interface QueueItem {
+  assignment_id: string | null;
   submission_id: string;
-  opened_at: string | null;
-  submitted_at: string | null;
-  is_completed: boolean;
-  submission?: {
-    id: string;
-    project_title: string;
-    devpost_url: string;
-    github_url: string | null;
-    claimed_tech: string[];
-    team_members: any;
+  project_title: string;
+  devpost_url: string;
+  github_url: string | null;
+  elo: number;
+  uncertainty: {
+    total: number;
+    variance: number;
+    proximity: number;
+    coverage: number;
   };
+  judge_count: number;
+  reasons: string[];
 }
+
+interface CompletedItem {
+  id: string;
+  submission_id: string;
+  project_title: string;
+}
+
+const REASON_LABELS: Record<string, string> = {
+  high_variance: 'High disagreement among judges',
+  close_race: 'Close race with neighbor',
+  needs_coverage: 'Needs more judge coverage',
+  low_priority: 'Low priority',
+};
+
+const REASON_COLORS: Record<string, string> = {
+  high_variance: ERROR,
+  close_race: WARNING,
+  needs_coverage: PRIMARY,
+  low_priority: TEXT_MUTED,
+};
 
 export default function JudgePortal() {
   const { id: hackathonId } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [completed, setCompleted] = useState<CompletedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
 
@@ -54,14 +75,30 @@ export default function JudgePortal() {
 
   useEffect(() => {
     if (!user) { navigate('/auth'); return; }
-    loadAssignments();
+    loadData();
   }, [user, hackathonId]);
 
-  const loadAssignments = async () => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      const data = await api.getJudgeAssignments(hackathonId!, user?.id);
-      setAssignments(Array.isArray(data) ? data : []);
-    } catch { setAssignments([]); }
+      // Load priority queue
+      const queueData = await api.getJudgingQueue(hackathonId!, user!.id);
+      setQueue(queueData.queue || []);
+
+      // Load completed assignments for reference
+      const assignments = await api.getJudgeAssignments(hackathonId!, user!.id);
+      if (Array.isArray(assignments)) {
+        setCompleted(
+          assignments
+            .filter((a: any) => a.is_completed)
+            .map((a: any) => ({
+              id: a.id,
+              submission_id: a.submission_id,
+              project_title: a.submission?.project_title || a.submission_id,
+            }))
+        );
+      }
+    } catch { setQueue([]); setCompleted([]); }
     setLoading(false);
   };
 
@@ -69,9 +106,7 @@ export default function JudgePortal() {
 
   const openScoring = async (assignmentId: string) => {
     try {
-      // Mark opened (starts server timer)
       await api.openAssignment(assignmentId);
-      // Load full detail
       const detail = await api.getAssignmentDetail(assignmentId);
       setActiveAssignmentId(assignmentId);
       setCriteria(detail.criteria || []);
@@ -79,7 +114,6 @@ export default function JudgePortal() {
       setOpenedAt(detail.opened_at);
       setPerProjectSeconds(detail.per_project_seconds || 300);
 
-      // Calculate remaining time
       if (detail.opened_at) {
         const elapsed = Math.floor((Date.now() - new Date(detail.opened_at).getTime()) / 1000);
         setTimeRemaining(Math.max(0, (detail.per_project_seconds || 300) - elapsed));
@@ -132,7 +166,7 @@ export default function JudgePortal() {
     setSubmission(null);
     setCriteria([]);
     if (intervalRef.current) clearInterval(intervalRef.current);
-    loadAssignments();
+    loadData();
   };
 
   const closeScoring = () => {
@@ -146,7 +180,7 @@ export default function JudgePortal() {
 
   if (!user) return null;
 
-  // Scoring view
+  // Scoring view (same as before)
   if (activeAssignmentId) {
     const minutes = Math.floor(timeRemaining / 60);
     const seconds = timeRemaining % 60;
@@ -184,7 +218,6 @@ export default function JudgePortal() {
           </div>
         </div>
 
-        {/* Submission quick info */}
         {submission?.claimed_tech?.length > 0 && (
           <div style={{ marginBottom: 20, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {submission.claimed_tech.map((t: string) => (
@@ -196,7 +229,6 @@ export default function JudgePortal() {
           </div>
         )}
 
-        {/* Criteria scoring */}
         <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
           <h3 style={{ fontSize: 16, marginBottom: 20 }}>Scoring ({scoredCount}/{criteria.length})</h3>
 
@@ -234,7 +266,6 @@ export default function JudgePortal() {
           ))}
         </div>
 
-        {/* Action buttons */}
         <div style={{ display: 'flex', gap: 12 }}>
           <button onClick={handleSubmit} disabled={saving}
             style={{
@@ -267,80 +298,131 @@ export default function JudgePortal() {
     );
   }
 
-  // Assignment list view
-  const pending = assignments.filter(a => !a.is_completed);
-  const completed = assignments.filter(a => a.is_completed);
-
+  // Priority queue list view
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h2 style={{ fontSize: 24 }}>Judge Portal</h2>
-        <button onClick={() => navigate(`/hackathons/${hackathonId}/judging/results`)}
-          style={{
-            padding: '8px 16px', fontSize: 13,
-            background: 'none', border: `1px solid ${BORDER}`, borderRadius: 6, color: TEXT_SECONDARY,
-            cursor: 'pointer',
-          }}>
-          View Results
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={loadData}
+            style={{
+              padding: '8px 16px', fontSize: 13,
+              background: 'none', border: `1px solid ${BORDER}`, borderRadius: 6, color: TEXT_SECONDARY,
+              cursor: 'pointer',
+            }}>
+            Refresh
+          </button>
+          <button onClick={() => navigate(`/hackathons/${hackathonId}/judging/results`)}
+            style={{
+              padding: '8px 16px', fontSize: 13,
+              background: 'none', border: `1px solid ${BORDER}`, borderRadius: 6, color: TEXT_SECONDARY,
+              cursor: 'pointer',
+            }}>
+            View Results
+          </button>
+        </div>
       </div>
 
       {loading ? (
-        <p style={{ color: TEXT_MUTED }}>Loading assignments...</p>
+        <p style={{ color: TEXT_MUTED }}>Loading priority queue...</p>
       ) : (
         <>
-          {/* Pending */}
+          {/* Priority queue */}
           <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden', marginBottom: 24 }}>
+            <div style={{ padding: '12px 16px', borderBottom: `1px solid ${BORDER}` }}>
+              <span style={{ fontSize: 14, fontWeight: 600 }}>Priority Queue</span>
+              <span style={{ fontSize: 12, color: TEXT_MUTED, marginLeft: 8 }}>
+                (projects ranked by judging need)
+              </span>
+            </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${BORDER}`, textAlign: 'left' }}>
+                  <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500 }}>#</th>
                   <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500 }}>Project</th>
-                  <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500 }}>Status</th>
+                  <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500 }}>ELO</th>
+                  <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500 }}>Judges</th>
+                  <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500 }}>Why</th>
                   <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500 }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {pending.map(a => (
-                  <tr key={a.id} style={{ borderBottom: '1px solid #080c1a' }}>
-                    <td style={{ padding: '10px 16px' }}>{a.submission_id}</td>
+                {queue.map((item, idx) => (
+                  <tr key={item.submission_id} style={{ borderBottom: '1px solid #080c1a' }}>
+                    <td style={{ padding: '10px 16px', color: TEXT_MUTED, fontSize: 12 }}>{idx + 1}</td>
                     <td style={{ padding: '10px 16px' }}>
-                      <span style={{
-                        padding: '2px 8px', borderRadius: 10, fontSize: 12,
-                        background: a.opened_at ? `${GOLD}20` : `${SUCCESS}20`,
-                        color: a.opened_at ? GOLD : SUCCESS,
-                      }}>
-                        {a.opened_at ? 'In Progress' : 'New'}
-                      </span>
+                      <div style={{ fontWeight: 600 }}>{item.project_title || 'Untitled'}</div>
+                      <a href={item.devpost_url} target="_blank" style={{ fontSize: 12, color: PRIMARY }}>
+                        Devpost &rarr;
+                      </a>
+                    </td>
+                    <td style={{ padding: '10px 16px', fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace' }}>
+                      {item.elo}
+                    </td>
+                    <td style={{ padding: '10px 16px', color: item.judge_count === 0 ? ERROR : TEXT_SECONDARY }}>
+                      {item.judge_count}
                     </td>
                     <td style={{ padding: '10px 16px' }}>
-                      <button onClick={() => openScoring(a.id)}
-                        style={{
-                          padding: '6px 16px', background: PRIMARY, border: 'none', borderRadius: 6,
-                          color: TEXT_WHITE, cursor: 'pointer', fontSize: 13,
-                        }}>
-                        Score
-                      </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {item.reasons.map((reason) => (
+                          <span key={reason} style={{
+                            fontSize: 11,
+                            padding: '1px 8px',
+                            borderRadius: 8,
+                            background: `${REASON_COLORS[reason] || TEXT_MUTED}18`,
+                            color: REASON_COLORS[reason] || TEXT_MUTED,
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {REASON_LABELS[reason] || reason}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td style={{ padding: '10px 16px' }}>
+                      {item.assignment_id ? (
+                        <button onClick={() => openScoring(item.assignment_id!)}
+                          style={{
+                            padding: '6px 16px', background: PRIMARY, border: 'none', borderRadius: 6,
+                            color: TEXT_WHITE, cursor: 'pointer', fontSize: 13,
+                          }}>
+                          Score
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: 12, color: TEXT_MUTED }}>No assignment</span>
+                      )}
                     </td>
                   </tr>
                 ))}
-                {pending.length === 0 && (
-                  <tr><td colSpan={3} style={{ textAlign: 'center', padding: 24, color: TEXT_MUTED }}>
-                    No pending assignments. All scored!
+                {queue.length === 0 && (
+                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: TEXT_MUTED }}>
+                    All projects scored! Check back after more judges submit.
                   </td></tr>
                 )}
               </tbody>
             </table>
           </div>
 
+          {/* Uncertainty legend */}
+          {queue.length > 0 && (
+            <div style={{
+              display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 24,
+              fontSize: 12, color: TEXT_MUTED,
+            }}>
+              <span>Uncertainty = judge disagreement (35%) + close races (30%) + coverage gaps (35%)</span>
+            </div>
+          )}
+
           {/* Completed */}
           {completed.length > 0 && (
             <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
-              <h3 style={{ fontSize: 14, padding: '12px 16px', color: TEXT_MUTED, margin: 0 }}>Completed</h3>
+              <h3 style={{ fontSize: 14, padding: '12px 16px', color: TEXT_MUTED, margin: 0 }}>
+                Completed by You ({completed.length})
+              </h3>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                 <tbody>
                   {completed.map(a => (
                     <tr key={a.id} style={{ borderBottom: '1px solid #080c1a' }}>
-                      <td style={{ padding: '10px 16px', color: TEXT_MUTED }}>{a.submission_id}</td>
+                      <td style={{ padding: '10px 16px' }}>{a.project_title}</td>
                       <td style={{ padding: '10px 16px' }}>
                         <span style={{
                           padding: '2px 8px', borderRadius: 10, fontSize: 12,

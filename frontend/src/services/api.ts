@@ -147,3 +147,12 @@ export const getJudgingResults = (hackathonId: string) => request(`/hackathons/$
 export const activateJudging = (hackathonId: string) => request(`/hackathons/${hackathonId}/judging/activate`, { method: 'POST' });
 
 export const closeJudging = (hackathonId: string) => request(`/hackathons/${hackathonId}/judging/close`, { method: 'POST' });
+
+export const getJudgingQueue = (hackathonId: string, judgeId: string, minJudges?: number) => {
+  const params = new URLSearchParams({ judge_id: judgeId });
+  if (minJudges !== undefined) params.set('min_judges', String(minJudges));
+  return request(`/hackathons/${hackathonId}/judging/queue?${params}`);
+};
+
+export const rerunJudging = (hackathonId: string) =>
+  request(`/hackathons/${hackathonId}/judging/rerun`, { method: 'POST' });
