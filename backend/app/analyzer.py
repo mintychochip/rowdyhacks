@@ -114,6 +114,7 @@ async def analyze_submission(submission_id: uuid.UUID) -> None:
                 check_timings[name] = round(time.monotonic() - ct0, 2)
                 sub.check_progress["completed"].append(name)
                 sub.check_progress["pending"].remove(name)
+                await db.commit()  # flush progress so frontend sees it immediately
             sub.check_progress["current"] = None
             await db.commit()
             timings["checks_total"] = round(time.monotonic() - t3, 2)

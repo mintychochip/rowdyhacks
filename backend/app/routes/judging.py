@@ -969,10 +969,12 @@ async def rerun_judging(
 
     # Get all completed assignments to determine who scored what
     assignments_result = await db.execute(
-        select(JudgeAssignment).where(
+        select(JudgeAssignment)
+        .where(
             JudgeAssignment.session_id == session.id,
             JudgeAssignment.is_completed == 1,
         )
+        .options(selectinload(JudgeAssignment.scores))
     )
     completed_assignments = assignments_result.scalars().all()
 
