@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { PRIMARY, ERROR_TEXT, ERROR_BG20, ERROR, TEXT_MUTED, TEXT_WHITE, INPUT_BG, INPUT_BORDER } from '../theme';
 
 export default function AuthPage() {
   const { login, register } = useAuth();
   const navigate = useNavigate();
+  const { isMobile } = useMediaQuery();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,7 +34,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: '60px auto', padding: 24 }}>
+    <div style={{ maxWidth: 400, margin: isMobile ? '30px auto' : '60px auto', padding: isMobile ? 14 : 24 }}>
       <h1 style={{ textAlign: 'center', marginBottom: 24 }}>
         {isLogin ? 'Sign In' : 'Create Account'}
       </h1>
