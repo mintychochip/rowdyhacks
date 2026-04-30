@@ -22,7 +22,10 @@ def _get_current_user_id(authorization: str = Header(alias="Authorization")) -> 
         payload = decode_token(token)
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid token")
-    return payload["sub"]
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return user_id
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -118,7 +121,9 @@ async def oauth_unlink(
 
     # Check if unlinking would strand the user
     result = await db.execute(select(User).where(User.id == user_id))
-    user_obj = result.scalar_one()
+    user_obj = result.scalar_one_or_none()
+    if not user_obj:
+        raise HTTPException(status_code=404, detail="User not found")
     result = await db.execute(select(OAuthAccount).where(OAuthAccount.user_id == user_id))
     oauth_count = len(result.scalars().all())
     has_password = user_obj.password_hash is not None
@@ -145,6 +150,6 @@ async def list_linked_providers(
     result = await db.execute(select(OAuthAccount).where(OAuthAccount.user_id == user_id))
     accounts = result.scalars().all()
     result = await db.execute(select(User).where(User.id == user_id))
-    user_obj = result.scalar_one()
+    user_obj = result.scalar_one_or_none()
 
-    return {"linked": [a.provider for a in accounts], "has_password": user_obj.password_hash is not None}
+    return {"linked": [a.provider for a in accounts], "has_password": user_obj.password_hash is not None if user_obj else False}

@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     )
 
     base_url: str = Field(default="http://localhost:8000", description="Public base URL for QR code and pass links")
+    frontend_url: str = Field(default="http://localhost:8000", description="Frontend origin for OAuth redirects (defaults to base_url in production)")
     wallet_logo_url: str = Field(default="", description="Public URL for wallet pass logo image")
     apple_pass_cert_path: str = Field(default="", description="Path to Apple Pass Type ID .p12 certificate")
     apple_pass_cert_password: str = Field(default="", description="Password for the .p12 certificate")

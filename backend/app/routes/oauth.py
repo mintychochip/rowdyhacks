@@ -18,6 +18,8 @@ from app.oauth import (
     fetch_user_info,
     build_name_fallback,
 )
+from sqlalchemy.exc import IntegrityError
+
 from app.config import settings
 
 router = APIRouter()
@@ -25,7 +27,7 @@ router = APIRouter()
 
 def _frontend_redirect(token: str | None = None, error: str | None = None) -> RedirectResponse:
     """Build a redirect to the frontend callback page."""
-    frontend_origin = settings.base_url
+    frontend_origin = settings.frontend_url
     if error:
         return RedirectResponse(f"{frontend_origin}/#/auth/callback?error={error}")
     return RedirectResponse(f"{frontend_origin}/#/auth/callback?token={token}")
@@ -105,7 +107,9 @@ async def oauth_callback(
 
     if oauth_account:
         result = await db.execute(select(User).where(User.id == oauth_account.user_id))
-        user_obj = result.scalar_one()
+        user_obj = result.scalar_one_or_none()
+        if not user_obj:
+            return _frontend_redirect(error="user_not_found")
         token = create_access_token(user_id=str(user_obj.id), role=user_obj.role.value)
         return _frontend_redirect(token=token)
 
@@ -118,11 +122,15 @@ async def oauth_callback(
         new_link = OAuthAccount(
             provider=provider,
             provider_user_id=provider_user_id,
-            provider_email=provider_email or None,
+            provider_email=provider_email,
             user_id=user_obj.id,
         )
         db.add(new_link)
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            return _frontend_redirect(error="provider_error")
         token = create_access_token(user_id=str(user_obj.id), role=user_obj.role.value)
         return _frontend_redirect(token=token)
 
@@ -138,7 +146,11 @@ async def oauth_callback(
                 user_id=user_obj.id,
             )
             db.add(new_link)
-            await db.commit()
+            try:
+                await db.commit()
+            except IntegrityError:
+                await db.rollback()
+                return _frontend_redirect(error="provider_error")
             token = create_access_token(user_id=str(user_obj.id), role=user_obj.role.value)
             return _frontend_redirect(token=token)
 
@@ -154,11 +166,15 @@ async def oauth_callback(
     new_link = OAuthAccount(
         provider=provider,
         provider_user_id=provider_user_id,
-        provider_email=provider_email or None,
+        provider_email=provider_email,
         user_id=user_obj.id,
     )
     db.add(new_link)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        return _frontend_redirect(error="provider_error")
 
     token = create_access_token(user_id=str(user_obj.id), role=user_obj.role.value)
     return _frontend_redirect(token=token)
