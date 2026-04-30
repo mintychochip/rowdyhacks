@@ -627,6 +627,47 @@ git add frontend/src/pages/RegisterPage.tsx
 git commit -m "fix: responsive padding on RegisterPage"
 ```
 
+### Task 5.6: CheckInPage — responsive padding
+
+**Files:**
+- Modify: `frontend/src/pages/CheckInPage.tsx`
+
+- [ ] **Step 1: Responsive padding**
+
+Import and use `useMediaQuery`.
+
+Changes:
+1. Container margin: `margin: '40px auto'` → `margin: isMobile ? '20px auto' : '40px auto'`
+2. Input + button: stack on mobile (`flexDirection: isMobile ? 'column' : 'row'`)
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add frontend/src/pages/CheckInPage.tsx
+git commit -m "fix: responsive padding and stacked input on CheckInPage"
+```
+
+### Task 5.7: ReportPage — responsive padding
+
+**Files:**
+- Modify: `frontend/src/pages/ReportPage.tsx`
+
+- [ ] **Step 1: Responsive padding**
+
+Import and use `useMediaQuery`.
+
+Change loading/error padding:
+```tsx
+padding: 40 → padding: isMobile ? 20 : 40
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add frontend/src/pages/ReportPage.tsx
+git commit -m "fix: responsive padding on ReportPage"
+```
+
 ### Task 5.8: OrganizerRegistrationsPage — responsive padding
 
 **Files:**
@@ -673,45 +714,35 @@ git add frontend/src/pages/OrganizerRegistrationsPage.tsx
 git commit -m "fix: responsive padding on OrganizerRegistrationsPage"
 ```
 
-### Task 5.6: CheckInPage — responsive padding
+### Task 5.9: RubricBuilderPage — responsive padding
 
 **Files:**
-- Modify: `frontend/src/pages/CheckInPage.tsx`
+- Modify: `frontend/src/pages/RubricBuilderPage.tsx`
 
-- [ ] **Step 1: Responsive padding**
+Note: This page uses a form with flex-wrap rows (not tables), so it only needs padding and heading adjustments.
 
-Import and use `useMediaQuery`.
+- [ ] **Step 1: Responsive padding and heading**
 
-Changes:
-1. Container margin: `margin: '40px auto'` → `margin: isMobile ? '20px auto' : '40px auto'`
-2. Input + button: stack on mobile (`flexDirection: isMobile ? 'column' : 'row'`)
-
-- [ ] **Step 2: Commit**
-
-```bash
-git add frontend/src/pages/CheckInPage.tsx
-git commit -m "fix: responsive padding and stacked input on CheckInPage"
-```
-
-### Task 5.7: ReportPage — responsive padding
-
-**Files:**
-- Modify: `frontend/src/pages/ReportPage.tsx`
-
-- [ ] **Step 1: Responsive padding**
-
-Import and use `useMediaQuery`.
-
-Change loading/error padding:
+Import and use `useMediaQuery`:
 ```tsx
-padding: 40 → padding: isMobile ? 20 : 40
+import { useMediaQuery } from '../hooks/useMediaQuery';
+```
+
+Add hook call at top of component (after existing hooks):
+```tsx
+const { isMobile } = useMediaQuery();
+```
+
+Add `data-mobile-h1` to the heading (line 92):
+```tsx
+<h2 data-mobile-h1 style={{ fontSize: 24, marginBottom: 20 }}>Judging Setup</h2>
 ```
 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add frontend/src/pages/ReportPage.tsx
-git commit -m "fix: responsive padding on ReportPage"
+git add frontend/src/pages/RubricBuilderPage.tsx
+git commit -m "fix: responsive heading on RubricBuilderPage"
 ```
 
 ---
@@ -812,15 +843,16 @@ Expected: All existing tests PASS. No behavioral changes should break any tests.
   - Touch targets are easy to tap
 
 - [ ] **Step 4: Check all pages at 375px**
-  - `/` (AnalyzePage) — URL input stacks, results readable
+  - `/` (AnalyzePage) — URL input stacks, results readable; ReportCard and CheckDetails components do not overflow
   - `/auth` (AuthPage) — form fits screen
   - `/hackathons` — list readable
   - `/registrations` — cards fit screen
   - `/registrations/:id` — QR code visible
   - `/dashboard` — table scrolls
-  - `/report/:id` — check rows tappable
+  - `/report/:id` — check rows tappable, ReportCard hero section fits, CheckDetails expanded content doesn't overflow
   - `/hackathons/:id/judging` — priority queue scrollable
   - `/hackathons/:id/judging/results` — rankings scrollable
+  - `/hackathons/:id/judging/setup` — rubric form fits viewport
 
 - [ ] **Step 5: Commit final verification notes**
 
