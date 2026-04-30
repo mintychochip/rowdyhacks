@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import ReportCard from '../components/ReportCard';
 import CheckResultRow from '../components/CheckResultRow';
 import * as api from '../services/api';
@@ -21,6 +22,7 @@ export default function ReportPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { isMobile } = useMediaQuery();
 
   useEffect(() => {
     if (!id) return;
@@ -31,8 +33,8 @@ export default function ReportPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <div style={{ textAlign: 'center', padding: 40, color: TEXT_MUTED }}>Loading report...</div>;
-  if (error) return <div style={{ textAlign: 'center', padding: 40, color: ERROR_TEXT }}>{error}</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: isMobile ? 20 : 40, color: TEXT_MUTED }}>Loading report...</div>;
+  if (error) return <div style={{ textAlign: 'center', padding: isMobile ? 20 : 40, color: ERROR_TEXT }}>{error}</div>;
   if (!data) return null;
 
   const sub = data.submission;
