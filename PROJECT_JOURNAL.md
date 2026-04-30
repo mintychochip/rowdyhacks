@@ -13,15 +13,16 @@ HackVerify is a PWA that detects cheating in hackathon submissions. It accepts D
 ### Backend (FastAPI + SQLAlchemy)
 - **Models:** All tables defined (users, hackathons, submissions, check_results, registrations, crawled_hackathons, crawled_projects, judging system with rubrics/scores)
 - **Routes:** Auth (with OAuth), checks, dashboard, hackathons, registrations (participant + organizer), checkin, QR, crawler, judging, Discord bot integration
-- **Checks:** 16 checks across categories:
-  - timeline (commit analysis)
-  - devpost_alignment (AI + traditional)
-  - submission_history
-  - asset_integrity
-  - ai_detection
-  - cross_hackathon (duplicate detection)
-  - repeat_offender
-  - dead_deps, commit_quality, repo_age, repo_integrity, similarity, build_verify
+| - **Checks:** 14 hardened checks across categories:
+|   - timeline (commit analysis + forensics)
+|   - devpost_alignment (AI + traditional + template detection)
+|   - submission_history
+|   - asset_integrity
+|   - ai_detection (heuristic + perplexity)
+|   - cross_hackathon (duplicate detection)
+|   - repeat_offender
+|   - dead_deps, commit_quality, repo_age
+|   - code_similarity (SimHash-based)
 - **Tests:** 129 passing, 0 failing
 - **Wallet:** Apple/Google pass generation stubs
 - **Crawler:** Devpost bulk crawler with APScheduler
