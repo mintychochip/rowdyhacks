@@ -1,7 +1,4 @@
-import { AboutYouData } from './WizardAboutYou';
-import { SkillsLinksData } from './WizardSkillsLinks';
-import { LogisticsData } from './WizardLogistics';
-import { ShortAnswersData } from './WizardShortAnswers';
+import type { AboutYouData, SkillsLinksData, LogisticsData, ShortAnswersData } from './types';
 import { GOLD, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, CARD_BG, BORDER, RADIUS, SUCCESS } from '../../theme';
 
 interface Props {

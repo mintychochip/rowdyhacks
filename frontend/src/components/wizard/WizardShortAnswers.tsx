@@ -17,10 +17,7 @@ const SECTION_TITLE_STYLE: React.CSSProperties = {
   borderBottom: `1px solid ${BORDER}`,
 };
 
-export interface ShortAnswersData {
-  whatBuild: string;
-  whyParticipate: string;
-}
+import type { ShortAnswersData } from './types';
 
 interface Props {
   data: ShortAnswersData;

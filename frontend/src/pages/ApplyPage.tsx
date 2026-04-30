@@ -4,10 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import * as api from '../services/api';
 import WizardProgress from '../components/WizardProgress';
-import WizardAboutYou, { AboutYouData } from '../components/wizard/WizardAboutYou';
-import WizardSkillsLinks, { SkillsLinksData } from '../components/wizard/WizardSkillsLinks';
-import WizardLogistics, { LogisticsData } from '../components/wizard/WizardLogistics';
-import WizardShortAnswers, { ShortAnswersData } from '../components/wizard/WizardShortAnswers';
+import WizardAboutYou from '../components/wizard/WizardAboutYou';
+import WizardSkillsLinks from '../components/wizard/WizardSkillsLinks';
+import WizardLogistics from '../components/wizard/WizardLogistics';
+import WizardShortAnswers from '../components/wizard/WizardShortAnswers';
+import type { AboutYouData, SkillsLinksData, LogisticsData, ShortAnswersData } from '../components/wizard/types';
 import WizardReview from '../components/wizard/WizardReview';
 import {
   PRIMARY, GOLD,

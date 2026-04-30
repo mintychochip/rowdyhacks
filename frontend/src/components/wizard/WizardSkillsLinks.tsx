@@ -24,13 +24,7 @@ const EXPERIENCE_OPTIONS = [
   { value: 'advanced', label: 'Advanced — Hackathon veteran' },
 ];
 
-export interface SkillsLinksData {
-  skills: string[];
-  linkedinUrl: string;
-  githubUrl: string;
-  resumeUrl: string;
-  experienceLevel: string;
-}
+import type { SkillsLinksData } from './types';
 
 interface Props {
   data: SkillsLinksData;

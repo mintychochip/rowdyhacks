@@ -25,12 +25,7 @@ const TSHIRT_OPTIONS = [
   { value: 'XXL', label: 'XXL' },
 ];
 
-export interface LogisticsData {
-  tshirtSize: string;
-  dietaryRestrictions: string;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
-}
+import type { LogisticsData } from './types';
 
 interface Props {
   data: LogisticsData;

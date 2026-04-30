@@ -16,13 +16,7 @@ const SECTION_TITLE_STYLE: React.CSSProperties = {
   borderBottom: `1px solid ${BORDER}`,
 };
 
-export interface AboutYouData {
-  age: string;
-  school: string;
-  major: string;
-  pronouns: string;
-  phone: string;
-}
+import type { AboutYouData } from './types';
 
 interface Props {
   data: AboutYouData;
