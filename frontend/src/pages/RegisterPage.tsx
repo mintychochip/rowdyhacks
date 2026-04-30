@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { registerForHackathon } from '../services/api';
 import { PRIMARY, PRIMARY_DISABLED, ERROR_TEXT, TEXT_MUTED, INPUT_BORDER } from '../theme';
 
@@ -8,6 +9,7 @@ export default function RegisterPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isMobile } = useMediaQuery();
   const [teamName, setTeamName] = useState('');
   const [members, setMembers] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,7 +17,7 @@ export default function RegisterPage() {
 
   if (!user) {
     return (
-      <div style={{ textAlign: 'center', padding: 60 }}>
+      <div style={{ textAlign: 'center', padding: isMobile ? 30 : 60 }}>
         <p style={{ color: TEXT_MUTED }}>Please log in to register.</p>
       </div>
     );
@@ -46,7 +48,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto', padding: 40 }}>
+    <div style={{ maxWidth: 480, margin: '0 auto', padding: isMobile ? 14 : 40 }}>
       <h1 style={{ fontSize: 24, marginBottom: 24 }}>Register for Hackathon</h1>
       {error && <div style={{ color: ERROR_TEXT, marginBottom: 16 }}>{error}</div>}
       <form onSubmit={handleSubmit}>
