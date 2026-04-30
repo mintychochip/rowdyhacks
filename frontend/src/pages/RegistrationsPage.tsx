@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { getMyRegistrations, getHackathons } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import { PRIMARY, ERROR, ERROR_BG20, ERROR_TEXT, TEXT_PRIMARY, TEXT_MUTED, TEXT_WHITE, INPUT_BG, INPUT_BORDER, BORDER, BORDER_LIGHT } from '../theme';
@@ -24,6 +25,7 @@ interface Hackathon {
 export default function RegistrationsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { isMobile } = useMediaQuery();
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [expandedQr, setExpandedQr] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export default function RegistrationsPage() {
 
   if (!user) {
     return (
-      <div style={{ textAlign: 'center', padding: 60, color: TEXT_MUTED }}>
+      <div style={{ textAlign: 'center', padding: isMobile ? 30 : 60, color: TEXT_MUTED }}>
         Please log in to view registrations.
       </div>
     );
@@ -59,15 +61,15 @@ export default function RegistrationsPage() {
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: 60, color: TEXT_MUTED }}>
+      <div style={{ textAlign: 'center', padding: isMobile ? 30 : 60, color: TEXT_MUTED }}>
         Loading...
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: 40 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+    <div style={{ maxWidth: 720, margin: '0 auto', padding: isMobile ? 14 : 40 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12, flexDirection: isMobile ? 'column' : 'row' as const }}>
         <h1 style={{ fontSize: 24 }}>My Registrations</h1>
         <button
           onClick={() => navigate('/hackathons')}
@@ -101,7 +103,7 @@ export default function RegistrationsPage() {
       )}
 
       {!loading && registrations.length === 0 && (
-        <div style={{ textAlign: 'center', padding: 60, color: TEXT_MUTED }}>
+        <div style={{ textAlign: 'center', padding: isMobile ? 30 : 60, color: TEXT_MUTED }}>
           <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>--</div>
           <div style={{ fontSize: 16, marginBottom: 8 }}>No registrations yet</div>
           <div style={{ fontSize: 13, marginBottom: 20 }}>
@@ -176,7 +178,7 @@ export default function RegistrationsPage() {
                   background: '#080c1a',
                   borderRadius: 6,
                   border: `1px solid ${BORDER_LIGHT}`,
-                  fontFamily: 'monospace',
+                  fontFamily: "'Space Mono', monospace",
                   fontSize: 12,
                   color: TEXT_MUTED,
                   wordBreak: 'break-all',
