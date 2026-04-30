@@ -107,3 +107,39 @@ None currently.
 - Google Cloud Wallet API enablement
 - Video timestamp analysis (YouTube API optional)
 - Code-level similarity (minhash/SimHash) across repos
+
+## New Features Added (2026-04-30)
+
+### Commit: 0426a0e - Organizer Feature Complete
+
+**Database Changes:**
+- `hackathons`: Added `application_deadline`, `max_participants`, `current_participants`, `waitlist_enabled`, `venue_address`, `parking_info`
+- `registrations`: Added `waitlisted` status
+- New table: `announcements` (organizer → participant messaging)
+- New table: `conflicts_of_interest` (judge COI declarations)
+
+**Backend API Additions:**
+- `POST /api/hackathons` - Auth-aware creation (fixed TODO)
+- Registration deadline/capacity enforcement with waitlist auto-promotion
+- `POST /api/hackathons/{id}/registrations/bulk-accept` - Bulk accept with capacity check
+- `POST /api/hackathons/{id}/registrations/bulk-reject` - Bulk reject
+- `POST /api/hackathons/{id}/registrations/bulk-waitlist` - Bulk waitlist
+- `GET /api/hackathons/{id}/registrations/export` - CSV export (t-shirt sizes, dietary, all fields)
+- `GET /api/hackathons/{id}/swag-counts` - Meal/swag planning (counts by t-shirt size, dietary, experience)
+- `POST /api/hackathons/{id}/announcements` - Send announcements
+- `GET /api/hackathons/{id}/announcements` - View announcements
+- `POST /api/hackathons/{id}/conflicts-of-interest` - Judge COI declaration
+- `GET /api/hackathons/{id}/conflicts-of-interest` - Organizer COI management
+- Enhanced stats endpoint with registration breakdown and check-in rate
+
+**Frontend API Support (Commit: 1318165):**
+- `bulkAcceptRegistrations()`, `bulkRejectRegistrations()`, `bulkWaitlistRegistrations()`
+- `exportRegistrationsCSV()` - Returns direct download URL
+- `getSwagCounts()` - T-shirt/dietary/experience aggregation
+- `createAnnouncement()`, `getAnnouncements()`
+- `declareConflictOfInterest()`, `getConflictsOfInterest()`, `removeConflictOfInterest()`
+
+**Permission Model:**
+- Organizers: Full access to all features above
+- Participants: Can view announcements for hackathons they're registered for
+- Judges: Can declare COI, view COI status for their assignments
