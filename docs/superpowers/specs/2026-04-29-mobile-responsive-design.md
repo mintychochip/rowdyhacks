@@ -10,21 +10,21 @@ CSS-only responsive design — no component rewrites. Add breakpoint infrastruct
 
 ## Breakpoints
 
-- **Mobile**: ≤768px
-- **Tablet**: ≤1024px
-- **Desktop**: >1024px
+- **Mobile**: ≤768px — gets mobile adaptations (hamburger nav, reduced padding, scrollable tables, scaled typography)
+- **Tablet**: 769-1024px — mobile padding/spacing, but desktop-style navigation and typography
+- **Desktop**: >1024px — full desktop layout
+
+Only the ≤768px breakpoint triggers behavioral layout changes (nav collapse, stacked layouts). 769-1024px uses desktop nav and typography but benefits from intermediate spacing and the same scrollable table wrappers.
 
 ## Implementation
 
 ### 1. Responsive Infrastructure
 
 **`frontend/src/hooks/useMediaQuery.ts`** — new hook:
-```typescript
-export function useMediaQuery() {
-  // returns { isMobile: boolean, isTablet: boolean }
-  // listens to window resize, updates state
-}
-```
+- Uses `window.matchMedia('(max-width: 768px)')` and `window.matchMedia('(max-width: 1024px)')` with `change` event listeners (no manual resize debounce needed — the browser handles it)
+- Returns `{ isMobile: boolean, isTablet: boolean }`
+- Initialized from `matchMedia(...).matches` on first render
+- SSR-safe: guard `window` access behind `typeof window !== 'undefined'` check (returns false defaults)
 
 **`frontend/src/theme.ts`** — add `BREAKPOINTS` constant:
 ```typescript
@@ -44,7 +44,8 @@ export const BREAKPOINTS = { mobile: 768, tablet: 1024 };
   - Tapping hamburger opens full-width dropdown panel below nav with stacked nav links + auth button
   - Panel has CSS slide-down animation (max-height transition)
   - Tapping a link or the hamburger again closes the panel
-  - Nav padding reduces slightly on mobile
+  - Hamburger open/close state managed by local `useState<boolean>` in Layout.tsx — no context or router changes needed
+  - Nav padding reduces to 12px on mobile
 
 ### 3. Layout Spacing (Layout.tsx + individual pages)
 
@@ -58,7 +59,7 @@ export const BREAKPOINTS = { mobile: 768, tablet: 1024 };
 - Add optional `scrollable` prop to `Card` component — when true, wraps children in scrollable div
 - Table font-size drops to 13px on mobile (CSS media query)
 - Table cell horizontal padding reduces from 16px to 10px on mobile (CSS media query)
-- Pages using tables: JudgePortal, JudgingResultsPage, Dashboard, HackathonSetup (rubric builder), OrganizerRegistrationsPage
+- Pages using tables: JudgePortal, JudgingResultsPage, Dashboard, HackathonSetup, RubricBuilderPage, OrganizerRegistrationsPage
 
 ### 5. Typography Scaling (index.css)
 
@@ -71,7 +72,7 @@ Inline styles using `TYPO.h1`/`TYPO.h2` override CSS — for headers on JudgePor
 
 ### 6. Miscellaneous
 
-- **UrlInput**: Already has responsive-friendly layout; ensure input + button stack on mobile if needed
+- **UrlInput**: Already has responsive-friendly layout; ensure input + button stack vertically on mobile (≤768px)
 - **ReportCard / CheckDetails**: Already use flex-wrap; verify they don't overflow on mobile
 - **CheckResultRow**: Ensure expand/collapse target is large enough for touch (min 44px) on mobile
 
@@ -97,12 +98,20 @@ Inline styles using `TYPO.h1`/`TYPO.h2` override CSS — for headers on JudgePor
 | `frontend/src/pages/RegisterPage.tsx` | Responsive padding |
 | `frontend/src/pages/CheckInPage.tsx` | Responsive padding |
 | `frontend/src/pages/RubricBuilderPage.tsx` | Scrollable tables |
-| `frontend/src/components/UrlInput.tsx` | Stack on mobile if needed |
+| `frontend/src/components/UrlInput.tsx` | Stack layout on mobile (≤768px) |
 | `frontend/src/components/CheckResultRow.tsx` | Touch-friendly tap targets |
 
 ## Not in Scope
 
 - Card-layout table replacements (horizontal scroll is acceptable)
+
+## Testing
+
+- Use Chrome DevTools device emulation (375px, 414px, 768px, 1024px) to verify layout on each page
+- Verify hamburger nav opens/closes on mobile, links navigate and close the panel
+- Verify all tables scroll horizontally on mobile without breaking the page width
+- Verify touch targets are ≥44px for interactive elements (buttons, links, check expand/collapse)
+- Existing Jest + React Testing Library tests continue to pass (no behavioral changes)
 - Third-party CSS framework
 - PWA manifest or service worker changes (already set up)
 - Backend changes
