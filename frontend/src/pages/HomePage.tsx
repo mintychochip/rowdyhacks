@@ -131,7 +131,7 @@ export default function HomePage() {
     return (
       <div style={{ textAlign: 'center', padding: isMobile ? SPACE.xl : 80 }}>
         <div style={{ fontSize: 56, marginBottom: SPACE.lg }}>&#128640;</div>
-        <h1 style={{ ...TYPO.h1, marginBottom: SPACE.sm }}>RowdyHacks</h1>
+        <h1 style={{ ...TYPO.h1, marginBottom: SPACE.sm }}>CSUB Hacks</h1>
         <p style={{ color: TEXT_SECONDARY, fontSize: 17, marginBottom: SPACE.lg, maxWidth: 420, margin: '0 auto ' + SPACE.lg + 'px' }}>
           CSUB's annual hackathon. Build something amazing in 36 hours.
         </p>
@@ -148,7 +148,7 @@ export default function HomePage() {
     return (
       <div style={{ textAlign: 'center', padding: isMobile ? SPACE.xl : 80 }}>
         <div style={{ fontSize: 56, marginBottom: SPACE.lg }}>&#127881;</div>
-        <h1 style={{ ...TYPO.h1, marginBottom: SPACE.sm }}>Welcome to RowdyHacks</h1>
+        <h1 style={{ ...TYPO.h1, marginBottom: SPACE.sm }}>Welcome to CSUB Hacks</h1>
         <p style={{ color: TEXT_SECONDARY, fontSize: 16, marginBottom: SPACE.lg }}>
           {isOrganizer ? 'Create your first hackathon to get started.' : 'No active hackathon right now.'}
         </p>

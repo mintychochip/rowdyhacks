@@ -75,7 +75,7 @@ export default function Layout() {
             <img src="/rowdy-mascot.png" alt="Rowdy the Roadrunner" style={{ width: 160, height: 'auto' }} />
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: GOLD, letterSpacing: -0.5 }}>
-                RowdyHacks
+                CSUB Hacks
               </div>
             </div>
           </Link>
@@ -208,7 +208,7 @@ export default function Layout() {
             </button>
           )}
           <span style={{ ...TYPO['body-sm'], color: TEXT_PRIMARY, fontWeight: 600 }}>
-            RowdyHacks
+            CSUB Hacks
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

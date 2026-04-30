@@ -83,7 +83,7 @@ export default function WizardReview({
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
           <input type="checkbox" required style={{ marginTop: 2, accentColor: GOLD }} />
           <span style={{ fontSize: 13, color: TEXT_SECONDARY, lineHeight: 1.5 }}>
-            I have read and agree to the <strong style={{ color: TEXT_PRIMARY }}>MLH Code of Conduct</strong> and the RowdyHacks event rules. I understand that violating these policies may result in removal from the event.
+            I have read and agree to the <strong style={{ color: TEXT_PRIMARY }}>MLH Code of Conduct</strong> and the event rules. I understand that violating these policies may result in removal from the event.
           </span>
         </label>
       </div>
