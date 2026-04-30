@@ -144,6 +144,39 @@ export const checkinRegistration = (hackathonId: string, registrationId: string)
 export const getApplePassUrl = (registrationId: string) => `${BASE}/registrations/${registrationId}/wallet/apple`;
 export const getGoogleWalletLink = (registrationId: string) => request(`/registrations/${registrationId}/wallet/google`);
 
+// Bulk Operations
+export const bulkAcceptRegistrations = (hackathonId: string, registrationIds: string[]) =>
+  request(`/hackathons/${hackathonId}/registrations/bulk-accept`, { method: 'POST', body: JSON.stringify(registrationIds) });
+
+export const bulkRejectRegistrations = (hackathonId: string, registrationIds: string[]) =>
+  request(`/hackathons/${hackathonId}/registrations/bulk-reject`, { method: 'POST', body: JSON.stringify(registrationIds) });
+
+export const bulkWaitlistRegistrations = (hackathonId: string, registrationIds: string[]) =>
+  request(`/hackathons/${hackathonId}/registrations/bulk-waitlist`, { method: 'POST', body: JSON.stringify(registrationIds) });
+
+export const exportRegistrationsCSV = (hackathonId: string) =>
+  `${BASE}/hackathons/${hackathonId}/registrations/export`;
+
+export const getSwagCounts = (hackathonId: string) =>
+  request(`/hackathons/${hackathonId}/swag-counts`);
+
+// Announcements
+export const createAnnouncement = (hackathonId: string, data: { title: string; content: string; priority?: string }) =>
+  request(`/hackathons/${hackathonId}/announcements`, { method: 'POST', body: JSON.stringify(data) });
+
+export const getAnnouncements = (hackathonId: string) =>
+  request(`/hackathons/${hackathonId}/announcements`);
+
+// Conflict of Interest
+export const declareConflictOfInterest = (hackathonId: string, submissionId: string, reason?: string) =>
+  request(`/hackathons/${hackathonId}/conflicts-of-interest`, { method: 'POST', body: JSON.stringify({ submission_id: submissionId, reason }) });
+
+export const getConflictsOfInterest = (hackathonId: string) =>
+  request(`/hackathons/${hackathonId}/conflicts-of-interest`);
+
+export const removeConflictOfInterest = (hackathonId: string, coiId: string) =>
+  request(`/hackathons/${hackathonId}/conflicts-of-interest/${coiId}`, { method: 'DELETE' });
+
 // Judging
 export const createJudgingSession = (hackathonId: string, data: {
   start_time: string; end_time: string; per_project_seconds: number; criteria: Array<{ name: string; description?: string; max_score: number; weight: number; sort_order?: number }>;
