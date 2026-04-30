@@ -1,19 +1,29 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { PRIMARY, ERROR_TEXT, ERROR_BG20, ERROR, TEXT_MUTED, TEXT_WHITE, INPUT_BG, INPUT_BORDER } from '../theme';
+import { PRIMARY, ERROR_TEXT, ERROR_BG20, ERROR, TEXT_MUTED, TEXT_PRIMARY, TEXT_WHITE, INPUT_BG, INPUT_BORDER } from '../theme';
+import { getOAuthAuthorizeUrl } from '../services/api';
 
 export default function AuthPage() {
   const { login, register } = useAuth();
   const navigate = useNavigate();
   const { isMobile } = useMediaQuery();
+  const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const urlError = searchParams.get('error');
+
+  useEffect(() => {
+    if (urlError) {
+      setError(decodeURIComponent(urlError));
+    }
+  }, [urlError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +78,36 @@ export default function AuthPage() {
           {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
         </button>
       </form>
+
+      <div style={{ marginTop: 20, marginBottom: 20 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16,
+        }}>
+          <div style={{ flex: 1, height: 1, background: INPUT_BORDER }} />
+          <span style={{ color: TEXT_MUTED, fontSize: 13 }}>or continue with</span>
+          <div style={{ flex: 1, height: 1, background: INPUT_BORDER }} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {(['google', 'github', 'discord', 'apple'] as const).map(provider => (
+            <a
+              key={provider}
+              href={getOAuthAuthorizeUrl(provider)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                width: '100%', padding: '10px 12px',
+                background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`,
+                borderRadius: 6, color: TEXT_PRIMARY, fontSize: 14, fontWeight: 500,
+                textDecoration: 'none', cursor: 'pointer', boxSizing: 'border-box',
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                {provider === 'google' ? 'login' : provider === 'github' ? 'code' : provider === 'discord' ? 'chat' : 'fingerprint'}
+              </span>
+              Sign in with {provider.charAt(0).toUpperCase() + provider.slice(1)}
+            </a>
+          ))}
+        </div>
+      </div>
 
       <p style={{ textAlign: 'center', marginTop: 20, fontSize: 14, color: TEXT_MUTED }}>
         {isLogin ? "Don't have an account? " : 'Already have an account? '}

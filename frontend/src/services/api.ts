@@ -156,3 +156,16 @@ export const getJudgingQueue = (hackathonId: string, judgeId: string, minJudges?
 
 export const rerunJudging = (hackathonId: string) =>
   request(`/hackathons/${hackathonId}/judging/rerun`, { method: 'POST' });
+
+// OAuth
+export const getOAuthAuthorizeUrl = (provider: string) =>
+  `${BASE}/auth/oauth/${provider}/authorize`;
+
+export const getOAuthLinkUrl = (provider: string) =>
+  `${BASE}/auth/me/oauth/link/${provider}`;
+
+export const getLinkedAccounts = () =>
+  request('/auth/me/oauth');
+
+export const unlinkProvider = (provider: string) =>
+  request(`/auth/me/oauth/${provider}`, { method: 'DELETE' });

@@ -136,6 +136,16 @@ export default function Layout() {
                   )}
                 </div>
               </div>
+              <Link
+                to="/settings"
+                title="Account Settings"
+                style={{
+                  background: 'none', border: 'none', color: TEXT_MUTED, cursor: 'pointer',
+                  padding: 4, display: 'flex', alignItems: 'center', textDecoration: 'none',
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>settings</span>
+              </Link>
               <button
                 onClick={handleLogout}
                 title="Logout"

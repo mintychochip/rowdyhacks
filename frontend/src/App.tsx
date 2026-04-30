@@ -14,6 +14,8 @@ import CheckInPage from './pages/CheckInPage';
 import RubricBuilderPage from './pages/RubricBuilderPage';
 import JudgePortal from './pages/JudgePortal';
 import JudgingResultsPage from './pages/JudgingResultsPage';
+import AuthCallback from './pages/AuthCallback';
+import SettingsPage from './pages/SettingsPage';
 
 export default function App() {
   return (
@@ -35,6 +37,8 @@ export default function App() {
             <Route path="/hackathons/:id/judging" element={<JudgePortal />} />
             <Route path="/hackathons/:id/judging/results" element={<JudgingResultsPage />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Routes>
       </AuthProvider>
