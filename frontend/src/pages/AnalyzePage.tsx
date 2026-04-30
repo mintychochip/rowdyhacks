@@ -1,10 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import UrlInput from '../components/UrlInput';
 import ReportCard from '../components/ReportCard';
 import CheckResultRow from '../components/CheckResultRow';
 import { useAnalysis } from '../hooks/useAnalysis';
-import { PRIMARY, PRIMARY_DISABLED, SUCCESS, ERROR_TEXT, TEXT_PRIMARY, TEXT_MUTED, TEXT_DIM, TEXT_WHITE, INPUT_BG, INPUT_BORDER, BORDER, CARD_BG } from '../theme';
+import {
+  PRIMARY, SUCCESS, ERROR_TEXT,
+  TEXT_MUTED, TEXT_DIM, TEXT_WHITE,
+  INPUT_BG, INPUT_BORDER, BORDER, CARD_BG,
+  TYPO, SPACE, RADIUS,
+} from '../theme';
+import { Button } from '../components/Primitives';
 
 function groupByCategory(checks: Array<{ check_category: string; score: number }>) {
   const groups: Record<string, number[]> = {};
@@ -35,7 +42,7 @@ function ElapsedTimer({ running }: { running: boolean }) {
   const mins = Math.floor(elapsed / 60);
   const secs = elapsed % 60;
   return (
-    <div style={{ fontSize: 13, color: TEXT_DIM, marginTop: 16 }}>
+    <div style={{ ...TYPO['body-sm'], color: TEXT_DIM, marginTop: SPACE.md }}>
       Elapsed: {mins}:{secs.toString().padStart(2, '0')}
     </div>
   );
@@ -59,7 +66,7 @@ function ProgressSteps({ currentStage }: { currentStage: string }) {
         const pending = i > currentIdx;
 
         return (
-          <div key={s.key} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: i < STAGES.length - 1 ? 16 : 0 }}>
+          <div key={s.key} style={{ display: 'flex', gap: SPACE.sm + 4, alignItems: 'flex-start', marginBottom: i < STAGES.length - 1 ? SPACE.md : 0 }}>
             <div style={{
               width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
               background: done ? SUCCESS : active ? PRIMARY : INPUT_BG,
@@ -72,14 +79,16 @@ function ProgressSteps({ currentStage }: { currentStage: string }) {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{
-                fontSize: 14, fontWeight: active ? 600 : 400,
+                ...TYPO['body-lg'], fontWeight: active ? 600 : 400,
                 color: active ? TEXT_WHITE : done ? TEXT_MUTED : TEXT_DIM,
                 transition: 'color 0.3s ease',
               }}>
                 {s.label}
               </div>
               {active && (
-                <div style={{ fontSize: 12, color: PRIMARY, marginTop: 2 }}>{s.desc}</div>
+                <div style={{ ...TYPO['body-sm'], color: PRIMARY, marginTop: SPACE.xs / 2 }}>
+                  {s.desc}
+                </div>
               )}
             </div>
           </div>
@@ -99,33 +108,37 @@ function CheckProgressBars({ progress, labels }: { progress: any; labels: Record
 
   return (
     <div style={{ maxWidth: 360, margin: '20px auto 0' }}>
-      <div style={{ fontSize: 12, color: '#808090', marginBottom: 6 }}>
+      <div style={{ ...TYPO['body-sm'], color: TEXT_MUTED, marginBottom: SPACE.xs + 2 }}>
         Checks: {done}/{total} ({pct}%)
       </div>
-      <div style={{ height: 4, background: '#1a1a2e', borderRadius: 2, marginBottom: 12, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: '#6c5ce7', borderRadius: 2, transition: 'width 0.3s ease' }} />
+      <div style={{ height: 4, background: INPUT_BG, borderRadius: 2, marginBottom: SPACE.sm + 4, overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', width: `${pct}%`,
+          background: PRIMARY, borderRadius: 2,
+          transition: 'width 0.3s ease',
+        }} />
       </div>
       {all.map((name: string) => {
         const isDone = completed.includes(name);
         const isCurrent = name === current;
         const label = labels[name] || name.replace(/_/g, ' ');
         return (
-          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: 12 }}>
+          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm, marginBottom: SPACE.xs, fontSize: 12 }}>
             <span style={{
               width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
-              background: isDone ? '#00c853' : isCurrent ? '#6c5ce7' : '#1a1a2e',
-              border: !isDone && !isCurrent ? '1.5px solid #333' : 'none',
+              background: isDone ? SUCCESS : isCurrent ? PRIMARY : INPUT_BG,
+              border: !isDone && !isCurrent ? `1.5px solid ${INPUT_BORDER}` : 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 9, color: '#fff',
+              fontSize: 9, color: TEXT_WHITE,
             }}>
               {isDone ? '\u2713' : isCurrent ? '\u25CF' : ''}
             </span>
             <span style={{
-              color: isCurrent ? '#fff' : isDone ? '#00c853' : '#555',
+              color: isCurrent ? TEXT_WHITE : isDone ? SUCCESS : TEXT_MUTED,
               fontWeight: isCurrent ? 500 : 400,
             }}>
               {label}
-              {isCurrent && <span style={{ color: '#6c5ce7', marginLeft: 6, fontSize: 10 }}>running...</span>}
+              {isCurrent && <span style={{ color: PRIMARY, marginLeft: SPACE.xs + 2, fontSize: 10 }}>running...</span>}
             </span>
           </div>
         );
@@ -136,29 +149,32 @@ function CheckProgressBars({ progress, labels }: { progress: any; labels: Record
 
 export default function AnalyzePage() {
   const { submit, reset, result, status, stage, checkProgress, CHECK_LABELS, error } = useAnalysis();
+  const { isMobile } = useMediaQuery();
 
   return (
     <div>
       {status === 'idle' && <UrlInput onSubmit={submit} />}
       {status === 'loading' && (
-        <div style={{ textAlign: 'center', padding: 60 }}>
-          <div style={{ fontSize: 18, marginBottom: 8 }}>Submitting...</div>
+        <div style={{ textAlign: 'center', padding: isMobile ? 30 : 60 }}>
+          <div style={{ ...TYPO.h2, marginBottom: SPACE.sm }} data-mobile-h1>Submitting...</div>
           <div style={{ color: TEXT_MUTED }}>Validating URL and starting analysis</div>
           <ElapsedTimer running={true} />
         </div>
       )}
       {status === 'polling' && (
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ fontSize: 18, marginBottom: 24, fontWeight: 600 }}>Analyzing Submission</div>
+        <div style={{ textAlign: 'center', padding: isMobile ? '30px 14px' : '60px 20px' }}>
+          <div style={{ ...TYPO.h2, marginBottom: SPACE.lg, fontWeight: 600 }} data-mobile-h1>
+            Analyzing Submission
+          </div>
           <ProgressSteps currentStage={stage} />
           {stage === 'checking' && <CheckProgressBars progress={checkProgress} labels={CHECK_LABELS} />}
           <ElapsedTimer running={true} />
         </div>
       )}
       {status === 'error' && (
-        <div style={{ textAlign: 'center', padding: 60 }}>
-          <div style={{ color: ERROR_TEXT, marginBottom: 16 }}>{error}</div>
-          <button onClick={reset} style={{ padding: '10px 20px', background: PRIMARY, border: 'none', borderRadius: 8, color: TEXT_WHITE, cursor: 'pointer' }}>Try Again</button>
+        <div style={{ textAlign: 'center', padding: isMobile ? 30 : 60 }}>
+          <div style={{ color: ERROR_TEXT, marginBottom: SPACE.md }}>{error}</div>
+          <Button onClick={reset}>Try Again</Button>
         </div>
       )}
       {status === 'done' && result && (() => {
@@ -175,24 +191,29 @@ export default function AnalyzePage() {
             />
 
             {/* Drill down */}
-            <details style={{ marginTop: 8 }}>
+            <details style={{ marginTop: SPACE.sm }}>
               <summary style={{
-                cursor: 'pointer', padding: '12px 16px', background: CARD_BG,
-                border: `1px solid ${BORDER}`, borderRadius: 10, fontSize: 13,
-                color: TEXT_MUTED, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1,
+                cursor: 'pointer', padding: `${SPACE.sm + 4}px ${SPACE.md}px`,
+                background: CARD_BG, border: `1px solid ${BORDER}`,
+                borderRadius: RADIUS.md + 2, ...TYPO['label-caps'],
+                textTransform: 'uppercase', color: TEXT_MUTED, fontWeight: 600,
               }}>
                 Drill Down — All {checks.length} Checks
               </summary>
-              <div style={{ marginTop: 8 }}>
+              <div style={{ marginTop: SPACE.sm }}>
                 {checks.map(cr => (
                   <CheckResultRow key={cr.check_name} check={cr} />
                 ))}
               </div>
             </details>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 20 }}>
-              <Link to={`/report/${result.id}`} style={{ color: PRIMARY, textDecoration: 'none', fontSize: 13 }}>Full Report</Link>
-              <button onClick={reset} style={{ background: 'none', border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, padding: '4px 12px', color: TEXT_MUTED, cursor: 'pointer', fontSize: 13 }}>New Check</button>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: SPACE.sm + 4, marginTop: 20 }}>
+              <Link to={`/report/${result.id}`} style={{ ...TYPO['body-sm'], color: PRIMARY, textDecoration: 'none' }}>
+                Full Report
+              </Link>
+              <Button variant="secondary" onClick={reset} style={{ fontSize: 13 }}>
+                New Check
+              </Button>
             </div>
           </div>
         );
