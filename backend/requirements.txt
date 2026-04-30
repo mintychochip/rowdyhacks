@@ -24,6 +24,8 @@ playwright==1.52.0
 scikit-learn==1.6.0
 numpy==2.2.0
 
+discord.py==2.4.0
+
 # Phase 1: Core Infrastructure
 redis[hiredis]==5.2.1
 aioredis==2.0.1

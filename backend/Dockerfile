@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     gcc \
     openssl \
+    libssl-dev \
+    swig \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
@@ -24,4 +26,4 @@ RUN mkdir -p /app/data
 EXPOSE 8000
 
 # Run with uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
