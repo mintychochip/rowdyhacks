@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react';
 
+function getInitial() {
+  if (typeof window === 'undefined') return { isMobile: false, isTablet: false };
+  return {
+    isMobile: window.matchMedia('(max-width: 768px)').matches,
+    isTablet: window.matchMedia('(min-width: 769px) and (max-width: 1024px)').matches,
+  };
+}
+
 export function useMediaQuery() {
-  const [isMobile, setIsMobile] = useState(false);
-  const [isTablet, setIsTablet] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => getInitial().isMobile);
+  const [isTablet, setIsTablet] = useState(() => getInitial().isTablet);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -14,8 +22,6 @@ export function useMediaQuery() {
       setIsMobile(mobileQuery.matches);
       setIsTablet(tabletQuery.matches);
     };
-
-    update(); // set initial values
 
     mobileQuery.addEventListener('change', update);
     tabletQuery.addEventListener('change', update);
