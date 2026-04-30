@@ -9,6 +9,7 @@ from app.routes.auth import router as auth_router
 from app.routes.checks import router as checks_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.hackathons import router as hackathons_router
+from app.routes.hacker_dashboard import router as hacker_dashboard_router
 from app.routes.registrations import router as registrations_router
 from app.routes.registrations_organizer import router as registrations_org_router
 from app.routes.checkin import router as checkin_router
@@ -16,6 +17,7 @@ from app.routes.qr import router as qr_router
 from app.routes.crawler import router as crawler_router
 from app.routes.judging import router as judging_router
 from app.routes.oauth import router as oauth_router
+from app.discord_bot import start_bot, bot as discord_bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.crawler.scheduler import run_crawl
 from app.config import settings
@@ -48,7 +50,17 @@ async def lifespan(app: FastAPI):
     )
     scheduler.start()
 
+    # Start Discord bot (if token configured, fails gracefully)
+    await start_bot()
+
     yield
+
+    # Shutdown Discord bot
+    try:
+        if discord_bot.is_ready():
+            await discord_bot.close()
+    except Exception:
+        pass
 
     scheduler.shutdown(wait=False)
 
@@ -98,6 +110,7 @@ app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(checks_router)
 app.include_router(dashboard_router)
 app.include_router(hackathons_router)
+app.include_router(hacker_dashboard_router)
 app.include_router(registrations_router)
 app.include_router(registrations_org_router)
 app.include_router(checkin_router)
@@ -110,3 +123,25 @@ app.include_router(oauth_router, prefix="/api/auth/oauth", tags=["oauth"])
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/api/discord/invite-url")
+async def discord_invite_url():
+    """Get the Discord bot invite URL."""
+    from app.discord_bot import get_bot_invite_url
+    url = get_bot_invite_url()
+    if not url:
+        return {"error": "discord_client_id not configured"}
+    return {"url": url}
+
+
+@app.get("/api/discord/bot-status")
+async def bot_status():
+    """Check Discord bot connection state."""
+    from app.discord_bot import bot
+    return {
+        "ready": bot.is_ready(),
+        "user": str(bot.user) if bot.user else None,
+        "guild_count": len(bot.guilds),
+        "guilds": [{"name": g.name, "id": g.id} for g in bot.guilds],
+    }

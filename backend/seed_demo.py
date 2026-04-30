@@ -26,6 +26,16 @@ async def seed():
         )
         db.add(org)
 
+        # Create judge
+        judge = User(
+            id=uuid.uuid4(),
+            email="judge@demo.com",
+            name="Demo Judge",
+            password_hash=hash_password("demo12345"),
+            role=UserRole.judge,
+        )
+        db.add(judge)
+
         # Create participant
         user = User(
             id=uuid.uuid4(),
@@ -72,6 +82,7 @@ async def seed():
         await db.commit()
 
         print(f"Organizer: org@demo.com / demo12345  (id: {org.id})")
+        print(f"Judge: judge@demo.com / demo12345  (id: {judge.id})")
         print(f"Participant: alice@demo.com / demo12345  (id: {user.id})")
         print(f"Hackathon: Demo Hack  (id: {hack.id})")
         print(f"Registration: {reg.id}  (status: accepted, QR ready!)")

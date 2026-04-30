@@ -66,25 +66,25 @@ export default function JudgingResultsPage() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 data-mobile-h1 style={{ fontSize: 24 }}>Judging Results</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div>
           <button onClick={() => navigate(`/hackathons/${hackathonId}/judging`)}
             style={{
-              padding: '8px 16px', fontSize: 13,
+              padding: '6px 12px', fontSize: 13, marginBottom: 8,
               background: 'none', border: `1px solid ${BORDER}`, borderRadius: 6, color: TEXT_SECONDARY,
               cursor: 'pointer',
             }}>
-            Judge Portal
+            &larr; Back to Judging
           </button>
-          <button onClick={loadResults}
-            style={{
-              padding: '8px 16px', fontSize: 13,
-              background: PRIMARY, border: 'none', borderRadius: 6, color: TEXT_WHITE,
-              cursor: 'pointer',
-            }}>
-            Refresh
-          </button>
+          <h2 data-mobile-h1 style={{ fontSize: 24, margin: 0 }}>Judging Results</h2>
         </div>
+        <button onClick={loadResults}
+          style={{
+            padding: '8px 16px', fontSize: 13,
+            background: PRIMARY, border: 'none', borderRadius: 6, color: TEXT_WHITE,
+            cursor: 'pointer',
+          }}>
+          Refresh
+        </button>
       </div>
 
       {loading ? (
@@ -166,36 +166,39 @@ export default function JudgingResultsPage() {
           {judgeStats.length > 0 && (
             <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
               <h3 style={{ fontSize: 14, padding: '12px 16px', color: TEXT_MUTED, margin: 0, borderBottom: `1px solid ${BORDER}` }}>
-                Judge Severity
+                Judge Overview
               </h3>
               <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${BORDER}`, textAlign: 'left' }}>
                     <th style={{ padding: '8px 16px', color: TEXT_MUTED, fontWeight: 500 }}>Judge</th>
-                    <th style={{ padding: '8px 16px', color: TEXT_MUTED, fontWeight: 500, textAlign: 'right' }}>Mean Raw</th>
-                    <th style={{ padding: '8px 16px', color: TEXT_MUTED, fontWeight: 500, textAlign: 'right' }}>Std Dev</th>
+                    <th style={{ padding: '8px 16px', color: TEXT_MUTED, fontWeight: 500, textAlign: 'right' }}>Avg Score</th>
+                    <th style={{ padding: '8px 16px', color: TEXT_MUTED, fontWeight: 500, textAlign: 'right' }}>Spread</th>
                     <th style={{ padding: '8px 16px', color: TEXT_MUTED, fontWeight: 500, textAlign: 'right' }}>Projects</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {judgeStats.map(j => (
-                    <tr key={j.judge_id} style={{ borderBottom: '1px solid #080c1a' }}>
-                      <td style={{ padding: '8px 16px' }}>{j.name}</td>
-                      <td style={{
-                        padding: '8px 16px', textAlign: 'right', fontFamily: 'monospace',
-                        color: j.mean > 70 ? ERROR : j.mean < 40 ? WARNING : TEXT_PRIMARY,
-                      }}>
-                        {j.mean}
-                      </td>
-                      <td style={{ padding: '8px 16px', textAlign: 'right', fontFamily: 'monospace', color: TEXT_MUTED }}>
-                        {j.stddev}
-                      </td>
-                      <td style={{ padding: '8px 16px', textAlign: 'right', color: TEXT_MUTED }}>
-                        {j.n_projects}
-                      </td>
-                    </tr>
-                  ))}
+                  {judgeStats.map(j => {
+                    const avgPerCriterion = (j.mean / 25).toFixed(1);
+                    return (
+                      <tr key={j.judge_id} style={{ borderBottom: '1px solid #080c1a' }}>
+                        <td style={{ padding: '8px 16px' }}>{j.name}</td>
+                        <td style={{
+                          padding: '8px 16px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 600,
+                          color: parseFloat(avgPerCriterion) > 3.5 ? SUCCESS : parseFloat(avgPerCriterion) < 2 ? WARNING : TEXT_PRIMARY,
+                        }}>
+                          {avgPerCriterion}
+                        </td>
+                        <td style={{ padding: '8px 16px', textAlign: 'right', fontFamily: 'monospace', color: TEXT_MUTED }}>
+                          {(j.stddev / 25).toFixed(1)}
+                        </td>
+                        <td style={{ padding: '8px 16px', textAlign: 'right', color: TEXT_MUTED }}>
+                          {j.n_projects}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               </div>

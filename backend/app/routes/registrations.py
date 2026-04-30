@@ -2,12 +2,13 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Header, Query
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
+from app.discord_bot import post_application_to_discord
 from app.models import Registration, RegistrationStatus, Hackathon, User, UserRole
 from app.schemas import RegistrationCreate
 from app.auth import decode_token
@@ -42,6 +43,22 @@ def _registration_to_response(r: Registration, user: User | None = None) -> dict
         "status": r.status.value,
         "team_name": r.team_name,
         "team_members": r.team_members,
+        "linkedin_url": r.linkedin_url,
+        "github_url": r.github_url,
+        "resume_url": r.resume_url,
+        "experience_level": r.experience_level,
+        "t_shirt_size": r.t_shirt_size,
+        "phone": r.phone,
+        "dietary_restrictions": r.dietary_restrictions,
+        "what_build": r.what_build,
+        "why_participate": r.why_participate,
+        "age": r.age,
+        "school": r.school,
+        "major": r.major,
+        "pronouns": r.pronouns,
+        "skills": r.skills,
+        "emergency_contact_name": r.emergency_contact_name,
+        "emergency_contact_phone": r.emergency_contact_phone,
         "qr_token": r.qr_token,
         "pass_serial_apple": r.pass_serial_apple,
         "pass_id_google": r.pass_id_google,
@@ -233,6 +250,7 @@ async def checkin_registration(
 async def register_for_hackathon(
     hackathon_id: uuid.UUID,
     body: RegistrationCreate,
+    background_tasks: BackgroundTasks,
     authorization: str = Header(alias="Authorization"),
     db: AsyncSession = Depends(get_db),
 ):
@@ -260,10 +278,29 @@ async def register_for_hackathon(
         user_id=user.id,
         team_name=body.team_name,
         team_members=body.team_members,
+        linkedin_url=body.linkedin_url,
+        github_url=body.github_url,
+        resume_url=body.resume_url,
+        experience_level=body.experience_level,
+        t_shirt_size=body.t_shirt_size,
+        phone=body.phone,
+        dietary_restrictions=body.dietary_restrictions,
+        what_build=body.what_build,
+        why_participate=body.why_participate,
+        age=body.age,
+        school=body.school,
+        major=body.major,
+        pronouns=body.pronouns,
+        skills=body.skills,
+        emergency_contact_name=body.emergency_contact_name,
+        emergency_contact_phone=body.emergency_contact_phone,
     )
     db.add(reg)
     await db.commit()
     await db.refresh(reg)
+
+    # Discord notification via background task
+    background_tasks.add_task(post_application_to_discord, str(reg.id))
 
     return _registration_to_response(reg, user)
 

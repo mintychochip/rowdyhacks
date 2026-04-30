@@ -65,6 +65,7 @@ class Settings(BaseSettings):
         description="Faster/cheaper LLM model for alignment checks",
     )
 
+    discord_bot_token: str = Field(default="", description="Discord bot token for application management")
     base_url: str = Field(default="http://localhost:8000", description="Public base URL for QR code and pass links")
     frontend_url: str = Field(default="http://localhost:8000", description="Frontend origin for OAuth redirects (defaults to base_url in production)")
     wallet_logo_url: str = Field(default="", description="Public URL for wallet pass logo image")

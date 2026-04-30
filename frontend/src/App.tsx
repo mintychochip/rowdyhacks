@@ -1,12 +1,15 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
 import Layout from './components/Layout';
+import HomePage from './pages/HomePage';
 import AnalyzePage from './pages/AnalyzePage';
 import ReportPage from './pages/ReportPage';
 import Dashboard from './pages/Dashboard';
 import HackathonSetup from './pages/HackathonSetup';
 import AuthPage from './pages/AuthPage';
 import RegisterPage from './pages/RegisterPage';
+import ApplyPage from './pages/ApplyPage';
 import RegistrationsPage from './pages/RegistrationsPage';
 import RegistrationDetailPage from './pages/RegistrationDetailPage';
 import OrganizerRegistrationsPage from './pages/OrganizerRegistrationsPage';
@@ -14,19 +17,26 @@ import CheckInPage from './pages/CheckInPage';
 import RubricBuilderPage from './pages/RubricBuilderPage';
 import JudgePortal from './pages/JudgePortal';
 import JudgingResultsPage from './pages/JudgingResultsPage';
-import AuthCallback from './pages/AuthCallback';
-import SettingsPage from './pages/SettingsPage';
+import HackathonDetailPage from './pages/HackathonDetailPage';
+import HackerDashboard from './pages/HackerDashboard';
+import HackathonSettings from './pages/HackathonSettings';
+import JudgeRedirect from './pages/JudgeRedirect';
+import ProjectGallery from './pages/ProjectGallery';
+import PublicLeaderboard from './pages/PublicLeaderboard';
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ToastProvider>
         <Routes>
           <Route element={<Layout />}>
-            <Route path="/" element={<AnalyzePage />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/analyze" element={<AnalyzePage />} />
             <Route path="/report/:id" element={<ReportPage />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/hackathons" element={<HackathonSetup />} />
+            <Route path="/apply" element={<ApplyPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/hackathons/:id/register" element={<RegisterPage />} />
             <Route path="/registrations" element={<RegistrationsPage />} />
@@ -36,11 +46,16 @@ export default function App() {
             <Route path="/hackathons/:id/judging/setup" element={<RubricBuilderPage />} />
             <Route path="/hackathons/:id/judging" element={<JudgePortal />} />
             <Route path="/hackathons/:id/judging/results" element={<JudgingResultsPage />} />
+            <Route path="/hackathons/:id/projects" element={<ProjectGallery />} />
+            <Route path="/hackathons/:id/leaderboard" element={<PublicLeaderboard />} />
+            <Route path="/hackathons/:id/hacker-dashboard" element={<HackerDashboard />} />
+            <Route path="/hackathons/:id/settings" element={<HackathonSettings />} />
+            <Route path="/hackathons/:id" element={<HackathonDetailPage />} />
+            <Route path="/judge" element={<JudgeRedirect />} />
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Routes>
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -3,8 +3,8 @@ import json
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column, String, Text, Integer, Enum as SAEnum,
-    DateTime, ForeignKey, Index, TypeDecorator,
+    Column, String, Text, Integer, BigInteger, Boolean, Enum as SAEnum,
+    DateTime, ForeignKey, Index, TypeDecorator, JSON,
 )
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -186,6 +186,13 @@ class Hackathon(Base):
     start_date = Column(DateTime(timezone=True), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=False)
     organizer_id = Column(Guid, ForeignKey("users.id"), nullable=False)
+    description = Column(Text, nullable=True)
+    schedule = Column(JSON, nullable=True)
+    wifi_ssid = Column(Text, nullable=True)
+    wifi_password = Column(Text, nullable=True)
+    discord_invite_url = Column(Text, nullable=True)
+    discord_webhook_url = Column(Text, nullable=True)
+    discord_application_channel_id = Column(BigInteger, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     organizer = relationship("User", back_populates="hackathons")
@@ -253,6 +260,22 @@ class Registration(Base):
     status = Column(SAEnum(RegistrationStatus), nullable=False, default=RegistrationStatus.pending)
     team_name = Column(String(200), nullable=True)
     team_members = Column(JsonType, nullable=True)
+    linkedin_url = Column(String(500), nullable=True)
+    github_url = Column(String(500), nullable=True)
+    resume_url = Column(String(500), nullable=True)
+    experience_level = Column(String(50), nullable=True)
+    t_shirt_size = Column(String(10), nullable=True)
+    phone = Column(String(20), nullable=True)
+    dietary_restrictions = Column(String(500), nullable=True)
+    what_build = Column(Text, nullable=True)
+    why_participate = Column(Text, nullable=True)
+    age = Column(Integer, nullable=True)
+    school = Column(String(200), nullable=True)
+    major = Column(String(200), nullable=True)
+    pronouns = Column(String(50), nullable=True)
+    skills = Column(ArrayOfStrings, nullable=True)
+    emergency_contact_name = Column(String(200), nullable=True)
+    emergency_contact_phone = Column(String(30), nullable=True)
     qr_token = Column(String(512), nullable=True)
     pass_serial_apple = Column(String(128), nullable=True)
     pass_id_google = Column(String(128), nullable=True)
@@ -262,9 +285,24 @@ class Registration(Base):
 
     hackathon = relationship("Hackathon", back_populates="registrations")
     user = relationship("User", back_populates="registrations")
+    scans = relationship("Scan", back_populates="registration", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Registration {self.id} status={self.status}>"
+
+
+class Scan(Base):
+    __tablename__ = "scans"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    registration_id = Column(Guid, ForeignKey("registrations.id"), nullable=False)
+    scan_type = Column(String(50), nullable=False, default="checkin")
+    scanned_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    registration = relationship("Registration", back_populates="scans")
+
+    def __repr__(self) -> str:
+        return f"<Scan {self.id} type={self.scan_type}>"
 
 
 class CrawledHackathon(Base):
@@ -322,6 +360,7 @@ class JudgingSession(Base):
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
     per_project_seconds = Column(Integer, nullable=False, default=300)
+    leaderboard_public = Column(Boolean, nullable=False, default=False)
     status = Column(SAEnum(JudgingSessionStatus), nullable=False, default=JudgingSessionStatus.pending)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 

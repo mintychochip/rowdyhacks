@@ -34,6 +34,30 @@ async def list_hackathons(db: AsyncSession = Depends(get_db)):
     return [{"id": str(h.id), "name": h.name, "start_date": h.start_date.isoformat(), "end_date": h.end_date.isoformat()} for h in hackathons]
 
 
+@router.get("/{hackathon_id}")
+async def get_hackathon(hackathon_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Get a single hackathon by ID."""
+    result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
+    hackathon = result.scalar_one_or_none()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+
+    return {
+        "id": str(hackathon.id),
+        "name": hackathon.name,
+        "start_date": hackathon.start_date.isoformat(),
+        "end_date": hackathon.end_date.isoformat(),
+        "organizer_id": str(hackathon.organizer_id),
+        "created_at": hackathon.created_at.isoformat(),
+        "description": hackathon.description,
+        "schedule": hackathon.schedule,
+        "wifi_ssid": hackathon.wifi_ssid,
+        "wifi_password": hackathon.wifi_password,
+        "discord_invite_url": hackathon.discord_invite_url,
+        "discord_webhook_url": hackathon.discord_webhook_url,
+    }
+
+
 @router.get("/{hackathon_id}/stats")
 async def get_hackathon_stats(hackathon_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     """Get aggregate stats for a hackathon."""
@@ -53,6 +77,47 @@ async def get_hackathon_stats(hackathon_id: uuid.UUID, db: AsyncSession = Depend
         "avg_risk_score": round(avg_risk, 1),
         "by_verdict": {"clean": clean, "review": review, "flagged": flagged},
     }
+
+
+@router.get("/{hackathon_id}/submissions")
+async def get_hackathon_submissions(hackathon_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """List submissions for a hackathon."""
+    result = await db.execute(
+        select(Submission).where(Submission.hackathon_id == hackathon_id)
+    )
+    subs = result.scalars().all()
+    return [
+        {
+            "id": str(s.id),
+            "project_title": s.project_title,
+            "devpost_url": s.devpost_url,
+            "github_url": s.github_url,
+            "team_members": s.team_members,
+            "risk_score": s.risk_score,
+            "verdict": s.verdict.value if s.verdict else None,
+        }
+        for s in subs
+    ]
+
+
+@router.put("/{hackathon_id}")
+async def update_hackathon(hackathon_id: uuid.UUID, body: dict, db: AsyncSession = Depends(get_db)):
+    """Update hackathon settings (schedule, wifi, discord, webhook)."""
+    result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
+    hackathon = result.scalar_one_or_none()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+
+    updated = []
+    for key in ("description", "schedule", "wifi_ssid", "wifi_password", "discord_invite_url", "discord_webhook_url", "discord_application_channel_id"):
+        if key in body and body[key] is not None:
+            setattr(hackathon, key, body[key])
+            updated.append(key)
+
+    if updated:
+        await db.commit()
+
+    return {"id": str(hackathon_id), "updated": updated}
 
 
 @router.post("/{hackathon_id}/similarity", status_code=200)

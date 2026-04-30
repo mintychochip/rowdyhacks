@@ -52,6 +52,7 @@ export const ERROR_BG10 = '#ff444410';
 export const ERROR_BORDER30 = '#ff444430';
 export const INFO = '#3b82f6';
 export const INFO_BG20 = '#3b82f620';
+export const INFO_BG10 = '#3b82f610';
 export const ORANGE = '#ff9800';
 
 // Status badge colors

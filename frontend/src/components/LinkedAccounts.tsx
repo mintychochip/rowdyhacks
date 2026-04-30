@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getLinkedAccounts, unlinkProvider, getOAuthLinkUrl } from '../services/api';
 import { CARD_BG, TEXT_PRIMARY, TEXT_MUTED, BORDER, INPUT_BORDER, ERROR_TEXT, SUCCESS, TYPO, RADIUS, SPACE } from '../theme';
+import BrandIcon from './BrandIcon';
 import { useToast } from '../contexts/ToastContext';
 
 type LinkedState = {
@@ -8,11 +9,11 @@ type LinkedState = {
   has_password: boolean;
 };
 
-const PROVIDER_INFO: Record<string, { label: string; icon: string }> = {
-  google: { label: 'Google', icon: 'login' },
-  github: { label: 'GitHub', icon: 'code' },
-  discord: { label: 'Discord', icon: 'chat' },
-  apple: { label: 'Apple', icon: 'fingerprint' },
+const PROVIDER_INFO: Record<string, { label: string }> = {
+  google: { label: 'Google' },
+  github: { label: 'GitHub' },
+  discord: { label: 'Discord' },
+  apple: { label: 'Apple' },
 };
 
 export default function LinkedAccounts() {
@@ -68,9 +69,7 @@ export default function LinkedAccounts() {
               borderRadius: RADIUS.md,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 24, color: TEXT_PRIMARY }}>
-                  {info.icon}
-                </span>
+                <BrandIcon provider={provider} size={24} />
                 <div>
                   <div style={{ fontWeight: 600, color: TEXT_PRIMARY }}>{info.label}</div>
                   <div style={{ fontSize: 13, color: isLinked ? SUCCESS : TEXT_MUTED }}>

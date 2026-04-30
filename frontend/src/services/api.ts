@@ -59,16 +59,40 @@ export const createHackathon = (data: { name: string; start_date: string; end_da
 
 export const getHackathons = () => request('/hackathons');
 
+export const getHackathon = (id: string) => request(`/hackathons/${id}`);
+export const updateHackathon = (id: string, data: Record<string, any>) =>
+  request(`/hackathons/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const getHackathonSubmissions = (id: string) => request(`/hackathons/${id}/submissions`);
 export const getHackathonStats = (id: string) => request(`/hackathons/${id}/stats`);
+export const getHackerDashboard = (id: string) => request(`/hackathons/${id}/hacker-dashboard`);
 
 export const runSimilarity = (hackathonId: string) =>
   request(`/hackathons/${hackathonId}/similarity`, { method: 'POST' });
 
 // Registrations
-export const registerForHackathon = (hackathonId: string, data?: { team_name?: string; team_members?: string[] }) => {
-  return request('/registrations', {
+export const registerForHackathon = (hackathonId: string, data?: {
+  team_name?: string;
+  team_members?: string[];
+  linkedin_url?: string;
+  github_url?: string;
+  resume_url?: string;
+  experience_level?: string;
+  t_shirt_size?: string;
+  phone?: string;
+  dietary_restrictions?: string;
+  what_build?: string;
+  why_participate?: string;
+  age?: number;
+  school?: string;
+  major?: string;
+  pronouns?: string;
+  skills?: string[];
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+}) => {
+  return request(`/hackathons/${hackathonId}/register`, {
     method: 'POST',
-    body: JSON.stringify({ hackathon_id: hackathonId, ...data }),
+    body: JSON.stringify(data || {}),
   });
 };
 
@@ -131,8 +155,10 @@ export const assignJudges = (hackathonId: string, judgeIds: string[], submission
   request(`/hackathons/${hackathonId}/judging/assign`, { method: 'POST', body: JSON.stringify({ judge_ids: judgeIds, submission_ids: submissionIds }) });
 
 export const getJudgeAssignments = (hackathonId: string, judgeId?: string) => {
-  const params = judgeId ? `?judge_id=${judgeId}` : '';
-  return request(`/hackathons/${hackathonId}/judging/assignments${params}`);
+  const params = new URLSearchParams();
+  if (judgeId) params.set('judge_id', judgeId);
+  params.set('include_completed', 'true');
+  return request(`/hackathons/${hackathonId}/judging/assignments?${params}`);
 };
 
 export const getAssignmentDetail = (assignmentId: string) => request(`/judging/assignments/${assignmentId}`);

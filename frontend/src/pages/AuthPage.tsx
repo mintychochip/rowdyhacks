@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { PRIMARY, ERROR_TEXT, ERROR_BG20, ERROR, TEXT_MUTED, TEXT_PRIMARY, TEXT_WHITE, INPUT_BG, INPUT_BORDER } from '../theme';
 import { getOAuthAuthorizeUrl } from '../services/api';
+import BrandIcon from '../components/BrandIcon';
 
 export default function AuthPage() {
   const { login, register } = useAuth();
@@ -100,9 +101,7 @@ export default function AuthPage() {
                 textDecoration: 'none', cursor: 'pointer', boxSizing: 'border-box',
               }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
-                {provider === 'google' ? 'login' : provider === 'github' ? 'code' : provider === 'discord' ? 'chat' : 'fingerprint'}
-              </span>
+              <BrandIcon provider={provider} size={20} />
               Sign in with {provider.charAt(0).toUpperCase() + provider.slice(1)}
             </a>
           ))}

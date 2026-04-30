@@ -13,12 +13,12 @@ const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> 
 type NavItem = { to: string; icon: string; label: string; roles?: string[] };
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', icon: 'search', label: 'Analyze' },
-  { to: '/hackathons', icon: 'trophy', label: 'Hackathons' },
-  { to: '/dashboard', icon: 'dashboard', label: 'Dashboard', roles: ['organizer'] },
-  { to: '/hackathons', icon: 'gavel', label: 'Judge Portal', roles: ['judge'] },
-  { to: '/registrations', icon: 'badge', label: 'My Registrations', roles: ['participant'] },
+  { to: '/', icon: 'home', label: 'Home' },
+  { to: '/registrations', icon: 'badge', label: 'Your Application', roles: ['participant'] },
+  { to: '/hackathons', icon: 'trophy', label: 'Hackathons', roles: ['organizer'] },
   { to: '/check-in', icon: 'qr_code_scanner', label: 'Check-In', roles: ['organizer'] },
+  { to: '/judge', icon: 'gavel', label: 'Judge Portal', roles: ['judge'] },
+  { to: '/dashboard', icon: 'dashboard', label: 'Dashboard', roles: ['organizer'] },
 ];
 
 export default function Layout() {
@@ -70,13 +70,13 @@ export default function Layout() {
         } : {}),
       }}>
         {/* Logo */}
-        <div style={{ padding: '20px 20px 16px' }}>
-          <Link to="/" onClick={closeSidebar} style={{ textDecoration: 'none' }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: GOLD, letterSpacing: -0.5 }}>
-              HackVerify
-            </div>
-            <div style={{ ...TYPO['label-caps'], color: TEXT_DIM, marginTop: 2, fontSize: 10 }}>
-              Integrity Platform
+        <div style={{ padding: '16px 16px 12px' }}>
+          <Link to="/" onClick={closeSidebar} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <img src="/rowdy-mascot.png" alt="Rowdy the Roadrunner" style={{ width: 160, height: 'auto' }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: GOLD, letterSpacing: -0.5 }}>
+                RowdyHacks
+              </div>
             </div>
           </Link>
         </div>
@@ -208,7 +208,7 @@ export default function Layout() {
             </button>
           )}
           <span style={{ ...TYPO['body-sm'], color: TEXT_PRIMARY, fontWeight: 600 }}>
-            HackVerify
+            RowdyHacks
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

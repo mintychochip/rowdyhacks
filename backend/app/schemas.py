@@ -66,6 +66,22 @@ class HackathonCreate(BaseModel):
 class RegistrationCreate(BaseModel):
     team_name: Optional[str] = Field(None, max_length=200)
     team_members: Optional[list[str]] = None
+    linkedin_url: Optional[str] = Field(None, max_length=500)
+    github_url: Optional[str] = Field(None, max_length=500)
+    resume_url: Optional[str] = Field(None, max_length=500)
+    experience_level: Optional[str] = Field(None, max_length=50)
+    t_shirt_size: Optional[str] = Field(None, max_length=10)
+    phone: Optional[str] = Field(None, max_length=20)
+    dietary_restrictions: Optional[str] = Field(None, max_length=500)
+    what_build: Optional[str] = None
+    why_participate: Optional[str] = None
+    age: Optional[int] = None
+    school: Optional[str] = Field(None, max_length=200)
+    major: Optional[str] = Field(None, max_length=200)
+    pronouns: Optional[str] = Field(None, max_length=50)
+    skills: Optional[list[str]] = None
+    emergency_contact_name: Optional[str] = Field(None, max_length=200)
+    emergency_contact_phone: Optional[str] = Field(None, max_length=30)
 
 
 class RegistrationResponse(BaseModel):
@@ -75,6 +91,22 @@ class RegistrationResponse(BaseModel):
     status: str
     team_name: Optional[str] = None
     team_members: Optional[list[str]] = None
+    linkedin_url: Optional[str] = None
+    github_url: Optional[str] = None
+    resume_url: Optional[str] = None
+    experience_level: Optional[str] = None
+    t_shirt_size: Optional[str] = None
+    phone: Optional[str] = None
+    dietary_restrictions: Optional[str] = None
+    what_build: Optional[str] = None
+    why_participate: Optional[str] = None
+    age: Optional[int] = None
+    school: Optional[str] = None
+    major: Optional[str] = None
+    pronouns: Optional[str] = None
+    skills: Optional[list[str]] = None
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
     qr_token: Optional[str] = None  # included only for accepted own registrations
     registered_at: datetime
     accepted_at: Optional[datetime] = None
@@ -107,6 +139,7 @@ class JudgingSessionCreate(BaseModel):
     start_time: datetime
     end_time: datetime
     per_project_seconds: int = Field(default=300, ge=1, le=3600)
+    leaderboard_public: bool = False
     criteria: list[CriterionCreate] = Field(..., min_length=1, max_length=10)
 
 

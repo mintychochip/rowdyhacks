@@ -93,6 +93,7 @@ async def create_judging_session(
         start_time=body.start_time,
         end_time=body.end_time,
         per_project_seconds=body.per_project_seconds,
+        leaderboard_public=body.leaderboard_public,
     )
     db.add(session)
     await db.flush()
@@ -257,6 +258,7 @@ async def assign_judges(
 async def list_judge_assignments(
     hackathon_id: uuid.UUID,
     judge_id: str | None = None,
+    include_completed: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
     """List assignments for a judging session. Filter by judge_id query param."""
@@ -264,13 +266,24 @@ async def list_judge_assignments(
 
     query = select(JudgeAssignment).where(
         JudgeAssignment.session_id == session.id,
-        JudgeAssignment.is_completed == 0,
     )
+    if not include_completed:
+        query = query.where(JudgeAssignment.is_completed == 0)
     if judge_id:
         query = query.where(JudgeAssignment.judge_id == uuid.UUID(judge_id))
 
     result = await db.execute(query)
     assignments = result.scalars().all()
+
+    # Fetch submission details for each assignment
+    sub_ids = [a.submission_id for a in assignments]
+    submissions = {}
+    if sub_ids:
+        sub_result = await db.execute(
+            select(Submission).where(Submission.id.in_(sub_ids))
+        )
+        for s in sub_result.scalars().all():
+            submissions[str(s.id)] = s
 
     return [
         {
@@ -280,6 +293,9 @@ async def list_judge_assignments(
             "opened_at": a.opened_at.isoformat() if a.opened_at else None,
             "submitted_at": a.submitted_at.isoformat() if a.submitted_at else None,
             "is_completed": bool(a.is_completed),
+            "project_title": submissions.get(str(a.submission_id)).project_title if submissions.get(str(a.submission_id)) else None,
+            "devpost_url": submissions.get(str(a.submission_id)).devpost_url if submissions.get(str(a.submission_id)) else None,
+            "github_url": submissions.get(str(a.submission_id)).github_url if submissions.get(str(a.submission_id)) else None,
         }
         for a in assignments
     ]
