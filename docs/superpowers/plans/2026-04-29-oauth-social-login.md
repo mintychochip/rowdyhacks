@@ -440,6 +440,8 @@ async def oauth_callback(
     provider_email = info.get("email", "")
 
     if not provider_user_id:
+        return _frontend_redirect(error="provider_error")
+    if not provider_email:
         return _frontend_redirect(error="no_email")
 
     # Step 1: Find existing OAuthAccount
@@ -492,9 +494,9 @@ async def oauth_callback(
             token = create_access_token(user_id=str(user.id), role=user.role.value)
             return _frontend_redirect(token=token)
 
-    # Step 3: Create new user
+    # Step 3: Create new user (email is guaranteed non-empty from check above)
     user = User(
-        email=provider_email or f"{provider}_{provider_user_id}@placeholder.local",
+        email=provider_email,
         name=build_name_fallback(provider, info),
         password_hash=None,
     )
@@ -1031,12 +1033,28 @@ async def test_callback_provider_error_redirects_with_error(client):
 
 
 @pytest.mark.asyncio
-async def test_callback_no_email_redirects_with_error(client):
-    """When provider returns no provider_user_id, redirect with no_email."""
+async def test_callback_no_provider_user_id(client):
+    """When provider returns no provider_user_id, redirect with provider_error."""
     state = create_state("github")
     with patch("app.routes.oauth.exchange_code", new=AsyncMock(return_value={"access_token": "tok"})), \
          patch("app.routes.oauth.fetch_user_info", new=AsyncMock(return_value={
              "provider_user_id": "", "email": "", "name": "",
+         })):
+        response = await client.get(
+            f"/api/auth/oauth/github/callback?code=test&state={state}",
+            follow_redirects=False,
+        )
+    assert response.status_code == 307
+    assert "error=provider_error" in response.headers["location"]
+
+
+@pytest.mark.asyncio
+async def test_callback_no_email_redirects_with_error(client):
+    """When provider returns a user ID but no email, redirect with no_email."""
+    state = create_state("github")
+    with patch("app.routes.oauth.exchange_code", new=AsyncMock(return_value={"access_token": "tok"})), \
+         patch("app.routes.oauth.fetch_user_info", new=AsyncMock(return_value={
+             "provider_user_id": "gh-valid-id", "email": "", "name": "NoEmail",
          })):
         response = await client.get(
             f"/api/auth/oauth/github/callback?code=test&state={state}",
@@ -1117,6 +1135,7 @@ async def test_link_callback_conflict_returns_409(client, db_session):
     assert accounts[0].user_id == user_a.id
 
 
+@pytest.mark.asyncio
 async def test_concurrent_link_unique_constraint(client, db_session):
     """The DB unique constraint prevents duplicate OAuthAccount rows."""
     user = User(
@@ -1148,7 +1167,7 @@ async def test_concurrent_link_unique_constraint(client, db_session):
 - [ ] **Step 2: Run callback tests**
 
 Run: `cd backend && python -m pytest tests/test_oauth.py -v`
-Expected: All tests pass (14 total).
+Expected: All tests pass (15 total).
 
 - [ ] **Step 3: Run full test suite**
 
