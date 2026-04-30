@@ -207,7 +207,7 @@ def build_authorize_url(provider: str, redirect_uri: str, state: str) -> str:
         "response_type": "code",
     }
     if provider == "apple":
-        params["response_mode"] = "form_post"
+        params["response_mode"] = "query"  # Use query mode so the callback is a GET request
     return f"{config['authorize_url']}?{urlencode(params)}"
 
 
@@ -258,8 +258,11 @@ async def exchange_code(provider: str, code: str, redirect_uri: str) -> dict[str
         return resp.json()
 
 
-async def fetch_user_info(provider: str, token_response: dict[str, Any]) -> dict[str, Any]:
-    """Fetch user info from the provider using the access token."""
+async def fetch_user_info(provider: str, token_response: dict[str, Any], apple_name: str | None = None) -> dict[str, Any]:
+    """Fetch user info from the provider using the access token.
+    apple_name: for Apple only — the user's name from the authorization response query param
+                (Apple only sends the name on first auth, and only in the callback, not token exchange)
+    """
     config = PROVIDER_CONFIGS[provider]
 
     if provider == "apple":
@@ -269,11 +272,18 @@ async def fetch_user_info(provider: str, token_response: dict[str, Any]) -> dict
             raise ValueError("Apple did not return an id_token")
         decoded = jose_jwt.decode(id_token, options={"verify_signature": False})
         email = decoded.get("email", "")
-        name_obj = token_response.get("user", {})
-        first_name = name_obj.get("name", {}).get("firstName", "") if isinstance(name_obj, dict) else ""
-        last_name = name_obj.get("name", {}).get("lastName", "") if isinstance(name_obj, dict) else ""
-        full_name = f"{first_name} {last_name}".strip()
-        return {"provider_user_id": decoded.get("sub", ""), "email": email, "name": full_name}
+        # Apple sends the user's name as a JSON string in the `user` query param on first auth only
+        name = ""
+        if apple_name:
+            import json
+            try:
+                name_obj = json.loads(apple_name)
+                first = name_obj.get("name", {}).get("firstName", "")
+                last = name_obj.get("name", {}).get("lastName", "")
+                name = f"{first} {last}".strip()
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return {"provider_user_id": decoded.get("sub", ""), "email": email, "name": name}
 
     headers = {"Authorization": f"Bearer {token_response['access_token']}"}
     async with httpx.AsyncClient(timeout=15.0) as client:
@@ -406,6 +416,7 @@ async def oauth_callback(
     code: str | None = Query(None),
     state: str = Query(...),
     error: str | None = Query(None),
+    user: str | None = Query(None),  # Apple: user's name (JSON) on first auth only
     db: AsyncSession = Depends(get_db),
 ):
     """Handle OAuth callback: exchange code, fetch user info, login or create account."""
@@ -432,7 +443,7 @@ async def oauth_callback(
         return _frontend_redirect(error="provider_error")
 
     try:
-        info = await fetch_user_info(provider, token_response)
+        info = await fetch_user_info(provider, token_response, apple_name=user)
     except ValueError:
         return _frontend_redirect(error="provider_error")
 
@@ -1085,8 +1096,8 @@ async def test_link_endpoint_initiates_oauth_flow(client, db_session):
 ```
 
 @pytest.mark.asyncio
-async def test_link_callback_conflict_returns_409(client, db_session):
-    """Linking an OAuth account already linked to another user returns 409."""
+async def test_link_callback_existing_oauth_logs_in_as_original_user(client, db_session):
+    """When an OAuth account is already linked, the callback logs in as that user (not the link requester)."""
     user_a = User(
         id=uuid.uuid4(), email="a@test.com", name="UserA",
         password_hash=hash_password("pw"), role=UserRole.participant,
