@@ -1223,17 +1223,15 @@ git commit -m "chore: add httpx dependency for OAuth provider API calls"
 
 - [ ] **Step 1: Add OAuth API functions**
 
-Add at the end of `api.ts`:
+Add at the end of `api.ts`. Use the existing `BASE` constant already defined at the top of the file (`const BASE = '/api'`):
 
 ```typescript
 // OAuth
-const API_BASE = '/api';
-
 export const getOAuthAuthorizeUrl = (provider: string) =>
-  `${API_BASE}/auth/oauth/${provider}/authorize`;
+  `${BASE}/auth/oauth/${provider}/authorize`;
 
 export const getOAuthLinkUrl = (provider: string) =>
-  `${API_BASE}/auth/me/oauth/link/${provider}`;
+  `${BASE}/auth/me/oauth/link/${provider}`;
 
 export const getLinkedAccounts = () =>
   request('/auth/me/oauth');
@@ -1241,8 +1239,6 @@ export const getLinkedAccounts = () =>
 export const unlinkProvider = (provider: string) =>
   request(`/auth/me/oauth/${provider}`, { method: 'DELETE' });
 ```
-
-Note: remove the existing top-level `const BASE = '/api';` and use `API_BASE` consistently, or just reuse `BASE`. For this feature, use the existing `BASE` constant (line 1 of api.ts).
 
 - [ ] **Step 2: Verify TypeScript**
 
@@ -1265,13 +1261,13 @@ git commit -m "feat: add OAuth API functions to frontend service"
 
 - [ ] **Step 1: Add social login buttons**
 
-Import the authorize URL helper and theme tokens as needed:
+Add after the `</form>` closing tag and before the toggle paragraph. Use the same `BASE` constant pattern as `api.ts` — define it at the top of the component or import `getOAuthAuthorizeUrl` from api:
 
 ```tsx
-const API_BASE = '/api';
+import { getOAuthAuthorizeUrl } from '../services/api';
 ```
 
-Add after the `</form>` closing tag and before the toggle paragraph:
+Then use it in the button links:
 
 ```tsx
       <div style={{ marginTop: 20, marginBottom: 20 }}>
@@ -1286,7 +1282,7 @@ Add after the `</form>` closing tag and before the toggle paragraph:
           {(['google', 'github', 'discord', 'apple'] as const).map(provider => (
             <a
               key={provider}
-              href={`${API_BASE}/auth/oauth/${provider}/authorize`}
+              href={getOAuthAuthorizeUrl(provider)}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 width: '100%', padding: '10px 12px',
@@ -1719,36 +1715,30 @@ describe('AuthCallback', () => {
   });
 
   it('parses token from hash fragment and stores it', async () => {
-    window.location.hash = '#/auth/callback?token=jwt-fake-token';
+    // AuthCallback reads from location.hash directly (not react-router params).
+    // Simulate the hash the backend redirect sets: /#/auth/callback?token=jwt
     const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
-
-    // Mock window.location.href assignment
-    const hrefSetter = vi.fn();
+    const hrefMock = vi.fn();
     Object.defineProperty(window, 'location', {
       value: {
         hash: '#/auth/callback?token=jwt-fake-token',
-        href: '',
+        get href() { return ''; },
+        set href(v: string) { hrefMock(v); },
       },
-      writable: true,
+      writable: false,
+      configurable: true,
     });
 
-    // Use a simpler approach: test that without hard redirect we navigate
-    delete (window as any).location;
-    window.location = {
-      hash: '#/auth/callback?token=jwt-fake-token',
-      href: '',
-    } as any;
-
     render(
-      <MemoryRouter initialEntries={['/auth/callback?token=jwt-fake-token']}>
+      <MemoryRouter>
         <AuthCallback />
       </MemoryRouter>
     );
 
     await waitFor(() => {
-      // The actual parsing uses location.hash, so this test verifies
-      // the AuthCallback component renders without crashing
+      expect(setItemSpy).toHaveBeenCalledWith('auth_token', 'jwt-fake-token');
     });
+    setItemSpy.mockRestore();
   });
 
   it('navigates to auth page on error', async () => {
