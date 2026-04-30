@@ -360,6 +360,10 @@ async def post_application_to_discord(registration_id: str) -> bool:
     Uses the bot to send interactive buttons if channel is configured,
     falls back to webhook if available.
     Returns True if successful."""
+    # Skip if Discord bot not configured (test environments)
+    if not settings.discord_bot_token:
+        return False
+
     async with async_session() as db:
         result = await db.execute(
             select(Registration)

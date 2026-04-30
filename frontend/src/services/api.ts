@@ -54,7 +54,7 @@ export const getDashboard = (params?: { hackathon_id?: string; status?: string; 
 };
 
 // Hackathons
-export const createHackathon = (data: { name: string; start_date: string; end_date: string }) =>
+export const createHackathon = (data: { name: string; start_date: string; end_date: string; description?: string }) =>
   request('/hackathons', { method: 'POST', body: JSON.stringify(data) });
 
 export const getHackathons = () => request('/hackathons');

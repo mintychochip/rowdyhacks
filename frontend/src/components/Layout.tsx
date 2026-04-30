@@ -94,11 +94,11 @@ export default function Layout() {
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 12px', borderRadius: RADIUS.md,
                   color: active ? TEXT_PRIMARY : TEXT_MUTED,
-                  fontWeight: active ? 600 : 400,
                   background: active ? 'rgba(26,92,231,0.12)' : 'transparent',
                   borderLeft: active ? `3px solid ${PRIMARY}` : '3px solid transparent',
                   textDecoration: 'none',
                   ...TYPO['body-sm'],
+                  fontWeight: active ? 600 : 400,
                   transition: 'all 0.15s',
                 }}
               >

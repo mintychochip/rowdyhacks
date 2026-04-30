@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import {
   PRIMARY, SUCCESS, WARNING, WARNING_BG10, WARNING_BORDER30,
   ERROR, ERROR_TEXT, ERROR_BG10, ERROR_BORDER30, ORANGE,
@@ -314,7 +314,7 @@ function BuildVerifyDetails({ details }: { details: Record<string, any> }) {
             <StatRow label="Build" value={
               r.build_success === null ? <span style={{ color: TEXT_MUTED }}>skipped</span> :
                 r.build_success ? <span style={{ color: SUCCESS }}>pass ({r.build_time?.toFixed(1)}s)</span> :
-                  <span style style={{ color: ERROR }}>fail ({r.build_time?.toFixed(1)}s)</span>
+                  <span style={{ color: ERROR }}>fail ({r.build_time?.toFixed(1)}s)</span>
             } />
           </div>
           {r.install_output && !r.install_success && (
