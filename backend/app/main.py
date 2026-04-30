@@ -17,10 +17,25 @@ from app.routes.qr import router as qr_router
 from app.routes.crawler import router as crawler_router
 from app.routes.judging import router as judging_router
 from app.routes.oauth import router as oauth_router
+from app.routes.websocket import router as websocket_router
 from app.discord_bot import start_bot, bot as discord_bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.crawler.scheduler import run_crawl
 from app.config import settings
+from app.cache import close_redis
+from app.logging_config import configure_logging
+import sentry_sdk
+
+# Configure structured logging
+configure_logging(log_level=settings.log_level, json_logs=settings.json_logs)
+
+# Initialize Sentry if configured
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        traces_sample_rate=0.1,
+        profiles_sample_rate=0.1,
+    )
 
 
 @asynccontextmanager
@@ -63,6 +78,9 @@ async def lifespan(app: FastAPI):
         pass
 
     scheduler.shutdown(wait=False)
+    
+    # Close Redis connection
+    await close_redis()
 
 
 async def _seed_demo_data():
@@ -118,6 +136,7 @@ app.include_router(qr_router)
 app.include_router(crawler_router, prefix="/api/crawler", tags=["crawler"])
 app.include_router(judging_router)
 app.include_router(oauth_router, prefix="/api/auth/oauth", tags=["oauth"])
+app.include_router(websocket_router)
 
 
 @app.get("/api/health")

@@ -69,3 +69,17 @@ def create_qr_token(registration_id: str, user_id: str, hackathon_id: str, hacka
 def decode_qr_token(token: str) -> dict:
     """Decode and validate a QR token JWT. Raises ValueError if invalid/expired."""
     return decode_token(token)
+
+
+async def get_current_user_ws(token: str | None) -> dict | None:
+    """Validate JWT token for WebSocket connections."""
+    if not token:
+        return None
+    try:
+        payload = decode_token(token)
+        return {
+            "id": payload.get("sub"),
+            "role": payload.get("role"),
+        }
+    except Exception:
+        return None

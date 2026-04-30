@@ -8,6 +8,10 @@ class Settings(BaseSettings):
         default="postgresql+asyncpg://postgres:postgres@localhost:5432/hackverify",
         description="PostgreSQL connection string (asyncpg driver)",
     )
+    redis_url: str = Field(
+        default="redis://localhost:6379/0",
+        description="Redis connection URL (optional, for caching)",
+    )
     secret_key: str = Field(
         default="change-me-to-a-secret-key-at-least-32-chars",
         description="JWT signing key (min 32 chars)",
@@ -84,6 +88,20 @@ class Settings(BaseSettings):
         default=30,
         gt=0,
         description="Days after hackathon end to keep refreshing for late submissions",
+    )
+
+    # Monitoring & Observability
+    sentry_dsn: str = Field(
+        default="",
+        description="Sentry DSN for error tracking",
+    )
+    log_level: str = Field(
+        default="INFO",
+        description="Logging level (DEBUG, INFO, WARNING, ERROR)",
+    )
+    json_logs: bool = Field(
+        default=False,
+        description="Enable JSON structured logging (for production)",
     )
 
     @field_validator("secret_key")

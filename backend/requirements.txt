@@ -23,3 +23,10 @@ apscheduler==3.10.4
 playwright==1.52.0
 scikit-learn==1.6.0
 numpy==2.2.0
+
+# Phase 1: Core Infrastructure
+redis[hiredis]==5.2.1
+aioredis==2.0.1
+websockets==15.0.1
+structlog==25.2.0
+sentry-sdk==2.24.1
