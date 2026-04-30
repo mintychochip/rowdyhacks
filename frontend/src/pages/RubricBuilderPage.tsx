@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import * as api from '../services/api';
 import {
   PRIMARY, PRIMARY_HOVER, GOLD, SUCCESS, ERROR, TEXT_PRIMARY, TEXT_MUTED, TEXT_WHITE,
@@ -20,6 +21,7 @@ export default function RubricBuilderPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { isMobile } = useMediaQuery();
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [perProjectSeconds, setPerProjectSeconds] = useState(300);
@@ -89,7 +91,7 @@ export default function RubricBuilderPage() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 24, marginBottom: 20 }}>Judging Setup</h2>
+      <h2 style={{ fontSize: 24, marginBottom: 20 }} data-mobile-h1>Judging Setup</h2>
 
       <form onSubmit={handleSave}>
         {/* Timing */}
