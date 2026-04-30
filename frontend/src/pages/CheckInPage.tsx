@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import * as api from '../services/api';
 import { SUCCESS, SUCCESS_BG10, ERROR, ERROR_BG20, ERROR_TEXT, TEXT_PRIMARY, TEXT_MUTED, INPUT_BG, INPUT_BORDER } from '../theme';
 
@@ -7,6 +8,7 @@ export default function CheckInPage() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { isMobile } = useMediaQuery();
 
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,12 +28,12 @@ export default function CheckInPage() {
   };
 
   return (
-    <div style={{ maxWidth: 500, margin: '40px auto' }}>
+    <div style={{ maxWidth: 500, margin: isMobile ? '20px auto' : '40px auto' }}>
       <h2 style={{ fontSize: 24, marginBottom: 8 }}>Check-In Scanner</h2>
       <p style={{ color: TEXT_MUTED, marginBottom: 24, fontSize: 14 }}>Paste a QR token to check in a participant</p>
 
       <form onSubmit={handleCheckIn}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexDirection: isMobile ? 'column' : 'row' as const }}>
           <input
             value={qrInput}
             onChange={e => setQrInput(e.target.value)}
