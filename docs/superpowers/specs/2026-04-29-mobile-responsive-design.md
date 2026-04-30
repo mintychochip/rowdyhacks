@@ -52,7 +52,7 @@ export const BREAKPOINTS = { mobile: 768, tablet: 1024 };
 
 - Main content padding: 24px desktop → 14px mobile
 - Page-level hardcoded padding (60px, 40px) → halved on mobile via `isMobile` hook
-- Pages touched: AnalyzePage, RegistrationsPage, RegistrationDetailPage, AuthPage, RegisterPage, CheckInPage, ReportPage
+- Pages touched: AnalyzePage, RegistrationsPage, RegistrationDetailPage, AuthPage, RegisterPage, CheckInPage, ReportPage, OrganizerRegistrationsPage, RubricBuilderPage
 
 ### 4. Tables (Primitives.tsx + table-using pages)
 
@@ -60,7 +60,7 @@ export const BREAKPOINTS = { mobile: 768, tablet: 1024 };
 - Add optional `scrollable` prop to `Card` component — when true, wraps children in scrollable div
 - Table font-size drops to 13px on mobile (CSS media query)
 - Table cell horizontal padding reduces from 16px to 10px on mobile (CSS media query)
-- Pages using tables: JudgePortal, JudgingResultsPage, Dashboard, HackathonSetup, RubricBuilderPage, OrganizerRegistrationsPage
+- Pages using tables: JudgePortal, JudgingResultsPage, Dashboard, HackathonSetup
 
 ### 5. Typography Scaling (index.css)
 
@@ -92,13 +92,13 @@ Inline styles using `TYPO.h1`/`TYPO.h2` override CSS — for headers on JudgePor
 | `frontend/src/pages/RegistrationsPage.tsx` | Responsive padding |
 | `frontend/src/pages/RegistrationDetailPage.tsx` | Responsive padding |
 | `frontend/src/pages/Dashboard.tsx` | Scrollable tables |
-| `frontend/src/pages/HackathonSetup.tsx` | Scrollable tables |
-| `frontend/src/pages/OrganizerRegistrationsPage.tsx` | Scrollable tables |
+| `frontend/src/pages/HackathonSetup.tsx` | Scrollable table |
+| `frontend/src/pages/OrganizerRegistrationsPage.tsx` | Responsive padding |
 | `frontend/src/pages/ReportPage.tsx` | Responsive padding |
 | `frontend/src/pages/AuthPage.tsx` | Responsive padding |
 | `frontend/src/pages/RegisterPage.tsx` | Responsive padding |
 | `frontend/src/pages/CheckInPage.tsx` | Responsive padding |
-| `frontend/src/pages/RubricBuilderPage.tsx` | Scrollable tables |
+| `frontend/src/pages/RubricBuilderPage.tsx` | Responsive padding |
 | `frontend/src/components/UrlInput.tsx` | Stack layout on mobile (≤768px) |
 | `frontend/src/components/CheckResultRow.tsx` | Touch-friendly tap targets |
 

@@ -443,55 +443,45 @@ git commit -m "fix: make Dashboard table scrollable on mobile"
 **Files:**
 - Modify: `frontend/src/pages/HackathonSetup.tsx`
 
-- [ ] **Step 1: Wrap hackathon list table**
+- [ ] **Step 1: Wrap table in scrollable div and add responsive heading**
 
-Read the file to find the table (hackathons list). Wrap it in a scrollable div:
+Two edits:
 
+**Edit 1 — heading (line 45):** Change:
 ```tsx
-<div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-  <table ...>...</table>
-</div>
+<h2 style={{ fontSize: 24, marginBottom: 20 }}>Hackathons</h2>
+```
+to:
+```tsx
+<h2 data-mobile-h1 style={{ fontSize: 24, marginBottom: 20 }}>Hackathons</h2>
 ```
 
-Add `data-mobile-h1` to the page heading.
+**Edit 2 — table wrapper (lines 87-142):** The table is inside `<div style={{ background: CARD_BG, border: ...borderRadius: 12, overflow: 'hidden' }}>`. Add an inner scrollable wrapper around the `<table>`:
+
+Change:
+```tsx
+<div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
+  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+```
+to:
+```tsx
+<div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
+  <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+```
+
+And close the inner `</div>` just before the outer `</div>` — add `</div>` before `</div>` on line 142. So the final lines are:
+```tsx
+        </table>
+      </div>
+    </div>
+```
 
 - [ ] **Step 2: Commit**
 
 ```bash
 git add frontend/src/pages/HackathonSetup.tsx
 git commit -m "fix: make HackathonSetup table scrollable on mobile"
-```
-
-### Task 4.5: OrganizerRegistrationsPage — wrap table
-
-**Files:**
-- Modify: `frontend/src/pages/OrganizerRegistrationsPage.tsx`
-
-- [ ] **Step 1: Wrap registrations table**
-
-Read the file, find the table, wrap in scrollable div as above. Add `data-mobile-h1` to heading.
-
-- [ ] **Step 2: Commit**
-
-```bash
-git add frontend/src/pages/OrganizerRegistrationsPage.tsx
-git commit -m "fix: make OrganizerRegistrationsPage table scrollable on mobile"
-```
-
-### Task 4.6: RubricBuilderPage — wrap table
-
-**Files:**
-- Modify: `frontend/src/pages/RubricBuilderPage.tsx`
-
-- [ ] **Step 1: Wrap rubric table**
-
-Read the file, find the table, wrap in scrollable div as above. Add `data-mobile-h1` to heading.
-
-- [ ] **Step 2: Commit**
-
-```bash
-git add frontend/src/pages/RubricBuilderPage.tsx
-git commit -m "fix: make RubricBuilderPage table scrollable on mobile"
 ```
 
 ---
@@ -602,13 +592,85 @@ git commit -m "fix: responsive padding on AuthPage"
 
 - [ ] **Step 1: Responsive padding**
 
-Import and use `useMediaQuery`. Read the file to find container padding values and halve them on mobile.
+Import and use `useMediaQuery`:
+```tsx
+import { useMediaQuery } from '../hooks/useMediaQuery';
+```
+
+Add hook call at top of component render (before the `if (!user)` guard):
+```tsx
+const { isMobile } = useMediaQuery();
+```
+
+Change the container padding (line 49):
+```tsx
+<div style={{ maxWidth: 480, margin: '0 auto', padding: 40 }}>
+```
+to:
+```tsx
+<div style={{ maxWidth: 480, margin: '0 auto', padding: isMobile ? 14 : 40 }}>
+```
+
+Change the "not logged in" state padding (line 18):
+```tsx
+<div style={{ textAlign: 'center', padding: 60 }}>
+```
+to:
+```tsx
+<div style={{ textAlign: 'center', padding: isMobile ? 30 : 60 }}>
+```
 
 - [ ] **Step 2: Commit**
 
 ```bash
 git add frontend/src/pages/RegisterPage.tsx
 git commit -m "fix: responsive padding on RegisterPage"
+```
+
+### Task 5.8: OrganizerRegistrationsPage — responsive padding
+
+**Files:**
+- Modify: `frontend/src/pages/OrganizerRegistrationsPage.tsx`
+
+Note: This page uses card layouts (not tables), so it only needs padding adjustments — no scrollable wrapper.
+
+- [ ] **Step 1: Responsive padding**
+
+Import and use `useMediaQuery`:
+```tsx
+import { useMediaQuery } from '../hooks/useMediaQuery';
+```
+
+Add hook call at top of component (after hooks):
+```tsx
+const { isMobile } = useMediaQuery();
+```
+
+Change the container padding (line 113):
+```tsx
+<div style={{ maxWidth: 900, margin: '0 auto', padding: 40 }}>
+```
+to:
+```tsx
+<div style={{ maxWidth: 900, margin: '0 auto', padding: isMobile ? 14 : 40 }}>
+```
+
+Change the "organizer access required" and "no registrations" padding (lines 95, 212-213):
+```tsx
+padding: 60 → padding: isMobile ? 30 : 60
+padding: 40 → padding: isMobile ? 20 : 40
+```
+
+Add `data-mobile-h1` to the heading (line 130):
+```tsx
+<h1 data-mobile-h1 style={{ fontSize: 24, marginBottom: 4 }}>
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add frontend/src/pages/OrganizerRegistrationsPage.tsx
+git commit -m "fix: responsive padding on OrganizerRegistrationsPage"
 ```
 
 ### Task 5.6: CheckInPage — responsive padding
@@ -714,15 +776,7 @@ git commit -m "fix: larger touch targets on CheckResultRow for mobile"
 **Files:**
 - None (verification only)
 
-- [ ] **Step 1: Run dev server and check build**
-
-```bash
-cd frontend && npm run dev
-```
-
-**No output needed** — this is just to verify the dev server starts without errors.
-
-- [ ] **Step 2: Verify TypeScript compiles**
+- [ ] **Step 1: Verify TypeScript compiles**
 
 ```bash
 cd frontend && npx tsc --noEmit
@@ -730,7 +784,7 @@ cd frontend && npx tsc --noEmit
 
 Expected: PASS (no type errors)
 
-- [ ] **Step 3: Run existing tests**
+- [ ] **Step 2: Run existing tests**
 
 ```bash
 cd frontend && npm test -- --run
