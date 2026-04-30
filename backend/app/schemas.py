@@ -59,6 +59,16 @@ class HackathonCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=300)
     start_date: datetime
     end_date: datetime
+    description: Optional[str] = None
+    application_deadline: Optional[datetime] = None
+    max_participants: Optional[int] = Field(None, ge=1)
+    waitlist_enabled: bool = False
+    venue_address: Optional[str] = None
+    parking_info: Optional[str] = None
+    wifi_ssid: Optional[str] = None
+    wifi_password: Optional[str] = None
+    discord_invite_url: Optional[str] = None
+    schedule: Optional[list[dict]] = None  # [{"time": "", "title": "", "description": ""}]
 
 
 # --- Registration Schemas ---
@@ -151,3 +161,41 @@ class JudgingResultsResponse(BaseModel):
     hackathon_id: UUID
     rankings: list[dict]
     judge_stats: list[dict]
+
+
+# --- Announcement Schemas ---
+
+class AnnouncementCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    content: str = Field(..., min_length=1)
+    priority: str = Field(default="normal", pattern="^(low|normal|high|urgent)$")
+
+
+class AnnouncementResponse(BaseModel):
+    id: UUID
+    hackathon_id: UUID
+    title: str
+    content: str
+    priority: str
+    sent_by: UUID
+    sent_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# --- Conflict of Interest Schemas ---
+
+class ConflictOfInterestCreate(BaseModel):
+    submission_id: UUID
+    reason: Optional[str] = None
+
+
+class ConflictOfInterestResponse(BaseModel):
+    id: UUID
+    judge_id: UUID
+    hackathon_id: UUID
+    submission_id: UUID
+    reason: Optional[str] = None
+    declared_at: datetime
+
+    model_config = {"from_attributes": True}

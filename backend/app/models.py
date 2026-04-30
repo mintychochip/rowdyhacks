@@ -128,6 +128,7 @@ class RegistrationStatus(str, enum.Enum):
     pending = "pending"
     accepted = "accepted"
     rejected = "rejected"
+    waitlisted = "waitlisted"
     checked_in = "checked_in"
 
 
@@ -185,9 +186,15 @@ class Hackathon(Base):
     name = Column(String(300), nullable=False)
     start_date = Column(DateTime(timezone=True), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=False)
+    application_deadline = Column(DateTime(timezone=True), nullable=True)
+    max_participants = Column(Integer, nullable=True)
+    current_participants = Column(Integer, nullable=False, default=0)
+    waitlist_enabled = Column(Boolean, nullable=False, default=False)
     organizer_id = Column(Guid, ForeignKey("users.id"), nullable=False)
     description = Column(Text, nullable=True)
-    schedule = Column(JSON, nullable=True)
+    schedule = Column(JsonType, nullable=True)
+    venue_address = Column(Text, nullable=True)
+    parking_info = Column(Text, nullable=True)
     wifi_ssid = Column(Text, nullable=True)
     wifi_password = Column(Text, nullable=True)
     discord_invite_url = Column(Text, nullable=True)
@@ -431,3 +438,28 @@ class JudgeRating(Base):
     projects_scored = Column(Integer, nullable=False, default=0)
     mean_raw_score = Column(Integer, nullable=True)
     stddev_raw_score = Column(Integer, nullable=True)
+
+
+class Announcement(Base):
+    """Organizer announcements to hackathon participants."""
+    __tablename__ = "announcements"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=False)
+    title = Column(String(200), nullable=False)
+    content = Column(Text, nullable=False)
+    priority = Column(String(20), nullable=False, default="normal")  # low, normal, high, urgent
+    sent_by = Column(Guid, ForeignKey("users.id"), nullable=False)
+    sent_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class ConflictOfInterest(Base):
+    """Judge conflict of interest declarations."""
+    __tablename__ = "conflicts_of_interest"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    judge_id = Column(Guid, ForeignKey("users.id"), nullable=False)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=False)
+    submission_id = Column(Guid, ForeignKey("submissions.id"), nullable=False)
+    reason = Column(Text, nullable=True)
+    declared_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

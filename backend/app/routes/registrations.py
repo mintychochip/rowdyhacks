@@ -109,7 +109,7 @@ async def list_hackathon_registrations(
         except ValueError:
             raise HTTPException(
                 status_code=422,
-                detail=f"Invalid status '{status}'. Must be one of: pending, accepted, rejected, checked_in",
+                detail=f"Invalid status '{status}'. Must be one of: pending, accepted, rejected, waitlisted, checked_in",
             )
 
     count_query = select(func.count(Registration.id)).where(*filters)
@@ -143,9 +143,9 @@ async def accept_registration(
     authorization: str = Header(alias="Authorization"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Accept a pending registration (organizer only)."""
+    """Accept a pending or waitlisted registration (organizer only)."""
     payload = _get_current_user_payload(authorization)
-    await _ensure_hackathon_organizer(db, payload["sub"], hackathon_id)
+    hackathon = await _ensure_hackathon_organizer(db, payload["sub"], hackathon_id)
 
     result = await db.execute(
         select(Registration)
@@ -159,11 +159,17 @@ async def accept_registration(
     if not reg:
         raise HTTPException(status_code=404, detail="Registration not found")
 
-    if reg.status != RegistrationStatus.pending:
+    if reg.status not in (RegistrationStatus.pending, RegistrationStatus.waitlisted):
         raise HTTPException(
             status_code=409,
-            detail=f"Cannot accept registration with status '{reg.status.value}'; only pending registrations can be accepted",
+            detail=f"Cannot accept registration with status '{reg.status.value}'; only pending or waitlisted registrations can be accepted",
         )
+    
+    # Check capacity (if not already accepted/waitlisted)
+    if reg.status == RegistrationStatus.pending:
+        if hackathon.max_participants and hackathon.current_participants >= hackathon.max_participants:
+            raise HTTPException(status_code=400, detail="Hackathon is at capacity. Consider enabling waitlist.")
+        hackathon.current_participants += 1
 
     reg.status = RegistrationStatus.accepted
     reg.accepted_at = datetime.now(timezone.utc)
@@ -264,6 +270,10 @@ async def register_for_hackathon(
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
 
+    # Check application deadline
+    if hackathon.application_deadline and datetime.now(timezone.utc) > hackathon.application_deadline:
+        raise HTTPException(status_code=400, detail="Application deadline has passed")
+
     # Check for duplicate registration
     existing = await db.execute(
         select(Registration).where(
@@ -273,9 +283,18 @@ async def register_for_hackathon(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Already registered for this hackathon")
 
+    # Check capacity (only for non-waitlist)
+    initial_status = RegistrationStatus.pending
+    if hackathon.max_participants and hackathon.current_participants >= hackathon.max_participants:
+        if hackathon.waitlist_enabled:
+            initial_status = RegistrationStatus.waitlisted
+        else:
+            raise HTTPException(status_code=400, detail="Hackathon is at capacity")
+
     reg = Registration(
         hackathon_id=hackathon_id,
         user_id=user.id,
+        status=initial_status,
         team_name=body.team_name,
         team_members=body.team_members,
         linkedin_url=body.linkedin_url,
@@ -296,6 +315,11 @@ async def register_for_hackathon(
         emergency_contact_phone=body.emergency_contact_phone,
     )
     db.add(reg)
+    
+    # Update current_participants count if waitlisted
+    if initial_status == RegistrationStatus.waitlisted:
+        hackathon.current_participants += 1
+    
     await db.commit()
     await db.refresh(reg)
 
