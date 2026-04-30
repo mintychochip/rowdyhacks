@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import { getRegistration, getGoogleWalletLink } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import QRCodeDisplay from '../components/QRCodeDisplay';
@@ -24,6 +25,7 @@ export default function RegistrationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isMobile } = useMediaQuery();
   const [reg, setReg] = useState<Registration | null>(null);
   const [googleUrl, setGoogleUrl] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
@@ -47,7 +49,7 @@ export default function RegistrationDetailPage() {
 
   if (!user) {
     return (
-      <div style={{ textAlign: 'center', padding: 60, color: TEXT_MUTED }}>
+      <div style={{ textAlign: 'center', padding: isMobile ? 30 : 60, color: TEXT_MUTED }}>
         Please log in.
       </div>
     );
@@ -55,7 +57,7 @@ export default function RegistrationDetailPage() {
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: 60, color: TEXT_MUTED }}>
+      <div style={{ textAlign: 'center', padding: isMobile ? 30 : 60, color: TEXT_MUTED }}>
         Loading...
       </div>
     );
@@ -63,7 +65,7 @@ export default function RegistrationDetailPage() {
 
   if (error) {
     return (
-      <div style={{ textAlign: 'center', padding: 60 }}>
+      <div style={{ textAlign: 'center', padding: isMobile ? 30 : 60 }}>
         <div style={{ color: ERROR_TEXT, marginBottom: 16 }}>{error}</div>
         <button
           onClick={() => navigate('/registrations')}
@@ -85,7 +87,7 @@ export default function RegistrationDetailPage() {
 
   if (!reg) {
     return (
-      <div style={{ textAlign: 'center', padding: 60, color: TEXT_MUTED }}>
+      <div style={{ textAlign: 'center', padding: isMobile ? 30 : 60, color: TEXT_MUTED }}>
         Registration not found.
       </div>
     );
@@ -96,7 +98,7 @@ export default function RegistrationDetailPage() {
     : '';
 
   return (
-    <div style={{ maxWidth: 520, margin: '0 auto', padding: 40 }}>
+    <div style={{ maxWidth: 520, margin: '0 auto', padding: isMobile ? 14 : 40 }}>
       <button
         onClick={() => navigate('/registrations')}
         style={{
@@ -159,7 +161,7 @@ export default function RegistrationDetailPage() {
               <QRCodeDisplay token={scanUrl} size={280} />
             </div>
 
-            <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16, wordBreak: 'break-all', fontFamily: 'monospace' }}>
+            <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16, wordBreak: 'break-all', fontFamily: "'Space Mono', monospace" }}>
               Token: {reg.qr_token}
             </div>
 
