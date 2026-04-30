@@ -228,3 +228,13 @@ export const getLinkedAccounts = () =>
 
 export const unlinkProvider = (provider: string) =>
   request(`/auth/me/oauth/${provider}`, { method: 'DELETE' });
+
+// Co-Organizers
+export const getOrganizers = (hackathonId: string) =>
+  request(`/hackathons/${hackathonId}/organizers`);
+
+export const addOrganizer = (hackathonId: string, email: string) =>
+  request(`/hackathons/${hackathonId}/organizers`, { method: 'POST', body: JSON.stringify({ email }) });
+
+export const removeOrganizer = (hackathonId: string, userId: string) =>
+  request(`/hackathons/${hackathonId}/organizers/${userId}`, { method: 'DELETE' });

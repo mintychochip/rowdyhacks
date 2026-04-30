@@ -154,6 +154,7 @@ class User(Base):
     submissions = relationship("Submission", back_populates="submitter")
     registrations = relationship("Registration", back_populates="user")
     oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
+    co_organized_hackathons = relationship("HackathonOrganizer", back_populates="user", foreign_keys="HackathonOrganizer.user_id", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<User {self.email} role={self.role}>"
@@ -205,9 +206,27 @@ class Hackathon(Base):
     organizer = relationship("User", back_populates="hackathons")
     submissions = relationship("Submission", back_populates="hackathon")
     registrations = relationship("Registration", back_populates="hackathon")
+    co_organizers = relationship("HackathonOrganizer", back_populates="hackathon", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Hackathon {self.name}>"
+
+
+class HackathonOrganizer(Base):
+    """Many-to-many relationship for co-organizers (multi-organizer hackathons)."""
+    __tablename__ = "hackathon_organizers"
+    __table_args__ = (
+        Index("ix_hackathon_organizers_hackathon", "hackathon_id"),
+        Index("ix_hackathon_organizers_user", "user_id"),
+    )
+
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(Guid, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    added_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    added_by = Column(Guid, ForeignKey("users.id"), nullable=True)
+
+    hackathon = relationship("Hackathon", back_populates="co_organizers")
+    user = relationship("User", foreign_keys=[user_id], back_populates="co_organized_hackathons")
 
 
 class Submission(Base):

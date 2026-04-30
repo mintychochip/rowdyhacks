@@ -7,7 +7,7 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Registration, RegistrationStatus, Hackathon, User
+from app.models import Registration, RegistrationStatus, Hackathon, User, HackathonOrganizer
 from app.auth import decode_token, create_qr_token
 
 router = APIRouter(prefix="/api/hackathons", tags=["organizer-registrations"])
@@ -33,15 +33,29 @@ async def _get_organizer(authorization: str | None, db: AsyncSession) -> User:
 
 
 async def _verify_organizer_owns_hackathon(user: User, hackathon_id: uuid.UUID, db: AsyncSession) -> Hackathon:
-    """Verify the organizer owns the hackathon."""
+    """Verify the organizer owns the hackathon or is a co-organizer."""
+    # Primary organizer check
     query = select(Hackathon).where(
         and_(Hackathon.id == hackathon_id, Hackathon.organizer_id == user.id)
     )
     result = await db.execute(query)
     hackathon = result.scalar_one_or_none()
-    if not hackathon:
-        raise HTTPException(status_code=404, detail="Hackathon not found")
-    return hackathon
+    if hackathon:
+        return hackathon
+    
+    # Co-organizer check
+    co_query = select(HackathonOrganizer).where(
+        and_(HackathonOrganizer.hackathon_id == hackathon_id, HackathonOrganizer.user_id == user.id)
+    )
+    co_result = await db.execute(co_query)
+    if co_result.scalar_one_or_none():
+        # Load the hackathon for the co-organizer
+        hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
+        hackathon = hackathon_result.scalar_one_or_none()
+        if hackathon:
+            return hackathon
+    
+    raise HTTPException(status_code=404, detail="Hackathon not found")
 
 
 @router.get("/{hackathon_id}/registrations")

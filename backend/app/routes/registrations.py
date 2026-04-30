@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.discord_bot import post_application_to_discord
-from app.models import Registration, RegistrationStatus, Hackathon, User, UserRole
+from app.models import Registration, RegistrationStatus, Hackathon, User, UserRole, HackathonOrganizer
 from app.schemas import RegistrationCreate
 from app.auth import decode_token
 
@@ -73,7 +73,7 @@ def _registration_to_response(r: Registration, user: User | None = None) -> dict
 async def _ensure_hackathon_organizer(
     db: AsyncSession, user_id: str, hackathon_id: uuid.UUID,
 ) -> Hackathon:
-    """Verify the current user is the organizer of the given hackathon and return it."""
+    """Verify the current user is the organizer or co-organizer of the given hackathon."""
     result = await db.execute(
         select(Hackathon).where(Hackathon.id == hackathon_id)
     )
@@ -81,12 +81,26 @@ async def _ensure_hackathon_organizer(
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
 
-    # Verify caller is an organizer and owns this hackathon
+    # Verify caller is an organizer and owns this hackathon (or is co-organizer)
     user_result = await db.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
-    if not user or user.role != UserRole.organizer or hackathon.organizer_id != user.id:
-        raise HTTPException(status_code=403, detail="Only the hackathon organizer can perform this action")
-    return hackathon
+    if not user or user.role != UserRole.organizer:
+        raise HTTPException(status_code=403, detail="Only organizers can perform this action")
+    
+    # Primary organizer check
+    if hackathon.organizer_id == user.id:
+        return hackathon
+    
+    # Co-organizer check
+    co_result = await db.execute(
+        select(HackathonOrganizer).where(
+            and_(HackathonOrganizer.hackathon_id == hackathon_id, HackathonOrganizer.user_id == user_id)
+        )
+    )
+    if co_result.scalar_one_or_none():
+        return hackathon
+    
+    raise HTTPException(status_code=403, detail="Only the hackathon organizer can perform this action")
 
 
 @router.get("/hackathons/{hackathon_id}/registrations")
