@@ -5,7 +5,7 @@ import time
 from typing import Any
 
 import httpx
-from fastapi.responses import RedirectResponse
+from urllib.parse import urlencode
 
 from app.config import settings
 
@@ -87,7 +87,6 @@ VALID_PROVIDERS = list(PROVIDER_CONFIGS.keys())
 def build_authorize_url(provider: str, redirect_uri: str, state: str) -> str:
     """Build the provider's OAuth authorization URL."""
     config = PROVIDER_CONFIGS[provider]
-    from urllib.parse import urlencode
     params = {
         "client_id": config["client_id"](),
         "redirect_uri": redirect_uri,
@@ -135,8 +134,6 @@ async def exchange_code(provider: str, code: str, redirect_uri: str) -> dict[str
     headers = {"Accept": "application/json"}
     if provider == "apple":
         token_data["client_secret"] = _build_apple_client_secret()
-    elif provider == "github":
-        token_data["client_secret"] = config["client_secret"]()
     else:
         token_data["client_secret"] = config["client_secret"]()
 
@@ -215,7 +212,7 @@ async def fetch_user_info(provider: str, token_response: dict[str, Any], apple_n
             }
 
 
-def build_name_fallback(provider: str, info: dict[str, Any]) -> str:
+def build_name_fallback(_provider: str, info: dict[str, Any]) -> str:
     """Return a display name, with fallbacks for missing data."""
     name = info.get("name", "").strip()
     if name:
