@@ -18,6 +18,7 @@ from app.routes.crawler import router as crawler_router
 from app.routes.judging import router as judging_router
 from app.routes.oauth import router as oauth_router
 from app.routes.websocket import router as websocket_router
+from app.routes.monitoring import router as monitoring_router, track_request
 from app.discord_bot import start_bot, bot as discord_bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.crawler.scheduler import run_crawl
@@ -137,6 +138,12 @@ app.include_router(crawler_router, prefix="/api/crawler", tags=["crawler"])
 app.include_router(judging_router)
 app.include_router(oauth_router, prefix="/api/auth/oauth", tags=["oauth"])
 app.include_router(websocket_router)
+app.include_router(monitoring_router)
+
+# Add request tracking middleware
+@app.middleware("http")
+async def metrics_middleware(request, call_next):
+    return await track_request(request, call_next)
 
 
 @app.get("/api/health")
