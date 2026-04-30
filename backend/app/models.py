@@ -463,3 +463,46 @@ class ConflictOfInterest(Base):
     submission_id = Column(Guid, ForeignKey("submissions.id"), nullable=False)
     reason = Column(Text, nullable=True)
     declared_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+# --- Fingerprint Models for Cross-Submission Similarity ---
+
+class SubmissionFingerprint(Base):
+    """Store SimHash fingerprints for cross-submission similarity detection."""
+    __tablename__ = "submission_fingerprints"
+    __table_args__ = (
+        Index("idx_fingerprint_simhash", "simhash"),
+        Index("idx_fingerprint_submission", "submission_id", "simhash"),
+    )
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    submission_id = Column(Guid, ForeignKey("submissions.id", ondelete="CASCADE"), nullable=False, index=True)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id", ondelete="CASCADE"), nullable=False, index=True)
+    simhash = Column(BigInteger, nullable=False, index=True)
+    github_url = Column(Text, nullable=True)
+    repo_size_bytes = Column(Integer, default=0)
+    code_lines = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class SimilarityMatch(Base):
+    """Store detected similarities between submissions."""
+    __tablename__ = "similarity_matches"
+    __table_args__ = (
+        Index("idx_similarity_pair", "submission_a_id", "submission_b_id"),
+        Index("idx_similarity_score", "similarity_score"),
+        Index("idx_similarity_status", "status"),
+    )
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    submission_a_id = Column(Guid, ForeignKey("submissions.id", ondelete="CASCADE"), nullable=False)
+    hackathon_a_id = Column(Guid, ForeignKey("hackathons.id", ondelete="CASCADE"), nullable=False)
+    submission_b_id = Column(Guid, ForeignKey("submissions.id", ondelete="CASCADE"), nullable=False)
+    hackathon_b_id = Column(Guid, ForeignKey("hackathons.id", ondelete="CASCADE"), nullable=False)
+    similarity_score = Column(Integer, nullable=False)  # 0-100
+    hamming_distance = Column(Integer, nullable=False)
+    matching_files = Column(Text, nullable=True)
+    status = Column(String(20), default="pending")  # pending, confirmed, dismissed
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    reviewed_by = Column(Guid, ForeignKey("users.id"), nullable=True)
