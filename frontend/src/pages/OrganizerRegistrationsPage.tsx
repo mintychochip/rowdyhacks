@@ -1,16 +1,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import {
   getOrganizerRegistrations,
   acceptRegistration,
   rejectRegistration,
   checkinRegistration,
-  getRegistrationStats,
   getHackathons,
 } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
-import { PRIMARY, ERROR, ERROR_BG20, ERROR_TEXT, TEXT_PRIMARY, TEXT_MUTED, TEXT_DIM, INPUT_BG, INPUT_BORDER, BORDER_LIGHT, SUCCESS, STATUS_PENDING, STATUS_ACCEPTED, STATUS_REJECTED, INFO } from '../theme';
+import { PRIMARY, ERROR, ERROR_BG20, ERROR_TEXT, TEXT_MUTED, TEXT_DIM, TEXT_SECONDARY, INPUT_BG, INPUT_BORDER, BORDER_LIGHT, STATUS_ACCEPTED, STATUS_REJECTED, INFO } from '../theme';
 
 interface Registration {
   id: string;
@@ -21,22 +21,14 @@ interface Registration {
   registered_at: string;
 }
 
-interface Stats {
-  total?: number;
-  pending?: number;
-  accepted?: number;
-  rejected?: number;
-  checked_in?: number;
-}
-
 export default function OrganizerRegistrationsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isMobile } = useMediaQuery();
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [total, setTotal] = useState(0);
   const [hackathonName, setHackathonName] = useState('');
-  const [stats, setStats] = useState<Stats | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -50,7 +42,6 @@ export default function OrganizerRegistrationsPage() {
     try {
       const [regData] = await Promise.all([
         getOrganizerRegistrations(id, { status: statusFilter || undefined, offset, limit }),
-        getRegistrationStats(id).then(setStats).catch(() => {}),
         getHackathons().then(hacks => {
           const found = (hacks || []).find((h: any) => h.id === id);
           if (found) setHackathonName(found.name);
@@ -92,7 +83,7 @@ export default function OrganizerRegistrationsPage() {
 
   if (!user || user.role !== 'organizer') {
     return (
-      <div style={{ textAlign: 'center', padding: 60, color: TEXT_MUTED }}>
+      <div style={{ textAlign: 'center', padding: isMobile ? 30 : 60, color: TEXT_MUTED }}>
         Organizer access required.
       </div>
     );
@@ -102,15 +93,11 @@ export default function OrganizerRegistrationsPage() {
   const currentPage = Math.floor(offset / limit) + 1;
 
   const STATS_MAP = [
-    { label: 'Total', value: stats?.total ?? 0, color: TEXT_MUTED },
-    { label: 'Pending', value: stats?.pending ?? 0, color: STATUS_PENDING },
-    { label: 'Accepted', value: stats?.accepted ?? 0, color: STATUS_ACCEPTED },
-    { label: 'Rejected', value: stats?.rejected ?? 0, color: STATUS_REJECTED },
-    { label: 'Checked In', value: stats?.checked_in ?? 0, color: INFO },
+    { label: 'Total', value: total, color: TEXT_MUTED },
   ];
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: 40 }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: isMobile ? 14 : 40 }}>
       <button
         onClick={() => navigate('/hackathons')}
         style={{
@@ -127,7 +114,7 @@ export default function OrganizerRegistrationsPage() {
         &larr; Back to Hackathons
       </button>
 
-      <h1 style={{ fontSize: 24, marginBottom: 4 }}>
+      <h1 style={{ fontSize: 24, marginBottom: 4 }} data-mobile-h1>
         {hackathonName || 'Registrations'}
       </h1>
       <p style={{ fontSize: 13, color: TEXT_MUTED, marginBottom: 20 }}>
@@ -149,7 +136,7 @@ export default function OrganizerRegistrationsPage() {
       )}
 
       {/* Stats Summary */}
-      {stats && (
+      {total > 0 && (
         <div style={{
           display: 'flex',
           gap: 12,
@@ -203,13 +190,13 @@ export default function OrganizerRegistrationsPage() {
       </div>
 
       {loading && (
-        <div style={{ color: TEXT_MUTED, textAlign: 'center', padding: 40 }}>
+        <div style={{ color: TEXT_MUTED, textAlign: 'center', padding: isMobile ? 20 : 40 }}>
           Loading...
         </div>
       )}
 
       {!loading && registrations.length === 0 && (
-        <div style={{ textAlign: 'center', padding: 40, color: TEXT_MUTED }}>
+        <div style={{ textAlign: 'center', padding: isMobile ? 20 : 40, color: TEXT_MUTED }}>
           No registrations found.
         </div>
       )}
