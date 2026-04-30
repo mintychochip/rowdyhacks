@@ -5,10 +5,10 @@ from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 
+from app.crawler.stealth import StealthClient, human_like_delay
+
 DEVPOST_DOMAIN_RE = re.compile(r"^(.*\.)?devpost\.com$", re.IGNORECASE)
 GITHUB_DOMAIN_RE = re.compile(r"^(www\.)?github\.com$", re.IGNORECASE)
-
-USER_AGENT = "HackVerify/1.0"
 
 
 def _fetch_page_sync(url: str) -> str:
@@ -34,16 +34,17 @@ def is_github_url(url: str) -> bool:
 
 
 async def scrape_devpost(url: str) -> "ScrapedData":
-    """Scrape a Devpost submission page and return structured metadata."""
+    """Scrape a Devpost submission page with stealth features."""
     from app.checks.interface import ScrapedData
 
     if not is_devpost_url(url):
         raise ScraperError(f"Not a Devpost URL: {url}")
 
-    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+    async with StealthClient(max_retries=3, base_delay=2.0) as client:
         try:
-            response = await client.get(url, headers={"User-Agent": "HackVerify/1.0"})
-            response.raise_for_status()
+            response = await client.get(url)
+            # Add human-like delay after page load
+            await human_like_delay(action="page_view")
         except httpx.HTTPError as e:
             raise ScraperError(f"HTTP error scraping Devpost: {e}") from e
 

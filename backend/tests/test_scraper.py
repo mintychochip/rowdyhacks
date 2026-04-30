@@ -53,17 +53,31 @@ SAMPLE_DEVPOST_HTML = """<!DOCTYPE html>
 @pytest.mark.asyncio
 async def test_scrape_devpost_full_page(monkeypatch):
     """Scrape a sample Devpost page and verify all fields."""
-    import httpx
-
+    import app.scraper as scraper_module
+    
     class MockResponse:
         text = SAMPLE_DEVPOST_HTML
+        status_code = 200
+        headers = {}
         def raise_for_status(self):
             pass
 
-    async def mock_get(self, url, **kwargs):
-        return MockResponse()
-
-    monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
+    class MockStealthClient:
+        def __init__(self, **kwargs):
+            pass
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            pass
+        async def get(self, url):
+            return MockResponse()
+    
+    # Mock StealthClient in the scraper module
+    async def mock_delay(**kwargs):
+        pass
+    
+    monkeypatch.setattr(scraper_module, "StealthClient", MockStealthClient)
+    monkeypatch.setattr(scraper_module, "human_like_delay", mock_delay)
 
     data = await scrape_devpost("https://devpost.com/software/ai-study-buddy")
     assert data.title == "AI Study Buddy"
