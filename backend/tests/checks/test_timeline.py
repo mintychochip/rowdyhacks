@@ -12,7 +12,8 @@ def git_repo():
     """Create a temp git repo with commits."""
     with tempfile.TemporaryDirectory() as tmp:
         repo = Path(tmp)
-        subprocess.run(["git", "init"], cwd=repo, capture_output=True)
+        # Use --template='' to skip any global git hooks
+        subprocess.run(["git", "init", "--template=''"], cwd=repo, capture_output=True)
         subprocess.run(
             ["git", "config", "user.email", "test@test.com"],
             cwd=repo,
@@ -24,14 +25,14 @@ def git_repo():
         (repo / "file.txt").write_text("content")
         subprocess.run(["git", "add", "."], cwd=repo, capture_output=True)
         subprocess.run(
-            ["git", "commit", "-m", "Initial commit", "--date=2026-04-15T10:00:00"],
+            ["git", "commit", "-m", "Initial commit", "--date=2026-04-15T10:00:00", "--no-verify"],
             cwd=repo,
             capture_output=True,
         )
         (repo / "file.txt").write_text("updated")
         subprocess.run(["git", "add", "."], cwd=repo, capture_output=True)
         subprocess.run(
-            ["git", "commit", "-m", "Add feature", "--date=2026-04-15T14:00:00"],
+            ["git", "commit", "-m", "Add feature", "--date=2026-04-15T14:00:00", "--no-verify"],
             cwd=repo,
             capture_output=True,
         )
@@ -72,7 +73,7 @@ async def test_check_commits_before_hackathon():
     """Commits before hackathon should increase score."""
     with tempfile.TemporaryDirectory() as tmp:
         repo = Path(tmp)
-        subprocess.run(["git", "init"], cwd=repo, capture_output=True)
+        subprocess.run(["git", "init", "--template=''"], cwd=repo, capture_output=True)
         subprocess.run(
             ["git", "config", "user.email", "test@test.com"],
             cwd=repo,
@@ -84,14 +85,14 @@ async def test_check_commits_before_hackathon():
         (repo / "f.txt").write_text("x")
         subprocess.run(["git", "add", "."], cwd=repo, capture_output=True)
         subprocess.run(
-            ["git", "commit", "-m", "pre-hack", "--date=2026-04-10T10:00:00"],
+            ["git", "commit", "-m", "pre-hack", "--date=2026-04-10T10:00:00", "--no-verify"],
             cwd=repo,
             capture_output=True,
         )
         (repo / "f.txt").write_text("y")
         subprocess.run(["git", "add", "."], cwd=repo, capture_output=True)
         subprocess.run(
-            ["git", "commit", "-m", "during-hack", "--date=2026-04-15T14:00:00"],
+            ["git", "commit", "-m", "during-hack", "--date=2026-04-15T14:00:00", "--no-verify"],
             cwd=repo,
             capture_output=True,
         )

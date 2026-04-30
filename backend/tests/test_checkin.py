@@ -10,7 +10,7 @@ from app.auth import hash_password, create_qr_token
 async def test_scan_checks_in_accepted_registration(db_session, client):
     user = User(id=uuid.uuid4(), email="scan@test.com", name="Scannie",
                 password_hash=hash_password("pw"), role=UserRole.participant)
-    org = User(id=uuid.uuid4(), email="org@test.com", name="Organizer",
+    org = User(id=uuid.uuid4(), email="checkinorg@test.com", name="Organizer",
                password_hash=hash_password("pw"), role=UserRole.organizer)
     hack = Hackathon(id=uuid.uuid4(), name="ScanHack", organizer_id=org.id,
                      start_date=datetime.now(timezone.utc),

@@ -10,7 +10,7 @@ import {
   getHackathons,
 } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
-import { PRIMARY, ERROR, ERROR_BG20, ERROR_TEXT, TEXT_MUTED, TEXT_DIM, TEXT_SECONDARY, INPUT_BG, INPUT_BORDER, BORDER_LIGHT, STATUS_ACCEPTED, STATUS_REJECTED, INFO } from '../theme';
+import { PRIMARY, ERROR, ERROR_BG20, ERROR_TEXT, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_DIM, INPUT_BG, INPUT_BORDER, BORDER_LIGHT, SUCCESS, STATUS_PENDING, STATUS_ACCEPTED, STATUS_REJECTED, INFO } from '../theme';
 
 interface Registration {
   id: string;
