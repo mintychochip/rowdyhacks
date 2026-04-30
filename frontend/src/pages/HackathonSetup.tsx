@@ -9,6 +9,7 @@ export default function HackathonSetup() {
   const navigate = useNavigate();
   const [hackathons, setHackathons] = useState<any[]>([]);
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [stats, setStats] = useState<any>(null);
@@ -25,8 +26,8 @@ export default function HackathonSetup() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.createHackathon({ name, start_date: startDate, end_date: endDate });
-      setName(''); setStartDate(''); setEndDate('');
+      await api.createHackathon({ name, start_date: startDate, end_date: endDate, description: description || undefined });
+      setName(''); setDescription(''); setStartDate(''); setEndDate('');
       loadHackathons();
     } catch {}
   };
@@ -42,7 +43,7 @@ export default function HackathonSetup() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 24, marginBottom: 20 }}>Hackathons</h2>
+      <h2 data-mobile-h1 style={{ fontSize: 24, marginBottom: 20 }}>Hackathons</h2>
 
       <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
         <h3 style={{ fontSize: 16, marginBottom: 16 }}>Create New Hackathon</h3>
@@ -61,6 +62,12 @@ export default function HackathonSetup() {
             <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>End Date</label>
             <input type="datetime-local" value={endDate} onChange={e => setEndDate(e.target.value)} required
               style={{ padding: '8px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14 }} />
+          </div>
+          <div style={{ width: '100%' }}>
+            <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>Description (optional)</label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
+              placeholder="Describe the hackathon..."
+              style={{ padding: '8px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14, width: '100%', resize: 'vertical', minWidth: 200 }} />
           </div>
           <button type="submit"
             style={{ padding: '8px 20px', background: PRIMARY, border: 'none', borderRadius: 6, color: TEXT_WHITE, fontSize: 14, cursor: 'pointer', height: 38 }}>
@@ -85,7 +92,8 @@ export default function HackathonSetup() {
       )}
 
       <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${BORDER}`, textAlign: 'left' }}>
               <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500 }}>Name</th>
@@ -97,7 +105,11 @@ export default function HackathonSetup() {
           <tbody>
             {hackathons.map(h => (
               <tr key={h.id} style={{ borderBottom: '1px solid #080c1a' }}>
-                <td style={{ padding: '10px 16px' }}>{h.name}</td>
+                <td style={{ padding: '10px 16px' }}>
+                  <Link to={`/hackathons/${h.id}`} style={{ color: PRIMARY, textDecoration: 'none', fontWeight: 600 }}>
+                    {h.name}
+                  </Link>
+                </td>
                 <td style={{ padding: '10px 16px', color: TEXT_MUTED }}>{new Date(h.start_date).toLocaleDateString()}</td>
                 <td style={{ padding: '10px 16px', color: TEXT_MUTED }}>{new Date(h.end_date).toLocaleDateString()}</td>
                 <td style={{ padding: '10px 16px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -135,6 +147,7 @@ export default function HackathonSetup() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
