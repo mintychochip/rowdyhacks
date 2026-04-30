@@ -146,15 +146,36 @@ class User(Base):
     email = Column(String(320), unique=True, nullable=False, index=True)
     name = Column(String(200), nullable=False)
     role = Column(SAEnum(UserRole), nullable=False, default=UserRole.participant)
-    password_hash = Column(String(128), nullable=False)
+    password_hash = Column(String(128), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     hackathons = relationship("Hackathon", back_populates="organizer")
     submissions = relationship("Submission", back_populates="submitter")
     registrations = relationship("Registration", back_populates="user")
+    oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<User {self.email} role={self.role}>"
+
+
+class OAuthAccount(Base):
+    __tablename__ = "oauth_accounts"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    provider = Column(String(20), nullable=False)
+    provider_user_id = Column(String(255), nullable=False)
+    provider_email = Column(String(320), nullable=True)
+    user_id = Column(Guid, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    __table_args__ = (
+        Index("ix_oauth_accounts_provider_user", "provider", "provider_user_id", unique=True),
+    )
+
+    user = relationship("User", back_populates="oauth_accounts")
+
+    def __repr__(self) -> str:
+        return f"<OAuthAccount {self.provider} user={self.user_id}>"
 
 
 class Hackathon(Base):

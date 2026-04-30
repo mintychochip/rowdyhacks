@@ -12,6 +12,18 @@ class Settings(BaseSettings):
         default="change-me-to-a-secret-key-at-least-32-chars",
         description="JWT signing key (min 32 chars)",
     )
+    # OAuth provider credentials
+    google_client_id: str = Field(default="", description="Google OAuth client ID")
+    google_client_secret: str = Field(default="", description="Google OAuth client secret")
+    github_client_id: str = Field(default="", description="GitHub OAuth client ID")
+    github_client_secret: str = Field(default="", description="GitHub OAuth client secret")
+    discord_client_id: str = Field(default="", description="Discord OAuth client ID")
+    discord_client_secret: str = Field(default="", description="Discord OAuth client secret")
+    apple_client_id: str = Field(default="", description="Apple Sign In service ID")
+    apple_team_id: str = Field(default="", description="Apple Developer Team ID")
+    apple_key_id: str = Field(default="", description="Apple private key ID")
+    apple_private_key_path: str = Field(default="", description="Path to Apple .p8 private key file")
+
     github_token: str = Field(
         default="",
         description="GitHub personal access token (optional, increases API rate limit)",
