@@ -15,6 +15,7 @@ from app.routes.checkin import router as checkin_router
 from app.routes.qr import router as qr_router
 from app.routes.crawler import router as crawler_router
 from app.routes.judging import router as judging_router
+from app.routes.oauth import router as oauth_router
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.crawler.scheduler import run_crawl
 from app.config import settings
@@ -103,6 +104,7 @@ app.include_router(checkin_router)
 app.include_router(qr_router)
 app.include_router(crawler_router, prefix="/api/crawler", tags=["crawler"])
 app.include_router(judging_router)
+app.include_router(oauth_router, prefix="/api/auth/oauth", tags=["oauth"])
 
 
 @app.get("/api/health")
