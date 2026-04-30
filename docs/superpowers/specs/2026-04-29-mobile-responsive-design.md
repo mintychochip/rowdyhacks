@@ -21,8 +21,8 @@ Only the ≤768px breakpoint triggers behavioral layout changes (nav collapse, s
 ### 1. Responsive Infrastructure
 
 **`frontend/src/hooks/useMediaQuery.ts`** — new hook:
-- Uses `window.matchMedia('(max-width: 768px)')` and `window.matchMedia('(max-width: 1024px)')` with `change` event listeners (no manual resize debounce needed — the browser handles it)
-- Returns `{ isMobile: boolean, isTablet: boolean }`
+- Uses `window.matchMedia('(max-width: 768px)')` for `isMobile` and `window.matchMedia('(min-width: 769px) and (max-width: 1024px)')` for `isTablet` (mutually exclusive ranges). Mobile and tablet are never both true.
+- `change` event listeners update state automatically (no manual resize debounce needed — the browser handles it)
 - Initialized from `matchMedia(...).matches` on first render
 - SSR-safe: guard `window` access behind `typeof window !== 'undefined'` check (returns false defaults)
 
@@ -46,6 +46,7 @@ export const BREAKPOINTS = { mobile: 768, tablet: 1024 };
   - Tapping a link or the hamburger again closes the panel
   - Hamburger open/close state managed by local `useState<boolean>` in Layout.tsx — no context or router changes needed
   - Nav padding reduces to 12px on mobile
+  - Accessibility: hamburger button has `aria-label="Open menu"` (or "Close menu" when open), `aria-expanded` tied to open state, nav panel has `role="navigation"`
 
 ### 3. Layout Spacing (Layout.tsx + individual pages)
 
@@ -104,6 +105,9 @@ Inline styles using `TYPO.h1`/`TYPO.h2` override CSS — for headers on JudgePor
 ## Not in Scope
 
 - Card-layout table replacements (horizontal scroll is acceptable)
+- Third-party CSS framework
+- PWA manifest or service worker changes (already set up)
+- Backend changes
 
 ## Testing
 
@@ -112,6 +116,3 @@ Inline styles using `TYPO.h1`/`TYPO.h2` override CSS — for headers on JudgePor
 - Verify all tables scroll horizontally on mobile without breaking the page width
 - Verify touch targets are ≥44px for interactive elements (buttons, links, check expand/collapse)
 - Existing Jest + React Testing Library tests continue to pass (no behavioral changes)
-- Third-party CSS framework
-- PWA manifest or service worker changes (already set up)
-- Backend changes
