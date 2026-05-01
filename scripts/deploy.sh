@@ -33,13 +33,13 @@ git push
 ok "Pushed"
 
 # ── 2. Pull on droplet ──────────────────────────────────
-say "Pulling latest code on droplet..."
-ssh "$SSH_HOST" "cd ${APP_DIR} && git pull"
+say "Fetching and resetting to latest..."
+ssh "$SSH_HOST" "cd ${APP_DIR} && git fetch origin master && git reset --hard origin/master"
 ok "Code updated"
 
 # ── 3. Rebuild & restart ────────────────────────────────
 say "Rebuilding containers..."
-ssh "$SSH_HOST" "cd ${APP_DIR} && docker compose -f ${COMPOSE_FILE} up -d --build"
+ssh "$SSH_HOST" "cd ${APP_DIR} && docker compose -f ${COMPOSE_FILE} up -d --build --force-recreate"
 ok "Containers restarted"
 
 # ── 4. Cleanup old images ───────────────────────────────

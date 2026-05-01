@@ -28,7 +28,7 @@ jobs:
             git reset --hard origin/master
 
             echo "==> Rebuilding and restarting containers..."
-            docker compose -f docker-compose.yml up -d --build
+            docker compose -f docker-compose.yml up -d --build --force-recreate
 
             echo "==> Pruning old images..."
             docker image prune -f
