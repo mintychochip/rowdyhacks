@@ -1,26 +1,22 @@
-# HackVerify
+# RowdyHacks
 
-Hackathon integrity platform built for **CSUB Hacks**. Detects cheating in hackathon submissions with 14+ automated integrity checks, plus full hackathon management — registration, QR check-in, Apple/Google Wallet passes, a judging portal with rubric/ELO scoring, a Discord bot, and a stealth Devpost crawler.
+CSUB's hackathon platform — registration, check-in, judging, and everything in between. Built for California State University, Bakersfield.
 
 ## Features
 
-### Submission Integrity (14+ Checks)
-- **Timeline Analysis** — Git commit forensics to verify work was done during the hackathon window
-- **Devpost Alignment** — AI-powered comparison of Devpost description vs. actual repository content
-- **Submission History** — Detect repeated submissions of the same project across events
-- **AI Detection** — Heuristic + perplexity-based AI-generated code detection
-- **Code Similarity** — SimHash-based cross-team similarity scoring
-- **Asset Integrity** — Verify images, videos, and links match submission claims
-- **Cross-Hackathon** — Duplicate submission detection across different hackathons
-- **Repeat Offender** — Track users who submit suspicious projects repeatedly
-- Plus: dead dependency check, commit quality, repo age, build verification, file timestamp analysis, contributor audit
-
-### Hackathon Management
-- Full hackathon CRUD with deadlines, capacity caps, waitlist auto-promotion
+### Hackathon Experience
+- Full hackathon CRUD with deadlines, capacity caps, and waitlist auto-promotion
 - Multi-organizer and co-organizer support
-- Comprehensive registration wizard (team, experience, t-shirt, dietary, links)
+- Comprehensive registration wizard (team, experience, t-shirt, dietary restrictions, links)
 - Bulk accept/reject/waitlist with CSV export for t-shirt and dietary planning
 - Announcements system (organizer-to-participant messaging)
+- Public homepage with schedule, WiFi info, and countdown timer
+
+### Check-In & Wallet
+- QR code generation and scan-based check-in
+- Apple Wallet passes (.pkpass with PKCS7 signing)
+- Google Wallet passes (REST API with JWT save URLs)
+- Scan history tracking
 
 ### Judging Portal
 - Custom rubric builder per hackathon
@@ -29,10 +25,14 @@ Hackathon integrity platform built for **CSUB Hacks**. Detects cheating in hacka
 - Public leaderboard and project gallery
 - Judge redirect and scoring pages
 
-### Check-In & Wallet
-- QR code generation and scan-based check-in
-- Apple Wallet passes (.pkpass with PKCS7 signing)
-- Google Wallet passes (REST API with JWT save URLs)
+### Submission Integrity
+- **Timeline Analysis** — Git commit forensics to verify work was done during the hackathon window
+- **Devpost Alignment** — AI-powered comparison of Devpost description vs. actual repository content
+- **AI Detection** — Heuristic + perplexity-based AI-generated code detection
+- **Code Similarity** — SimHash-based cross-team similarity scoring
+- **Cross-Hackathon** — Duplicate submission detection across different hackathons
+- **Repeat Offender** — Track users who submit suspicious projects repeatedly
+- Plus: dead dependency check, commit quality, repo age, build verification, file timestamp analysis, contributor audit
 
 ### Infrastructure
 - Discord bot with interactive Accept/Reject application components
@@ -120,7 +120,7 @@ rowdyhacks/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py           # FastAPI entry point
-│   │   ├── analyzer.py       # Check pipeline orchestrator
+│   │   ├── analyzer.py       # Submission integrity pipeline
 │   │   ├── routes/           # 16 route modules
 │   │   ├── checks/           # 20+ integrity check modules
 │   │   ├── crawler/          # Devpost bulk crawler
@@ -130,7 +130,7 @@ rowdyhacks/
 │   ├── src/
 │   │   ├── pages/            # 25 page components
 │   │   ├── components/       # Shared UI components
-│   │   └── theme.ts          # Design tokens (cosmic theme)
+│   │   └── theme.ts          # Design tokens (cosmic/space theme)
 │   └── DESIGN.md             # Full design system docs
 ├── nginx/                    # Nginx config (SSL, WSS, rate limiting)
 ├── scripts/                  # Setup scripts
