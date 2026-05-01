@@ -4,81 +4,71 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useAuth } from '../contexts/AuthContext';
 import * as api from '../services/api';
 import {
-  PRIMARY, PRIMARY_BG20, CYAN, CYAN_BG20, GOLD, GOLD_BG20,
+  PRIMARY, PRIMARY_BG20, CYAN, CYAN_BG20,
   TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_WHITE,
-  CARD_BG, INPUT_BG, BORDER, BORDER_LIGHT,
+  CARD_BG, INPUT_BG, BORDER,
   TYPO, SPACE, RADIUS,
 } from '../theme';
+
+interface TrackResource {
+  name: string;
+  url: string;
+}
 
 interface Track {
   id: string;
   name: string;
   description: string;
+  challenge: string;
   icon: string;
   color: string;
   prize: string;
   criteria: string[];
-  resources?: { name: string; url: string }[];
+  resources: TrackResource[];
 }
 
-interface HackathonTracks {
-  hackathon_id: string;
-  hackathon_name: string;
-  tracks: Track[];
-}
-
-const DEFAULT_TRACKS: Track[] = [
+const FALLBACK_TRACKS: Track[] = [
   {
-    id: '1',
-    name: 'Deep Space Exploration',
-    description: 'Push the boundaries of space tech. Build tools for satellite data analysis, mission planning, or astronaut support systems.',
-    icon: '🚀',
-    color: '#8b5cf6',
-    prize: '$1,000 + SpaceX Tour',
-    criteria: ['Innovation', 'Technical Complexity', 'Space Applicability'],
-    resources: [
-      { name: 'NASA Open APIs', url: 'https://api.nasa.gov/' },
-      { name: 'Space-Track.org', url: 'https://www.space-track.org/' },
-    ],
+    id: '1', name: 'Deep Space Exploration', description: 'Push the boundaries of space tech. Build tools for satellite data analysis, mission planning, or astronaut support systems.',
+    challenge: 'Your mission: create a working prototype that solves a real problem in space exploration. This could be a satellite trajectory planner, a telemetry dashboard, a radiation exposure calculator for astronauts, or an AI system that classifies celestial objects from telescope imagery.\n\nLooking for projects that demonstrate technical depth — bonus points for using real NASA/ESA datasets or simulating realistic physics.',
+    icon: '🚀', color: '#8b5cf6', prize: '$1,000 + SpaceX Tour',
+    criteria: ['Innovation', 'Technical Complexity', 'Space Applicability', 'Use of Real Data'],
+    resources: [{ name: 'NASA Open APIs', url: 'https://api.nasa.gov/' }, { name: 'Space-Track.org', url: 'https://www.space-track.org/' }],
   },
   {
-    id: '2',
-    name: 'Orbital Commerce',
-    description: 'Create the future of space economy. Develop marketplace platforms, logistics tools, or financial systems for the space age.',
-    icon: '💎',
-    color: '#06b6d4',
-    prize: '$800 + Starlink Kit',
-    criteria: ['Business Viability', 'UX Design', 'Market Potential'],
-    resources: [
-      { name: 'Space Economy Report', url: '#' },
-      { name: 'Satellite Pricing APIs', url: '#' },
-    ],
+    id: '2', name: 'Orbital Commerce', description: 'Create the future of space economy. Develop marketplace platforms, logistics tools, or financial systems for the space age.',
+    challenge: 'The commercialization of low Earth orbit is accelerating. Build a tool, platform, or system that enables commerce in space — a marketplace for satellite services, a launch logistics scheduler, or a DeFi protocol for satellite time-sharing.',
+    icon: '💎', color: '#06b6d4', prize: '$800 + Starlink Kit',
+    criteria: ['Business Viability', 'UX Design', 'Market Potential', 'Technical Execution'],
+    resources: [{ name: 'Space Economy Report', url: 'https://spacefoundation.org/research/' }, { name: 'AWS Ground Station', url: 'https://aws.amazon.com/ground-station/' }],
   },
   {
-    id: '3',
-    name: 'Cosmic Commons',
-    description: 'Democratize access to space. Build educational tools, citizen science platforms, or community-driven space initiatives.',
-    icon: '🌌',
-    color: '#fbbf24',
-    prize: '$600 + Celestron Telescope',
-    criteria: ['Social Impact', 'Accessibility', 'Community Engagement'],
-    resources: [
-      { name: 'Zooniverse APIs', url: 'https://www.zooniverse.org/' },
-      { name: 'Astronomy Data', url: '#' },
-    ],
+    id: '3', name: 'Cosmic Commons', description: 'Democratize access to space. Build educational tools, citizen science platforms, or community-driven space initiatives.',
+    challenge: 'Space shouldn\'t just be for billionaires and government agencies. Create something that makes space more accessible — a VR planetarium for schools, a mobile app for citizen astronomy, or a platform connecting amateur astronomers with researchers.',
+    icon: '🌌', color: '#fbbf24', prize: '$600 + Celestron Telescope',
+    criteria: ['Social Impact', 'Accessibility', 'Community Engagement', 'Innovation'],
+    resources: [{ name: 'Zooniverse Projects', url: 'https://www.zooniverse.org/' }, { name: 'NASA Citizen Science', url: 'https://science.nasa.gov/citizen-science/' }],
   },
   {
-    id: '4',
-    name: 'Nebula Arts',
-    description: 'Where space meets creativity. Develop immersive visualizations, space-themed games, or generative art using astronomical data.',
-    icon: '✨',
-    color: '#ec4899',
-    prize: '$500 + Wacom Tablet',
-    criteria: ['Aesthetic Quality', 'Technical Execution', 'Concept Originality'],
-    resources: [
-      { name: 'ESA Sky', url: 'https://sky.esa.int/' },
-      { name: 'Three.js Docs', url: 'https://threejs.org/' },
-    ],
+    id: '4', name: 'Nebula Arts', description: 'Where space meets creativity. Develop immersive visualizations, space-themed games, or generative art from astronomical data.',
+    challenge: 'Art and science are two sides of the same coin. Create something beautiful grounded in real space data — a WebGL nebula renderer, a procedural planet generator, a sonification of solar wind data, or a mixed reality stargazing app.',
+    icon: '✨', color: '#ec4899', prize: '$500 + Wacom Tablet',
+    criteria: ['Aesthetic Quality', 'Technical Execution', 'Concept Originality', 'Emotional Impact'],
+    resources: [{ name: 'Three.js Docs', url: 'https://threejs.org/' }, { name: 'ESA Image Archive', url: 'https://www.esa.int/ESA_Multimedia/Images' }],
+  },
+  {
+    id: '5', name: 'Mission Control AI', description: 'Apply artificial intelligence to space operations. Build ML models for anomaly detection, predictive maintenance, or autonomous navigation.',
+    challenge: 'AI is transforming how we operate in space. Train a model to detect anomalies in telemetry data, build a reinforcement learning agent for autonomous docking, create an LLM-powered mission planning assistant, or develop computer vision for satellite inspection.',
+    icon: '🤖', color: '#10b981', prize: '$1,200 + NVIDIA Jetson Kit',
+    criteria: ['AI Innovation', 'Model Performance', 'Problem Relevance', 'Presentation Clarity'],
+    resources: [{ name: 'NASA Telemetry Data', url: 'https://data.nasa.gov/' }, { name: 'PyTorch Docs', url: 'https://pytorch.org/docs/' }],
+  },
+  {
+    id: '6', name: 'Lunar Settlements', description: 'Design for life beyond Earth. Create habitat concepts, life support simulations, and resource utilization tools for off-world colonies.',
+    challenge: 'If we\'re going to stay on the Moon, we need to figure out how to live there. Design a system for sustaining human life off-world — a hydroponics controller for microgravity, a 3D habitat layout tool using in-situ resources, or a crew psychology dashboard.',
+    icon: '🌕', color: '#f97316', prize: '$900 + 3D Printer',
+    criteria: ['Systems Thinking', 'Feasibility', 'Innovation', 'Sustainability'],
+    resources: [{ name: 'NASA Artemis Program', url: 'https://www.nasa.gov/artemis/' }, { name: 'Lunar ISRU Papers', url: 'https://www.lpi.usra.edu/' }],
   },
 ];
 
@@ -86,11 +76,11 @@ export default function TracksPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const { isMobile } = useMediaQuery();
-  const [tracks, setTracks] = useState<Track[]>(DEFAULT_TRACKS);
-  const [hackathonName, setHackathonName] = useState('CSUB Hacks');
+  const [tracks, setTracks] = useState<Track[]>(FALLBACK_TRACKS);
+  const [hackathonName, setHackathonName] = useState('');
+  const [hackathonId, setHackathonId] = useState<string | undefined>(id);
   const [loading, setLoading] = useState(true);
-  const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
-  const [hoveredTrack, setHoveredTrack] = useState<string | null>(null);
+  const [expandedTrack, setExpandedTrack] = useState<string | null>(null);
 
   useEffect(() => {
     loadTracks();
@@ -99,308 +89,251 @@ export default function TracksPage() {
   const loadTracks = async () => {
     setLoading(true);
     try {
-      let hackathonId = id;
-      // If no ID in URL, find the latest hackathon
-      if (!hackathonId) {
+      let hId = id;
+      if (!hId) {
         const hackathons = await api.getHackathons();
-        if (hackathons.length > 0) {
-          hackathonId = hackathons[0].id;
+        if (hackathons.length > 0) hId = hackathons[0].id;
+      }
+      if (hId) {
+        setHackathonId(hId);
+        const hackathon = await api.getHackathon(hId);
+        setHackathonName(hackathon.name);
+        try {
+          const data = await api.getHackathonTracks(hId);
+          if (data.tracks && data.tracks.length > 0) {
+            setTracks(data.tracks);
+          }
+        } catch {
+          // Use fallback tracks if API fails
         }
       }
-      if (hackathonId) {
-        const hackathon = await api.getHackathon(hackathonId);
-        setHackathonName(hackathon.name);
-      }
     } catch (e) {
-      console.error('Failed to load hackathon:', e);
+      console.error('Failed to load tracks:', e);
     }
     setLoading(false);
   };
 
-  const trackCardStyle = (track: Track, isHovered: boolean): React.CSSProperties => ({
-    background: CARD_BG,
-    border: `1px solid ${isHovered ? track.color : BORDER}`,
-    borderRadius: RADIUS.lg,
-    padding: isMobile ? SPACE.md : SPACE.lg,
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    transform: isHovered ? 'translateY(-4px)' : 'translateY(0)',
-    boxShadow: isHovered ? `0 8px 32px ${track.color}20` : 'none',
-    position: 'relative',
-    overflow: 'hidden',
-  });
-
-  const glowEffect = (color: string): React.CSSProperties => ({
-    position: 'absolute',
-    top: -50,
-    right: -50,
-    width: 150,
-    height: 150,
-    borderRadius: '50%',
-    background: `radial-gradient(circle, ${color}30 0%, transparent 70%)`,
-    pointerEvents: 'none',
-  });
+  const toggleTrack = (trackId: string) => {
+    setExpandedTrack(expandedTrack === trackId ? null : trackId);
+  };
 
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: SPACE.xl }}>
-        <div style={{ fontSize: 48, marginBottom: SPACE.md, animation: 'pulse 2s infinite' }}>🌙</div>
+        <div style={{ fontSize: 48, marginBottom: SPACE.md }}>🌙</div>
         <p style={{ color: TEXT_MUTED }}>Loading tracks from orbit...</p>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: isMobile ? SPACE.md : SPACE.xl }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: isMobile ? SPACE.md : SPACE.xl }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: SPACE.xl }}>
-        <div style={{ fontSize: 64, marginBottom: SPACE.md }}>🌌</div>
+        <div style={{ fontSize: 56, marginBottom: SPACE.md }}>🛰️</div>
         <h1 style={{ ...TYPO.h1, marginBottom: SPACE.sm }}>
-          {hackathonName} Tracks
+          {hackathonName ? `${hackathonName} Tracks` : 'Challenge Tracks'}
         </h1>
         <p style={{ color: TEXT_SECONDARY, fontSize: 16, maxWidth: 600, margin: '0 auto' }}>
-          Choose your mission. Each track offers unique challenges, prizes, and resources to help you build something stellar.
+          Six mission tracks. Each with its own challenge prompt, judging criteria, prizes, and curated resources. Choose your orbit.
         </p>
       </div>
 
-      {/* Tracks Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-        gap: SPACE.lg,
-        marginBottom: SPACE.xl,
-      }}>
+      {/* Tracks Accordion */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md, marginBottom: SPACE.xl }}>
         {tracks.map((track) => {
-          const isHovered = hoveredTrack === track.id;
+          const isExpanded = expandedTrack === track.id;
           return (
             <div
               key={track.id}
-              style={trackCardStyle(track, isHovered)}
-              onMouseEnter={() => setHoveredTrack(track.id)}
-              onMouseLeave={() => setHoveredTrack(null)}
-              onClick={() => setSelectedTrack(track)}
+              style={{
+                background: CARD_BG,
+                border: `1px solid ${isExpanded ? track.color : BORDER}`,
+                borderLeft: `4px solid ${track.color}`,
+                borderRadius: RADIUS.lg,
+                overflow: 'hidden',
+                transition: 'all 0.25s ease',
+                boxShadow: isExpanded ? `0 4px 24px ${track.color}20` : 'none',
+              }}
             >
-              <div style={glowEffect(track.color)} />
-              
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: SPACE.md, position: 'relative', zIndex: 1 }}>
-                <div style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: RADIUS.md,
-                  background: `${track.color}20`,
+              {/* Header — always visible */}
+              <button
+                onClick={() => toggleTrack(track.id)}
+                style={{
+                  width: '100%',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 28,
-                  flexShrink: 0,
+                  gap: SPACE.md,
+                  padding: isMobile ? SPACE.md : SPACE.lg,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  color: TEXT_PRIMARY,
+                }}
+              >
+                <div style={{
+                  width: 56, height: 56, borderRadius: RADIUS.md,
+                  background: `${track.color}20`, display: 'flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  fontSize: 28, flexShrink: 0,
                 }}>
-                  {track.icon}
+                  {track.icon || '🛸'}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <h3 style={{ ...TYPO.h3, marginBottom: SPACE.xs, color: track.color }}>
+                  <h3 style={{ ...TYPO.h3, marginBottom: 4, color: isExpanded ? track.color : TEXT_PRIMARY }}>
                     {track.name}
                   </h3>
-                  <p style={{ color: TEXT_SECONDARY, fontSize: 14, marginBottom: SPACE.sm, lineHeight: 1.5 }}>
+                  <p style={{ color: TEXT_SECONDARY, fontSize: 14, margin: 0 }}>
                     {track.description}
                   </p>
+                </div>
+                <div style={{
+                  fontSize: 20, color: TEXT_MUTED,
+                  transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.25s ease', flexShrink: 0,
+                }}>
+                  ▾
+                </div>
+              </button>
+
+              {/* Expanded content */}
+              {isExpanded && (
+                <div style={{
+                  padding: isMobile ? `0 ${SPACE.md}px ${SPACE.md}px` : `0 ${SPACE.lg}px ${SPACE.lg}px`,
+                  animation: 'slideDown 0.3s ease',
+                }}>
+                  {/* Challenge prompt */}
                   <div style={{
-                    display: 'inline-block',
-                    padding: '4px 12px',
-                    borderRadius: RADIUS.full,
-                    background: `${track.color}20`,
-                    color: track.color,
-                    fontSize: 13,
-                    fontWeight: 600,
+                    background: `${track.color}10`,
+                    border: `1px solid ${track.color}30`,
+                    borderRadius: RADIUS.md,
+                    padding: SPACE.md,
+                    marginBottom: SPACE.lg,
+                    whiteSpace: 'pre-line',
+                    fontSize: 15,
+                    color: TEXT_PRIMARY,
+                    lineHeight: 1.7,
                   }}>
-                    🏆 {track.prize}
+                    {track.challenge || track.description}
+                  </div>
+
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                    gap: SPACE.lg,
+                  }}>
+                    {/* Left column */}
+                    <div>
+                      <h4 style={{
+                        ...TYPO['label-caps'], color: track.color,
+                        marginBottom: SPACE.sm, display: 'flex', alignItems: 'center', gap: 6,
+                      }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>gavel</span>
+                        Judging Criteria
+                      </h4>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.xs, marginBottom: SPACE.lg }}>
+                        {(track.criteria || []).map((criterion, idx) => (
+                          <span key={idx} style={{
+                            padding: '6px 12px', borderRadius: RADIUS.full,
+                            background: `${track.color}15`, color: track.color,
+                            fontSize: 13, fontWeight: 500,
+                          }}>
+                            {criterion}
+                          </span>
+                        ))}
+                      </div>
+
+                      <h4 style={{
+                        ...TYPO['label-caps'], color: track.color,
+                        marginBottom: SPACE.sm, display: 'flex', alignItems: 'center', gap: 6,
+                      }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>trophy</span>
+                        Prize
+                      </h4>
+                      <div style={{
+                        padding: SPACE.md, borderRadius: RADIUS.md,
+                        background: `${track.color}10`, border: `1px solid ${track.color}30`,
+                        color: track.color, fontSize: 18, fontWeight: 700, textAlign: 'center',
+                      }}>
+                        {track.prize || 'Prize TBA'}
+                      </div>
+                    </div>
+
+                    {/* Right column */}
+                    <div>
+                      {(track.resources && track.resources.length > 0) && (
+                        <>
+                          <h4 style={{
+                            ...TYPO['label-caps'], color: track.color,
+                            marginBottom: SPACE.sm, display: 'flex', alignItems: 'center', gap: 6,
+                          }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>bookmark</span>
+                            Starter Resources
+                          </h4>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm, marginBottom: SPACE.lg }}>
+                            {track.resources.map((resource, idx) => (
+                              <a
+                                key={idx}
+                                href={resource.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: SPACE.sm,
+                                  padding: '10px 14px', borderRadius: RADIUS.md,
+                                  background: INPUT_BG, color: CYAN,
+                                  textDecoration: 'none', fontSize: 14, fontWeight: 500,
+                                  border: `1px solid ${BORDER}`,
+                                }}
+                              >
+                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>link</span>
+                                {resource.name}
+                              </a>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Register CTA */}
+                      <Link
+                        to={hackathonId ? `/hackathons/${hackathonId}/register` : '/register'}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                          width: '100%', padding: '12px 24px',
+                          background: track.color, borderRadius: RADIUS.md,
+                          color: TEXT_WHITE, textDecoration: 'none',
+                          fontSize: 15, fontWeight: 700, boxSizing: 'border-box',
+                          marginTop: track.resources && track.resources.length > 0 ? 0 : SPACE.md,
+                        }}
+                      >
+                        Register for {track.name} →
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* Track Detail Modal */}
-      {selectedTrack && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(10,10,18,0.9)',
-            backdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 100,
-            padding: SPACE.md,
-          }}
-          onClick={() => setSelectedTrack(null)}
-        >
-          <div
-            style={{
-              background: CARD_BG,
-              border: `1px solid ${selectedTrack.color}`,
-              borderRadius: RADIUS.lg,
-              padding: isMobile ? SPACE.lg : SPACE.xl,
-              maxWidth: 600,
-              width: '100%',
-              maxHeight: '90vh',
-              overflow: 'auto',
-              position: 'relative',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={glowEffect(selectedTrack.color)} />
-            
-            <button
-              onClick={() => setSelectedTrack(null)}
-              style={{
-                position: 'absolute',
-                top: SPACE.md,
-                right: SPACE.md,
-                background: 'none',
-                border: 'none',
-                color: TEXT_MUTED,
-                fontSize: 24,
-                cursor: 'pointer',
-                padding: 0,
-                width: 32,
-                height: 32,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              ×
-            </button>
-
-            <div style={{ textAlign: 'center', marginBottom: SPACE.lg, position: 'relative', zIndex: 1 }}>
-              <div style={{ fontSize: 56, marginBottom: SPACE.sm }}>{selectedTrack.icon}</div>
-              <h2 style={{ ...TYPO.h2, color: selectedTrack.color, marginBottom: SPACE.xs }}>
-                {selectedTrack.name}
-              </h2>
-              <p style={{ color: TEXT_SECONDARY }}>{selectedTrack.description}</p>
-            </div>
-
-            <div style={{ marginBottom: SPACE.lg, position: 'relative', zIndex: 1 }}>
-              <h4 style={{ ...TYPO['label-caps'], color: selectedTrack.color, marginBottom: SPACE.sm }}>
-                Judging Criteria
-              </h4>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.sm }}>
-                {selectedTrack.criteria.map((criterion, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      padding: '6px 12px',
-                      borderRadius: RADIUS.md,
-                      background: INPUT_BG,
-                      color: TEXT_PRIMARY,
-                      fontSize: 13,
-                    }}
-                  >
-                    {criterion}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: SPACE.lg, position: 'relative', zIndex: 1 }}>
-              <h4 style={{ ...TYPO['label-caps'], color: selectedTrack.color, marginBottom: SPACE.sm }}>
-                Prize
-              </h4>
-              <div style={{
-                padding: SPACE.md,
-                borderRadius: RADIUS.md,
-                background: `${selectedTrack.color}10`,
-                border: `1px solid ${selectedTrack.color}30`,
-                color: selectedTrack.color,
-                fontSize: 18,
-                fontWeight: 700,
-                textAlign: 'center',
-              }}>
-                {selectedTrack.prize}
-              </div>
-            </div>
-
-            {selectedTrack.resources && (
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <h4 style={{ ...TYPO['label-caps'], color: selectedTrack.color, marginBottom: SPACE.sm }}>
-                  Resources
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
-                  {selectedTrack.resources.map((resource, idx) => (
-                    <a
-                      key={idx}
-                      href={resource.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: SPACE.sm,
-                        padding: '10px 14px',
-                        borderRadius: RADIUS.md,
-                        background: INPUT_BG,
-                        color: CYAN,
-                        textDecoration: 'none',
-                        fontSize: 14,
-                      }}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: 18 }}>link</span>
-                      {resource.name}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div style={{ marginTop: SPACE.lg, textAlign: 'center', position: 'relative', zIndex: 1 }}>
-              <Link
-                to={id ? `/hackathons/${id}/register` : '/register'}
-                style={{
-                  display: 'inline-block',
-                  padding: '12px 32px',
-                  background: selectedTrack.color,
-                  borderRadius: RADIUS.md,
-                  color: TEXT_WHITE,
-                  textDecoration: 'none',
-                  fontSize: 16,
-                  fontWeight: 700,
-                }}
-              >
-                Register for This Track →
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CTA Section */}
+      {/* Bottom CTA */}
       <div style={{
         background: `linear-gradient(135deg, ${PRIMARY_BG20} 0%, ${CYAN_BG20} 100%)`,
-        border: `1px solid ${BORDER}`,
-        borderRadius: RADIUS.lg,
-        padding: isMobile ? SPACE.lg : SPACE.xl,
-        textAlign: 'center',
+        border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg,
+        padding: isMobile ? SPACE.lg : SPACE.xl, textAlign: 'center',
       }}>
-        <h3 style={{ ...TYPO.h3, marginBottom: SPACE.sm }}>
-          Not sure which track to choose?
-        </h3>
-        <p style={{ color: TEXT_SECONDARY, marginBottom: SPACE.md, maxWidth: 500, margin: '0 auto ' + SPACE.md + 'px' }}>
-          You can explore multiple tracks and decide later. The best projects often combine elements from different categories.
+        <h3 style={{ ...TYPO.h3, marginBottom: SPACE.sm }}>Not sure which track to choose?</h3>
+        <p style={{ color: TEXT_SECONDARY, marginBottom: SPACE.lg, maxWidth: 500, margin: `0 auto ${SPACE.lg}px` }}>
+          You can explore all tracks and decide later. The best projects often bridge multiple domains.
         </p>
         {user ? (
           <Link
-            to={id ? `/hackathons/${id}/hacker-dashboard` : '/dashboard'}
+            to={hackathonId ? `/hackathons/${hackathonId}/hacker-dashboard` : '/dashboard'}
             style={{
-              display: 'inline-block',
-              padding: '12px 28px',
-              background: PRIMARY,
-              borderRadius: RADIUS.md,
-              color: TEXT_WHITE,
-              textDecoration: 'none',
-              fontWeight: 600,
+              display: 'inline-block', padding: '12px 28px',
+              background: PRIMARY, borderRadius: RADIUS.md,
+              color: TEXT_WHITE, textDecoration: 'none', fontWeight: 600,
             }}
           >
             Go to Dashboard
@@ -409,13 +342,9 @@ export default function TracksPage() {
           <Link
             to="/auth"
             style={{
-              display: 'inline-block',
-              padding: '12px 28px',
-              background: PRIMARY,
-              borderRadius: RADIUS.md,
-              color: TEXT_WHITE,
-              textDecoration: 'none',
-              fontWeight: 600,
+              display: 'inline-block', padding: '12px 28px',
+              background: PRIMARY, borderRadius: RADIUS.md,
+              color: TEXT_WHITE, textDecoration: 'none', fontWeight: 600,
             }}
           >
             Sign In to Register

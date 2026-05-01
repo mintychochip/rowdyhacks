@@ -19,6 +19,7 @@ from app.routes.judging import router as judging_router
 from app.routes.oauth import router as oauth_router
 from app.routes.websocket import router as websocket_router
 from app.routes.monitoring import router as monitoring_router, track_request
+from app.routes.tracks import router as tracks_router
 from app.discord_bot import start_bot, bot as discord_bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.crawler.scheduler import run_crawl
@@ -129,6 +130,7 @@ app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(checks_router)
 app.include_router(dashboard_router)
 app.include_router(hackathons_router)
+app.include_router(tracks_router)
 app.include_router(hacker_dashboard_router)
 app.include_router(registrations_router)
 app.include_router(registrations_org_router)

@@ -64,6 +64,7 @@ export const updateHackathon = (id: string, data: Record<string, any>) =>
   request(`/hackathons/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 export const getHackathonSubmissions = (id: string) => request(`/hackathons/${id}/submissions`);
 export const getHackathonStats = (id: string) => request(`/hackathons/${id}/stats`);
+export const getHackathonTracks = (id: string) => request(`/hackathons/${id}/tracks`);
 export const getHackerDashboard = (id: string) => request(`/hackathons/${id}/hacker-dashboard`);
 
 export const runSimilarity = (hackathonId: string) =>

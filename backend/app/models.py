@@ -207,9 +207,31 @@ class Hackathon(Base):
     submissions = relationship("Submission", back_populates="hackathon")
     registrations = relationship("Registration", back_populates="hackathon")
     co_organizers = relationship("HackathonOrganizer", back_populates="hackathon", cascade="all, delete-orphan")
+    tracks = relationship("Track", back_populates="hackathon", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Hackathon {self.name}>"
+
+
+class Track(Base):
+    __tablename__ = "tracks"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=False)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    challenge = Column(Text, nullable=True)
+    icon = Column(String(10), nullable=True)
+    color = Column(String(20), nullable=True)
+    prize = Column(String(300), nullable=True)
+    criteria = Column(JsonType, nullable=True)
+    resources = Column(JsonType, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    hackathon = relationship("Hackathon", back_populates="tracks")
+
+    def __repr__(self) -> str:
+        return f"<Track {self.name}>"
 
 
 class HackathonOrganizer(Base):

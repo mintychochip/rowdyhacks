@@ -10,8 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import (
     Hackathon, Submission, SubmissionStatus, Verdict, Registration, RegistrationStatus,
-    Announcement, ConflictOfInterest, User, UserRole, HackathonOrganizer
+    Announcement, ConflictOfInterest, User, UserRole, HackathonOrganizer, Track
 )
+from app.routes.tracks import seed_tracks
 from app.schemas import (
     HackathonCreate, AnnouncementCreate, AnnouncementResponse,
     ConflictOfInterestCreate, ConflictOfInterestResponse
@@ -91,6 +92,12 @@ async def create_hackathon(
     db.add(hackathon)
     await db.commit()
     await db.refresh(hackathon)
+
+    # Seed default tracks
+    for track in seed_tracks(hackathon.id):
+        db.add(track)
+    await db.commit()
+
     return {
         "id": str(hackathon.id),
         "name": hackathon.name,
