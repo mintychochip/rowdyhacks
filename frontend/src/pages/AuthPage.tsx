@@ -89,7 +89,7 @@ export default function AuthPage() {
           <div style={{ flex: 1, height: 1, background: INPUT_BORDER }} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {(['google', 'github', 'discord', 'apple'] as const).map(provider => (
+          {(['google', 'github', 'discord'] as const).map(provider => (
             <a
               key={provider}
               href={getOAuthAuthorizeUrl(provider)}
