@@ -78,7 +78,7 @@ async def create_judging_session(
     hackathon_id: uuid.UUID,
     body: JudgingSessionCreate,
     db: AsyncSession = Depends(get_db),
-    _user: User = Depends(_require_organizer),
+    _user = Depends(_require_organizer),
 ):
     """Create or replace a judging session with rubric criteria for a hackathon."""
     # Verify hackathon exists

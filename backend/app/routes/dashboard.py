@@ -32,9 +32,10 @@ async def get_dashboard(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _user: User = Depends(_get_organizer),
+    _user = Depends(_get_organizer),
 ):
-    """Get paginated submissions list. Organizer only (auth check in main.py)."""
+    """Get paginated submissions list."""
+    _ = _user  # auth check via dependency
     query = select(Submission)
     count_query = select(func.count(Submission.id))
 
