@@ -34,7 +34,7 @@ ok "Pushed"
 
 # ── 2. Pull on droplet ──────────────────────────────────
 say "Fetching and resetting to latest..."
-ssh "$SSH_HOST" "cd ${APP_DIR} && git fetch origin master && git reset --hard origin/master"
+ssh "$SSH_HOST" "cd ${APP_DIR} && git fetch origin master && git checkout -f origin/master -- . && git clean -fd"
 ok "Code updated"
 
 # ── 3. Rebuild & restart ────────────────────────────────

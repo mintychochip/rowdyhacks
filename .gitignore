@@ -11,3 +11,10 @@ dev.db
 node_modules/
 dist/
 *.log
+
+# Data directory (docker volumes, certs, etc.)
+data/
+
+# Screenshots
+*.png
+*.jpg

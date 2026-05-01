@@ -25,7 +25,8 @@ jobs:
 
             echo "==> Fetching and resetting to latest..."
             git fetch origin master
-            git reset --hard origin/master
+            git checkout -f origin/master -- .
+            git clean -fd
 
             echo "==> Rebuilding and restarting containers..."
             docker compose -f docker-compose.yml up -d --build --force-recreate
