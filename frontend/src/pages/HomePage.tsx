@@ -299,7 +299,7 @@ export default function HomePage() {
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? SPACE.md : SPACE.xl }}>
       <div style={{ textAlign: 'center', marginBottom: SPACE.xl }}>
         <div style={{ fontSize: 13, color: CYAN, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: SPACE.sm }}>
-          {hackathon.location || 'In-Person'} · {startDate} – {endDate}
+          {startDate} – {endDate}
         </div>
         <h1 style={{ ...TYPO.h1, marginBottom: SPACE.xs, fontSize: isMobile ? 28 : 36 }}>{hackathon.name}</h1>
         <p style={{ color: TEXT_SECONDARY, fontSize: 15 }}>{startDate} – {endDate}</p>
