@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
+import * as api from '../services/api';
 import { PRIMARY, GOLD, SUCCESS, STATUS_ACCEPTED, TEXT_PRIMARY, TEXT_MUTED, TEXT_DIM, TEXT_WHITE, PAGE_BG, NAV_BG, CARD_BG, INPUT_BG, BORDER, INPUT_BORDER, TYPO, SPACE, RADIUS } from '../theme';
 
 const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
@@ -10,25 +11,27 @@ const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> 
   participant: { label: 'Participant', color: STATUS_ACCEPTED, bg: '#10b98120' },
 };
 
-type NavItem = { to: string; icon: string; label: string; roles?: string[] };
+type NavItem = { to: string; icon: string; label: string; roles?: string[]; getTo?: (hkId: string) => string };
 
-const NAV_ITEMS: NavItem[] = [
-  { to: '/', icon: 'home', label: 'Home' },
-  { to: '/registrations', icon: 'badge', label: 'Your Application', roles: ['participant'] },
-  { to: '/hackathons', icon: 'trophy', label: 'Hackathons', roles: ['organizer'] },
-  { to: '/tracks', icon: 'route', label: 'Tracks', roles: ['participant', 'organizer', 'judge'] },
-  { to: '/check-in', icon: 'qr_code_scanner', label: 'Check-In', roles: ['organizer'] },
-  { to: '/judge', icon: 'gavel', label: 'Judge Portal', roles: ['judge'] },
-  { to: '/dashboard', icon: 'dashboard', label: 'Dashboard', roles: ['organizer'] },
-];
+// Hackathon context to share the ID across pages
+export const HackathonContext = createContext<string | null>(null);
+export const useHackathonId = () => useContext(HackathonContext);
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const { isMobile } = useMediaQuery();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hackathonId, setHackathonId] = useState<string | null>(null);
   const role = user?.role;
   const roleBadge = role && ROLE_LABELS[role];
+
+  // Load the single hackathon ID for nav links
+  useEffect(() => {
+    api.getHackathons().then(hks => {
+      if (hks.length > 0) setHackathonId(hks[0].id);
+    }).catch(() => {});
+  }, [user]);
 
   // Add CSS animation for float effect
   useEffect(() => {
@@ -52,8 +55,28 @@ export default function Layout() {
 
   const isActive = (to: string) => {
     if (to === '/') return location.pathname === '/' || location.pathname.startsWith('/report');
-    return location.pathname.startsWith(to);
+    // For hackathon-scoped links, match the pattern
+    if (hackathonId && to.includes(hackathonId)) {
+      return location.pathname === to || location.pathname.startsWith(to);
+    }
+    return location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
   };
+
+  const hk = (path: string) => hackathonId ? `/hackathons/${hackathonId}${path}` : '#';
+
+  const NAV_ITEMS: NavItem[] = [
+    { to: '/', icon: 'home', label: 'Home' },
+    { to: '/analyze', icon: 'science', label: 'Analyze', roles: ['organizer'] },
+    { to: hk('/registrations'), icon: 'group', label: 'Registrations', roles: ['organizer'] },
+    { to: hk('/judging/setup'), icon: 'gavel', label: 'Judging', roles: ['organizer'] },
+    { to: hk('/leaderboard'), icon: 'leaderboard', label: 'Leaderboard', roles: ['organizer', 'participant', 'judge'] },
+    { to: hk('/projects'), icon: 'inventory_2', label: 'Projects', roles: ['organizer'] },
+    { to: '/tracks', icon: 'route', label: 'Tracks', roles: ['participant', 'organizer', 'judge'] },
+    { to: '/check-in', icon: 'qr_code_scanner', label: 'Check-In', roles: ['organizer'] },
+    { to: '/dashboard', icon: 'monitoring', label: 'Submissions', roles: ['organizer'] },
+    { to: '/registrations', icon: 'badge', label: 'Your Application', roles: ['participant'] },
+    { to: '/judge', icon: 'gavel', label: 'Judge Portal', roles: ['judge'] },
+  ];
 
   const visibleNav = NAV_ITEMS.filter(item => !item.roles || (role && item.roles.includes(role)));
 
@@ -80,6 +103,7 @@ export default function Layout() {
         position: 'fixed', left: 0, top: 0, bottom: 0, width: 240,
         background: NAV_BG, borderRight: `1px solid ${BORDER}`,
         display: 'flex', flexDirection: 'column', zIndex: 50,
+        overflowY: 'auto',
         ...(isMobile ? {
           transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
           transition: 'transform 0.2s ease',
@@ -90,7 +114,7 @@ export default function Layout() {
         {/* Logo */}
         <div style={{ padding: '16px 16px 12px' }}>
           <Link to="/" onClick={closeSidebar} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-            <img src="/rowdy-mascot.png" alt="Rowdy the Roadrunner" style={{ width: 160, height: 'auto' }} />
+            <img src="/rowdy-mascot.png" alt="Rowdy the Roadrunner" style={{ width: 90, height: 'auto' }} />
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: GOLD, letterSpacing: -0.5 }}>
                 RowdyHacks
@@ -108,7 +132,7 @@ export default function Layout() {
             const active = isActive(item.to);
             return (
               <Link
-                key={item.to + (item.roles?.join() || '')}
+                key={item.to + item.label}
                 to={item.to}
                 onClick={closeSidebar}
                 style={{
@@ -157,16 +181,6 @@ export default function Layout() {
                   )}
                 </div>
               </div>
-              <Link
-                to="/settings"
-                title="Account Settings"
-                style={{
-                  background: 'none', border: 'none', color: TEXT_MUTED, cursor: 'pointer',
-                  padding: 4, display: 'flex', alignItems: 'center', textDecoration: 'none',
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>settings</span>
-              </Link>
               <button
                 onClick={handleLogout}
                 title="Logout"

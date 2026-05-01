@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import Layout from './components/Layout';
@@ -6,7 +6,6 @@ import HomePage from './pages/HomePage';
 import AnalyzePage from './pages/AnalyzePage';
 import ReportPage from './pages/ReportPage';
 import Dashboard from './pages/Dashboard';
-import HackathonSetup from './pages/HackathonSetup';
 import AuthPage from './pages/AuthPage';
 import RegisterPage from './pages/RegisterPage';
 import ApplyPage from './pages/ApplyPage';
@@ -15,6 +14,7 @@ import RegistrationDetailPage from './pages/RegistrationDetailPage';
 import OrganizerRegistrationsPage from './pages/OrganizerRegistrationsPage';
 import CheckInPage from './pages/CheckInPage';
 import RubricBuilderPage from './pages/RubricBuilderPage';
+import TracksEditorPage from './pages/TracksEditorPage';
 import JudgePortal from './pages/JudgePortal';
 import JudgingResultsPage from './pages/JudgingResultsPage';
 import HackathonDetailPage from './pages/HackathonDetailPage';
@@ -36,7 +36,7 @@ export default function App() {
             <Route path="/analyze" element={<AnalyzePage />} />
             <Route path="/report/:id" element={<ReportPage />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/hackathons" element={<HackathonSetup />} />
+            <Route path="/hackathons" element={<Navigate to="/" replace />} />
             <Route path="/apply" element={<ApplyPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/hackathons/:id/register" element={<ApplyPage />} />
@@ -50,6 +50,7 @@ export default function App() {
             <Route path="/hackathons/:id/projects" element={<ProjectGallery />} />
             <Route path="/hackathons/:id/leaderboard" element={<PublicLeaderboard />} />
             <Route path="/hackathons/:id/tracks" element={<TracksPage />} />
+            <Route path="/hackathons/:id/tracks/edit" element={<TracksEditorPage />} />
             <Route path="/tracks" element={<TracksPage />} />
             <Route path="/hackathons/:id/hacker-dashboard" element={<HackerDashboard />} />
             <Route path="/hackathons/:id/settings" element={<HackathonSettings />} />

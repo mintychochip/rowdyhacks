@@ -1,6 +1,6 @@
 const BASE = '/api';
 
-async function request(path: string, options: RequestInit = {}) {
+export async function request(path: string, options: RequestInit = {}) {
   const token = localStorage.getItem('auth_token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
