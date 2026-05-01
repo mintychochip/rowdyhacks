@@ -2,37 +2,106 @@
 
 ## Digital Ocean Droplet Setup
 
+Ubuntu 22.04 LTS, 2GB RAM minimum.
+
 ### One-Time Setup
 
-Start with a fresh Ubuntu droplet (22.04 LTS, 2GB RAM minimum).
+```bash
+ssh root@your-droplet-ip
+```
+
+#### 1. Install Docker (skip if already installed)
 
 ```bash
-# SSH into the droplet
-ssh root@your-droplet-ip
-
-# Install Docker
 curl -fsSL https://get.docker.com | sh
 usermod -aG docker $USER
 # Log out and back in for group to take effect
+```
 
-# Clone the repo
+#### 2. Check for conflicts with what's already running
+
+Before deploying, check what's using ports 80 and 443 (the nginx container binds to both):
+
+```bash
+# See if anything is already on ports 80 or 443
+ss -tlnp | grep -E ':80 |:443 '
+```
+
+If something shows up, you have three options:
+
+**A. Stop the existing service** (if you don't need it):
+```bash
+systemctl stop nginx   # or apache2, caddy, etc.
+systemctl disable nginx
+```
+
+**B. Run RowdyHacks on different ports** — in `docker-compose.yml`, change nginx ports from `"80:80"` / `"443:443"` to something like `"8080:80"` / `"8443:443"`, then use your existing nginx as a reverse proxy (see below).
+
+**C. Skip RowdyHacks' nginx and route through your existing one** — remove the `nginx` and `certbot` services from docker-compose, then add a server block in your existing nginx pointing at `localhost:3000` (frontend) and `localhost:8000` (backend).
+
+#### Reverse proxy with existing nginx (Option C example)
+
+```
+# In your existing nginx config (/etc/nginx/sites-enabled/your-domain):
+server {
+    listen 80;
+    server_name hackathon.your-domain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /api {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /ws {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+You'll also need to remove the `nginx` and `certbot` services from `docker-compose.yml` (or comment them out), then let your existing nginx handle SSL via certbot.
+
+#### 3. Clone and configure
+
+```bash
 mkdir -p /opt
 git clone https://github.com/mintychochip/rowdyhacks.git /opt/rowdyhacks
 cd /opt/rowdyhacks
 
-# Configure environment
 cp .env.example .env
+# Generate a real secret key:
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 nano .env  # Fill in SECRET_KEY, POSTGRES_PASSWORD, BASE_URL, etc.
+```
 
-# Set up SSL
+#### 4. SSL (skip if using your own reverse proxy)
+
+```bash
 ./scripts/init-ssl.sh your-domain.com admin@your-domain.com
-# Or for IP-only / testing:
+# Or for testing / IP-only:
 ./scripts/init-ssl.sh
+```
 
-# First start
+#### 5. Start
+
+```bash
 docker compose up -d
+docker compose ps        # confirm all services are up
+docker compose logs -f backend  # watch for startup errors
+```
 
-# Auto-start on boot
+#### 6. Auto-start on boot
+
+```bash
 cp hackverify.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable hackverify
@@ -42,7 +111,7 @@ systemctl enable hackverify
 
 **Option A — Deploy script (from your local machine):**
 
-Edit `scripts/deploy.sh` and change `SSH_HOST` to your droplet's address, then:
+Edit `scripts/deploy.sh` with your droplet address, then:
 
 ```bash
 ./scripts/deploy.sh
@@ -56,22 +125,21 @@ Or pass the host directly:
 
 **Option B — GitHub Actions (auto-deploy on push to master):**
 
-Set these secrets in your GitHub repo (Settings > Secrets and variables > Actions):
+Set these secrets in your GitHub repo (`Settings > Secrets and variables > Actions`):
 
 | Secret | Description |
 |---|---|
 | `DROPLET_HOST` | Your droplet's IP or hostname |
 | `DROPLET_USER` | SSH user (e.g. `root`) |
-| `DROPLET_SSH_KEY` | Private SSH key (generate with `ssh-keygen -t ed25519`) |
+| `DROPLET_SSH_KEY` | Private SSH key |
 
-Then add the corresponding public key to the droplet:
+Generate a deploy key:
 
 ```bash
-# On the droplet (as the deploy user):
-echo "ssh-ed25519 AAAAC3...your-public-key" >> ~/.ssh/authorized_keys
+ssh-keygen -t ed25519 -f ~/.ssh/rowdyhacks-deploy -N ""
+cat ~/.ssh/rowdyhacks-deploy.pub   # add this to ~/.ssh/authorized_keys on the droplet
+cat ~/.ssh/rowdyhacks-deploy       # put this in the DROPLET_SSH_KEY secret
 ```
-
-After that, every push to `master` deploys automatically.
 
 ### Environment Variables
 
@@ -79,10 +147,14 @@ After that, every push to `master` deploys automatically.
 |---|---|---|
 | `SECRET_KEY` | JWT signing key (32+ chars) | Yes |
 | `POSTGRES_PASSWORD` | Database password | Yes |
+| `POSTGRES_USER` | Database user (default: `hackverify`) | No |
+| `POSTGRES_DB` | Database name (default: `hackverify`) | No |
 | `LLM_API_KEY` | Anthropic/Poolside API key | Optional |
 | `GITHUB_TOKEN` | GitHub PAT for API rate limits | Optional |
 | `DISCORD_BOT_TOKEN` | Discord bot token | Optional |
 | `BASE_URL` | Public URL (for QR codes) | Yes |
+
+All backend settings use the `HACKVERIFY_` prefix.
 
 ### Maintenance
 
@@ -108,7 +180,8 @@ docker compose ps
 
 ### Troubleshooting
 
-- **Port conflicts**: Ensure ports 80, 443 are available (stop any existing nginx/apache)
-- **SSL issues**: Check `data/certbot/conf/live/` for certificates
-- **Database connection**: Verify `HACKVERIFY_DATABASE_URL` in `.env`
-- **Deploy health check fails**: `docker compose logs backend` on the droplet
+- **Port 80/443 already in use**: See step 2 above — stop existing service, change ports, or use existing nginx as reverse proxy
+- **Port 5433 already in use**: Change the host port in docker-compose (`"127.0.0.1:5433:5432"` → `"127.0.0.1:5434:5432"`)
+- **SSL certificate errors**: Check `data/certbot/conf/live/` exists; regenerate with `./scripts/init-ssl.sh`
+- **Database connection refused**: Wait 10s for PostgreSQL to finish initializing, verify `POSTGRES_PASSWORD` matches
+- **Backend can't connect to DB**: The `HACKVERIFY_DATABASE_URL` in docker-compose uses host `db` (the compose service name) — don't change it
