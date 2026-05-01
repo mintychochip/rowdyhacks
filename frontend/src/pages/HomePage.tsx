@@ -215,7 +215,7 @@ export default function HomePage() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: INPUT_BG, borderRadius: RADIUS.md, marginBottom: SPACE.sm }}>
                   <div>
                     <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>Network</div>
-                    <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "'Space Mono', monospace" }}>{hackathon.wifi_ssid}</div>
+                    <div style={{ fontSize: 16, fontWeight: 600 }}>{hackathon.wifi_ssid}</div>
                   </div>
                   <button onClick={() => copyToClipboard(hackathon.wifi_ssid!, 'ssid')}
                     style={{ background: 'none', border: `1px solid ${INPUT_BORDER}`, borderRadius: RADIUS.sm, color: copiedField === 'ssid' ? SUCCESS : TEXT_MUTED, cursor: 'pointer', padding: '4px 10px', fontSize: 12 }}>
@@ -226,7 +226,7 @@ export default function HomePage() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: INPUT_BG, borderRadius: RADIUS.md }}>
                     <div>
                       <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>Password</div>
-                      <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "'Space Mono', monospace" }}>{hackathon.wifi_password}</div>
+                      <div style={{ fontSize: 16, fontWeight: 600 }}>{hackathon.wifi_password}</div>
                     </div>
                     <button onClick={() => copyToClipboard(hackathon.wifi_password!, 'password')}
                       style={{ background: 'none', border: `1px solid ${INPUT_BORDER}`, borderRadius: RADIUS.sm, color: copiedField === 'password' ? SUCCESS : TEXT_MUTED, cursor: 'pointer', padding: '4px 10px', fontSize: 12 }}>

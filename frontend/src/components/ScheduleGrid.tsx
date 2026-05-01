@@ -133,7 +133,7 @@ export default function ScheduleGrid({ events }: Props) {
           {hours.map((h, i) => (
             <div key={i} style={{
               position: 'absolute', top: timeToY(h, dayStart),
-              fontSize: 10, color: TEXT_MUTED, fontFamily: "'Space Mono', monospace",
+              fontSize: 10, color: TEXT_MUTED,
               transform: 'translateY(-50%)',
             }}>
               {h.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}

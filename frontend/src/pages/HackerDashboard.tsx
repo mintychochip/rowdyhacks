@@ -253,7 +253,7 @@ export default function HackerDashboard() {
                 }}>
                   <div>
                     <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>Network</div>
-                    <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "'Space Mono', monospace" }}>{hackathon.wifi_ssid}</div>
+                    <div style={{ fontSize: 16, fontWeight: 600 }}>{hackathon.wifi_ssid}</div>
                   </div>
                   <button
                     onClick={() => copyToClipboard(hackathon.wifi_ssid!, 'ssid')}
@@ -273,7 +273,7 @@ export default function HackerDashboard() {
                   }}>
                     <div>
                       <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>Password</div>
-                      <div style={{ fontSize: 16, fontWeight: 600, fontFamily: "'Space Mono', monospace" }}>{hackathon.wifi_password}</div>
+                      <div style={{ fontSize: 16, fontWeight: 600 }}>{hackathon.wifi_password}</div>
                     </div>
                     <button
                       onClick={() => copyToClipboard(hackathon.wifi_password!, 'password')}
