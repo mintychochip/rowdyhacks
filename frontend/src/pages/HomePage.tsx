@@ -45,7 +45,6 @@ export default function HomePage() {
 
   const [hackathon, setHackathon] = useState<HackathonData | null>(null);
   const [registration, setRegistration] = useState<RegData | null>(null);
-  const [googleUrl, setGoogleUrl] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -91,10 +90,6 @@ export default function HomePage() {
           const dash = await api.getHackerDashboard(latest.id);
           setHackathon(dash.hackathon);
           setRegistration(dash.registration);
-          try {
-            const gRes = await api.getGoogleWalletLink(dash.registration.id);
-            setGoogleUrl(gRes.save_url);
-          } catch {}
         } else {
           // Just load hackathon info + registration
           const hk = await api.getHackathon(latest.id);
@@ -200,7 +195,7 @@ export default function HomePage() {
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: SPACE.md }}>
                 <QRCodeDisplay token={scanUrl} size={isMobile ? 200 : 240} />
               </div>
-              <WalletButtons registrationId={registration.id} googleSaveUrl={googleUrl} />
+              <WalletButtons />
               {registration.checked_in_at && (
                 <div style={{ marginTop: SPACE.md, display: 'inline-block', padding: '4px 14px', borderRadius: RADIUS.full, background: SUCCESS_BG10, color: SUCCESS, fontSize: 13, fontWeight: 600 }}>
                   Checked in {new Date(registration.checked_in_at).toLocaleString()}

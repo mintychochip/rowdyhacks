@@ -71,12 +71,6 @@ PROVIDER_CONFIGS = {
         "client_id": lambda: settings.discord_client_id,
         "client_secret": lambda: settings.discord_client_secret,
     },
-    "apple": {
-        "authorize_url": "https://appleid.apple.com/auth/authorize",
-        "token_url": "https://appleid.apple.com/auth/token",
-        "scopes": "name email",
-        "client_id": lambda: settings.apple_client_id,
-    },
 }
 
 VALID_PROVIDERS = list(PROVIDER_CONFIGS.keys())
@@ -94,32 +88,7 @@ def build_authorize_url(provider: str, redirect_uri: str, state: str) -> str:
         "scope": config["scopes"],
         "response_type": "code",
     }
-    if provider == "apple":
-        params["response_mode"] = "query"
     return f"{config['authorize_url']}?{urlencode(params)}"
-
-
-def _build_apple_client_secret() -> str:
-    """Build a JWT client_secret for Apple's token endpoint."""
-    from pathlib import Path
-    from datetime import datetime, timedelta, timezone
-    from jose import jwt as jose_jwt
-
-    key_path = Path(settings.apple_private_key_path)
-    if not key_path.exists():
-        raise RuntimeError(f"Apple private key not found at {settings.apple_private_key_path}")
-
-    private_key = key_path.read_text()
-    now = datetime.now(timezone.utc)
-    payload = {
-        "iss": settings.apple_team_id,
-        "iat": now,
-        "exp": now + timedelta(minutes=5),
-        "aud": "https://appleid.apple.com",
-        "sub": settings.apple_client_id,
-    }
-    headers = {"alg": "ES256", "kid": settings.apple_key_id}
-    return jose_jwt.encode(payload, private_key, algorithm="ES256", headers=headers)
 
 
 async def exchange_code(provider: str, code: str, redirect_uri: str) -> dict[str, Any]:
@@ -127,15 +96,12 @@ async def exchange_code(provider: str, code: str, redirect_uri: str) -> dict[str
     config = PROVIDER_CONFIGS[provider]
     token_data: dict[str, str] = {
         "client_id": config["client_id"](),
+        "client_secret": config["client_secret"](),
         "code": code,
         "redirect_uri": redirect_uri,
         "grant_type": "authorization_code",
     }
     headers = {"Accept": "application/json"}
-    if provider == "apple":
-        token_data["client_secret"] = _build_apple_client_secret()
-    else:
-        token_data["client_secret"] = config["client_secret"]()
 
     async with httpx.AsyncClient(timeout=15.0) as client:
         resp = await client.post(config["token_url"], data=token_data, headers=headers)
@@ -144,33 +110,9 @@ async def exchange_code(provider: str, code: str, redirect_uri: str) -> dict[str
         return resp.json()
 
 
-async def fetch_user_info(provider: str, token_response: dict[str, Any], apple_name: str | None = None) -> dict[str, Any]:
-    """Fetch user info from the provider using the access token.
-    apple_name: for Apple only — the user's name from the authorization response query param
-                (Apple only sends the name on first auth, and only in the callback, not token exchange)
-    """
+async def fetch_user_info(provider: str, token_response: dict[str, Any]) -> dict[str, Any]:
+    """Fetch user info from the provider using the access token."""
     config = PROVIDER_CONFIGS[provider]
-
-    if provider == "apple":
-        from jose import jwt as jose_jwt
-        id_token = token_response.get("id_token")
-        if not id_token:
-            raise ValueError("Apple did not return an id_token")
-        decoded = jose_jwt.decode(id_token, options={"verify_signature": False})
-        email = decoded.get("email", "")
-        # Apple sends the user's name as a JSON string in the `user` query param on first auth only
-        name = ""
-        if apple_name:
-            import json
-            try:
-                name_obj = json.loads(apple_name)
-                first = name_obj.get("name", {}).get("firstName", "")
-                last = name_obj.get("name", {}).get("lastName", "")
-                name = f"{first} {last}".strip()
-            except (json.JSONDecodeError, TypeError):
-                pass
-        return {"provider_user_id": decoded.get("sub", ""), "email": email, "name": name}
-
     headers = {"Authorization": f"Bearer {token_response['access_token']}"}
     async with httpx.AsyncClient(timeout=15.0) as client:
         if provider == "github":

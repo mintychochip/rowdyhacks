@@ -141,8 +141,6 @@ export const rejectRegistration = (hackathonId: string, registrationId: string) 
 export const checkinRegistration = (hackathonId: string, registrationId: string) =>
   request(`/hackathons/${hackathonId}/registrations/${registrationId}/checkin`, { method: 'POST' });
 
-export const getApplePassUrl = (registrationId: string) => `${BASE}/registrations/${registrationId}/wallet/apple`;
-export const getGoogleWalletLink = (registrationId: string) => request(`/registrations/${registrationId}/wallet/google`);
 
 // Bulk Operations
 export const bulkAcceptRegistrations = (hackathonId: string, registrationIds: string[]) =>

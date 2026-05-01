@@ -69,7 +69,6 @@ export default function HackerDashboard() {
 
   const [hackathon, setHackathon] = useState<HackathonData | null>(null);
   const [registration, setRegistration] = useState<RegistrationData | null>(null);
-  const [googleUrl, setGoogleUrl] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -93,12 +92,6 @@ export default function HackerDashboard() {
       setHackathon(data.hackathon);
       setRegistration(data.registration);
 
-      if (data.registration.status === 'accepted' || data.registration.status === 'checked_in') {
-        try {
-          const gRes = await api.getGoogleWalletLink(data.registration.id);
-          setGoogleUrl(gRes.save_url);
-        } catch {}
-      }
     } catch (e: any) {
       setError(e.message || 'Failed to load dashboard');
     }
@@ -225,7 +218,7 @@ export default function HackerDashboard() {
                 {registration.qr_token}
               </div>
             )}
-            <WalletButtons registrationId={registration.id} googleSaveUrl={googleUrl} />
+            <WalletButtons />
             {registration.status === 'checked_in' && (
               <div style={{
                 marginTop: SPACE.md, display: 'inline-block', padding: '4px 14px',

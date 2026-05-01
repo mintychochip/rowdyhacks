@@ -143,44 +143,6 @@ async def accept_registration(
     reg.status = RegistrationStatus.accepted
     reg.accepted_at = datetime.now(timezone.utc)
 
-    # Generate wallet passes (best-effort)
-    try:
-        from app.wallet.apple import generate_apple_pass
-        from app.config import settings
-
-        qr_url = f"{settings.base_url}/api/checkin/scan?token={qr_token}"
-        user_result = await db.execute(select(User).where(User.id == reg.user_id))
-        participant = user_result.scalar_one()
-
-        apple_pass = generate_apple_pass(
-            registration_id=str(reg.id),
-            participant_name=participant.name,
-            team_name=reg.team_name,
-            hackathon_name=hackathon.name,
-            start_date=hackathon.start_date.strftime("%Y-%m-%d"),
-            end_date=hackathon.end_date.strftime("%Y-%m-%d"),
-            qr_url=qr_url,
-        )
-        if apple_pass:
-            reg.pass_serial_apple = str(reg.id)
-
-        from app.wallet.google import build_google_wallet_pass_object, get_google_wallet_save_url
-        google_pass = build_google_wallet_pass_object(
-            registration_id=str(reg.id),
-            participant_name=participant.name,
-            team_name=reg.team_name,
-            hackathon_name=hackathon.name,
-            start_date=hackathon.start_date.strftime("%Y-%m-%d"),
-            end_date=hackathon.end_date.strftime("%Y-%m-%d"),
-            qr_url=qr_url,
-        )
-        if google_pass:
-            save_url = get_google_wallet_save_url(google_pass)
-            if save_url:
-                reg.pass_id_google = f"{settings.google_wallet_issuer_id}.{reg.id}"
-    except Exception:
-        pass  # Wallet pass generation is best-effort, don't fail acceptance
-
     await db.commit()
 
     return {"id": str(reg.id), "status": reg.status.value, "qr_token": qr_token, "accepted_at": reg.accepted_at.isoformat()}

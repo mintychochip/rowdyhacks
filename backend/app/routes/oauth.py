@@ -55,7 +55,6 @@ async def oauth_callback(
     code: str | None = Query(None),
     state: str = Query(...),
     error: str | None = Query(None),
-    user: str | None = Query(None),  # Apple: user's name (JSON) on first auth only
     db: AsyncSession = Depends(get_db),
 ):
     """Handle OAuth callback: exchange code, fetch user info, login or create account."""
@@ -82,7 +81,7 @@ async def oauth_callback(
         return _frontend_redirect(error="provider_error")
 
     try:
-        info = await fetch_user_info(provider, token_response, apple_name=user)
+        info = await fetch_user_info(provider, token_response)
     except ValueError:
         return _frontend_redirect(error="provider_error")
 

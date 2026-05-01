@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { getRegistration, getGoogleWalletLink } from '../services/api';
+import { getRegistration } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import QRCodeDisplay from '../components/QRCodeDisplay';
 import WalletButtons from '../components/WalletButtons';
@@ -27,7 +27,6 @@ export default function RegistrationDetailPage() {
   const { user } = useAuth();
   const { isMobile } = useMediaQuery();
   const [reg, setReg] = useState<Registration | null>(null);
-  const [googleUrl, setGoogleUrl] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -36,12 +35,6 @@ export default function RegistrationDetailPage() {
     getRegistration(id)
       .then(async (data) => {
         setReg(data);
-        if (data.status === 'accepted') {
-          try {
-            const gRes = await getGoogleWalletLink(id);
-            setGoogleUrl(gRes.save_url);
-          } catch {}
-        }
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -165,7 +158,7 @@ export default function RegistrationDetailPage() {
               Token: {reg.qr_token}
             </div>
 
-            <WalletButtons registrationId={reg.id} googleSaveUrl={googleUrl} />
+            <WalletButtons />
           </>
         )}
       </div>
