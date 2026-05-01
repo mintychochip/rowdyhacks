@@ -45,36 +45,38 @@ export default function HackathonSetup() {
     <div>
       <h2 data-mobile-h1 style={{ fontSize: 24, marginBottom: 20 }}>Hackathons</h2>
 
-      <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
-        <h3 style={{ fontSize: 16, marginBottom: 16 }}>Create New Hackathon</h3>
-        <form onSubmit={handleCreate} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>Name</label>
-            <input value={name} onChange={e => setName(e.target.value)} required
-              style={{ padding: '8px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14 }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>Start Date</label>
-            <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} required
-              style={{ padding: '8px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14 }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>End Date</label>
-            <input type="datetime-local" value={endDate} onChange={e => setEndDate(e.target.value)} required
-              style={{ padding: '8px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14 }} />
-          </div>
-          <div style={{ width: '100%' }}>
-            <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>Description (optional)</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
-              placeholder="Describe the hackathon..."
-              style={{ padding: '8px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14, width: '100%', resize: 'vertical', minWidth: 200 }} />
-          </div>
-          <button type="submit"
-            style={{ padding: '8px 20px', background: PRIMARY, border: 'none', borderRadius: 6, color: TEXT_WHITE, fontSize: 14, cursor: 'pointer', height: 38 }}>
-            Create
-          </button>
-        </form>
-      </div>
+      {hackathons.length === 0 && (
+        <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
+          <h3 style={{ fontSize: 16, marginBottom: 16 }}>Create New Hackathon</h3>
+          <form onSubmit={handleCreate} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>Name</label>
+              <input value={name} onChange={e => setName(e.target.value)} required
+                style={{ padding: '8px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14 }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>Start Date</label>
+              <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} required
+                style={{ padding: '8px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14 }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>End Date</label>
+              <input type="datetime-local" value={endDate} onChange={e => setEndDate(e.target.value)} required
+                style={{ padding: '8px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14 }} />
+            </div>
+            <div style={{ width: '100%' }}>
+              <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>Description (optional)</label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
+                placeholder="Describe the hackathon..."
+                style={{ padding: '8px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14, width: '100%', resize: 'vertical', minWidth: 200 }} />
+            </div>
+            <button type="submit"
+              style={{ padding: '8px 20px', background: PRIMARY, border: 'none', borderRadius: 6, color: TEXT_WHITE, fontSize: 14, cursor: 'pointer', height: 38 }}>
+              Create
+            </button>
+          </form>
+        </div>
+      )}
 
       {stats && (
         <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
