@@ -14,14 +14,14 @@ jobs:
 
     steps:
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v0.1.15
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
             set -e
-            cd /opt/rowdyhacks
+            cd /home/jlo/rowdyhacks
 
             echo "==> Pulling latest code..."
             git pull
