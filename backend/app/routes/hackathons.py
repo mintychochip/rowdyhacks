@@ -72,7 +72,12 @@ async def create_hackathon(
     user = await _get_current_user(db, authorization)
     if user.role != UserRole.organizer:
         raise HTTPException(status_code=403, detail="Only organizers can create hackathons")
-    
+
+    # Only one hackathon per portal
+    existing = await db.execute(select(Hackathon).limit(1))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="A hackathon already exists. Only one hackathon is supported.")
+
     hackathon = Hackathon(
         name=body.name,
         start_date=body.start_date,

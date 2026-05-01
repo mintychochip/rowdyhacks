@@ -36,6 +36,7 @@ class UserResponse(BaseModel):
 
 class SubmitRequest(BaseModel):
     url: str = Field(..., description="Devpost or GitHub URL to check")
+    hackathon_id: UUID | None = Field(default=None, description="Optional hackathon to associate submission with")
 
 
 class SubmissionResponse(BaseModel):

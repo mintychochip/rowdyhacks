@@ -3,8 +3,9 @@ import uuid
 import math
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy import select, update
+from app.auth import decode_token
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -19,6 +20,20 @@ from app.models import (
 from app.schemas import JudgingSessionCreate, SubmitScoreRequest
 
 router = APIRouter(prefix="/api", tags=["judging"])
+
+
+async def _require_organizer(authorization: str | None = Header(alias="Authorization"), db: AsyncSession = Depends(get_db)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required")
+    try:
+        payload = decode_token(authorization.removeprefix("Bearer "))
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    result = await db.execute(select(User).where(User.id == payload["sub"]))
+    user = result.scalar_one_or_none()
+    if not user or user.role != UserRole.organizer:
+        raise HTTPException(status_code=403, detail="Organizer role required")
+    return user
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -63,6 +78,7 @@ async def create_judging_session(
     hackathon_id: uuid.UUID,
     body: JudgingSessionCreate,
     db: AsyncSession = Depends(get_db),
+    _user: User = Depends(_require_organizer),
 ):
     """Create or replace a judging session with rubric criteria for a hackathon."""
     # Verify hackathon exists

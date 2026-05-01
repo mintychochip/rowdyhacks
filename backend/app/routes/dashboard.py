@@ -1,12 +1,27 @@
 """Organizer dashboard routes."""
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
-from app.models import Submission, Hackathon, CheckResultModel, SubmissionStatus, Verdict
+from app.models import Submission, Hackathon, CheckResultModel, SubmissionStatus, Verdict, User, UserRole
+from app.auth import decode_token
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+
+
+async def _get_organizer(db: AsyncSession, authorization: str | None = Header(alias="Authorization")):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401)
+    try:
+        payload = decode_token(authorization.removeprefix("Bearer "))
+    except ValueError:
+        raise HTTPException(status_code=401)
+    result = await db.execute(select(User).where(User.id == payload["sub"]))
+    user = result.scalar_one_or_none()
+    if not user or user.role != UserRole.organizer:
+        raise HTTPException(status_code=403, detail="Organizer role required")
+    return user
 
 
 @router.get("")
@@ -17,6 +32,7 @@ async def get_dashboard(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    _user: User = Depends(_get_organizer),
 ):
     """Get paginated submissions list. Organizer only (auth check in main.py)."""
     query = select(Submission)

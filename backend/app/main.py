@@ -14,15 +14,15 @@ from app.routes.registrations import router as registrations_router
 from app.routes.registrations_organizer import router as registrations_org_router
 from app.routes.checkin import router as checkin_router
 from app.routes.qr import router as qr_router
-from app.routes.crawler import router as crawler_router
+# from app.routes.crawler import router as crawler_router  # disabled — requires Playwright
 from app.routes.judging import router as judging_router
 from app.routes.oauth import router as oauth_router
 from app.routes.websocket import router as websocket_router
 from app.routes.monitoring import router as monitoring_router, track_request
 from app.routes.tracks import router as tracks_router
 from app.discord_bot import start_bot, bot as discord_bot
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from app.crawler.scheduler import run_crawl
+# from apscheduler.schedulers.asyncio import AsyncIOScheduler  # disabled — requires Playwright
+# from app.crawler.scheduler import run_crawl
 from app.config import settings
 from app.cache import close_redis
 from app.logging_config import configure_logging
@@ -52,20 +52,20 @@ async def lifespan(app: FastAPI):
         import traceback
         traceback.print_exc()
 
-    # Start the crawler scheduler
-    scheduler = AsyncIOScheduler()
-    cron_parts = settings.crawler_schedule.split()
-    scheduler.add_job(
-        run_crawl,
-        trigger="cron",
-        minute=cron_parts[0],
-        hour=cron_parts[1],
-        day=cron_parts[2],
-        month=cron_parts[3],
-        day_of_week=cron_parts[4],
-        id="devpost_crawl",
-    )
-    scheduler.start()
+    # Crawler scheduler disabled — requires Playwright chromium (not installed)
+    # scheduler = AsyncIOScheduler()
+    # cron_parts = settings.crawler_schedule.split()
+    # scheduler.add_job(
+    #     run_crawl,
+    #     trigger="cron",
+    #     minute=cron_parts[0],
+    #     hour=cron_parts[1],
+    #     day=cron_parts[2],
+    #     month=cron_parts[3],
+    #     day_of_week=cron_parts[4],
+    #     id="devpost_crawl",
+    # )
+    # scheduler.start()
 
     # Start Discord bot (if token configured, fails gracefully)
     await start_bot()
@@ -79,7 +79,7 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
-    scheduler.shutdown(wait=False)
+    # scheduler.shutdown(wait=False)
     
     # Close Redis connection
     await close_redis()
@@ -136,7 +136,7 @@ app.include_router(registrations_router)
 app.include_router(registrations_org_router)
 app.include_router(checkin_router)
 app.include_router(qr_router)
-app.include_router(crawler_router, prefix="/api/crawler", tags=["crawler"])
+# app.include_router(crawler_router, prefix="/api/crawler", tags=["crawler"])  # disabled
 app.include_router(judging_router)
 app.include_router(oauth_router, prefix="/api/auth/oauth", tags=["oauth"])
 app.include_router(websocket_router)

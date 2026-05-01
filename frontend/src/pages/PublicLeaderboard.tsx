@@ -13,8 +13,7 @@ interface Ranking {
   rank: number;
   submission_id: string;
   project_title: string;
-  score: number;
-  score_se: number;
+  elo: number;
   raw_avg: number;
   judges: number;
 }
@@ -75,8 +74,8 @@ export default function PublicLeaderboard() {
               <tr style={{ borderBottom: `1px solid ${BORDER}`, textAlign: 'left' }}>
                 <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500, width: 60 }}>Rank</th>
                 <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500 }}>Project</th>
-                <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500, textAlign: 'right' }}>Score</th>
-                <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500, textAlign: 'right' }}>&plusmn;SE</th>
+                <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500, textAlign: 'right' }}>ELO</th>
+                <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500, textAlign: 'right' }}>Raw Avg</th>
                 <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500, textAlign: 'right' }}>Judges</th>
               </tr>
             </thead>
@@ -102,12 +101,12 @@ export default function PublicLeaderboard() {
                     <td style={{
                       padding: '10px 16px', textAlign: 'right',
                       fontFamily: TYPO['mono-data'].fontFamily, fontWeight: 600,
-                      color: r.score > 5 ? SUCCESS : r.score < -5 ? ERROR : TEXT_PRIMARY,
+                      color: r.elo > 1550 ? SUCCESS : r.elo < 1450 ? ERROR : TEXT_PRIMARY,
                     }}>
-                      {r.score}
+                      {r.elo}
                     </td>
                     <td style={{ padding: '10px 16px', textAlign: 'right', color: TEXT_MUTED, fontFamily: TYPO['mono-data'].fontFamily }}>
-                      {r.score_se != null ? `\u00b1${r.score_se}` : '-'}
+                      {r.raw_avg}
                     </td>
                     <td style={{ padding: '10px 16px', textAlign: 'right', color: TEXT_MUTED }}>
                       {r.judges}

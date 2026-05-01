@@ -79,12 +79,14 @@ export default function Dashboard() {
             {total} submissions across {hackathons.length} hackathons
           </p>
         </div>
-        <Link to="/hackathons" style={{
-          padding: '8px 18px', background: PRIMARY, borderRadius: RADIUS.sm,
-          color: TEXT_WHITE, textDecoration: 'none', ...TYPO['body-sm'], fontWeight: 600,
-        }}>
-          + New Hackathon
-        </Link>
+        {hackathons.length === 0 && (
+          <Link to="/hackathons" style={{
+            padding: '8px 18px', background: PRIMARY, borderRadius: RADIUS.sm,
+            color: TEXT_WHITE, textDecoration: 'none', ...TYPO['body-sm'], fontWeight: 600,
+          }}>
+            + New Hackathon
+          </Link>
+        )}
       </div>
 
       {/* Stat Cards */}

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models import Submission, SubmissionStatus
+from app.models import Hackathon, Submission, SubmissionStatus
 from app.schemas import SubmitRequest
 from app.scraper import is_devpost_url, is_github_url
 from app.auth import create_anonymous_token
@@ -61,12 +61,21 @@ async def submit_for_check(
     if not is_devpost_url(body.url) and not is_github_url(body.url):
         raise HTTPException(status_code=400, detail="Invalid URL. Must be a Devpost or GitHub URL.")
 
-    # Create submission (always re-analyze)
+    # Auto-link to existing hackathon if none specified
+    if not body.hackathon_id:
+        existing = await db.execute(select(Hackathon).limit(1))
+        hk = existing.scalar_one_or_none()
+        hackathon_id = hk.id if hk else None
+    else:
+        hackathon_id = body.hackathon_id
+
+    # Create submission
     access_token = create_anonymous_token()
     sub = Submission(
         devpost_url=body.url,
         status=SubmissionStatus.pending,
         access_token=access_token,
+        hackathon_id=hackathon_id,
     )
     db.add(sub)
     await db.commit()
