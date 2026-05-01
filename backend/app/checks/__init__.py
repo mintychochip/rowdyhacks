@@ -1,7 +1,7 @@
 """HackVerify check registry."""
 from app.checks.interface import CheckFn, CheckContext, CheckResult, CheckCategory, ScrapedData, HackathonInfo
 from app.checks import (
-    timeline, submission_history, asset_integrity,
+    timeline, devpost_alignment_ai, submission_history, asset_integrity,
     ai_detection, cross_hackathon, repeat_offender, dead_deps,
     commit_quality, repo_age, code_similarity, template_detection,
     commit_forensics
@@ -13,6 +13,7 @@ CHECKS: list[CheckFn] = [
     commit_quality.check_commit_quality,
     repo_age.check_repo_age,
     commit_forensics.check_commit_forensics,
+    devpost_alignment_ai.check_alignment_ai,
     dead_deps.check_dead_deps,
     template_detection.check_template,
     submission_history.check_history,

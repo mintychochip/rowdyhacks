@@ -28,6 +28,18 @@ class Settings(BaseSettings):
         default="",
         description="GitHub personal access token (optional, increases API rate limit)",
     )
+    poolside_api_key: str = Field(
+        default="",
+        description="Poolside API key for AI-powered checks (free inference)",
+    )
+    poolside_api_url: str = Field(
+        default="https://inference.poolside.ai/v1",
+        description="Poolside inference endpoint",
+    )
+    poolside_model: str = Field(
+        default="poolside/laguna-xs.2",
+        description="Poolside model name",
+    )
 
     discord_bot_token: str = Field(default="", description="Discord bot token for application management")
     base_url: str = Field(default="http://localhost:8000", description="Public base URL for QR code links")
