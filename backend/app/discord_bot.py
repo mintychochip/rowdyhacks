@@ -71,17 +71,24 @@ class ApplicationView(discord.ui.View):
         detail.add_field(name="Name", value=reg.user.name, inline=True)
         detail.add_field(name="Email", value=reg.user.email, inline=True)
         detail.add_field(name="Phone", value=reg.phone or "—", inline=True)
+        detail.add_field(name="Age", value=str(reg.age) if reg.age else "—", inline=True)
+        detail.add_field(name="Pronouns", value=reg.pronouns or "—", inline=True)
+        detail.add_field(name="School", value=reg.school or "—", inline=True)
+        detail.add_field(name="Major", value=reg.major or "—", inline=True)
         detail.add_field(name="Status", value=f"`{reg.status.value}`", inline=True)
         detail.add_field(name="Experience", value=reg.experience_level or "—", inline=True)
+        skills = ", ".join(reg.skills) if reg.skills else "—"
+        detail.add_field(name="Skills", value=skills, inline=False)
+        detail.add_field(name="GitHub", value=reg.github_url or "—", inline=True)
+        detail.add_field(name="LinkedIn", value=reg.linkedin_url or "—", inline=True)
+        detail.add_field(name="Resume", value=reg.resume_url or "—", inline=True)
         detail.add_field(name="T-Shirt", value=reg.t_shirt_size or "—", inline=True)
+        detail.add_field(name="Dietary", value=reg.dietary_restrictions or "—", inline=True)
+        detail.add_field(name="Emergency Contact", value=f"{reg.emergency_contact_name or '—'}\n{reg.emergency_contact_phone or '—'}", inline=True)
         if reg.team_name:
             detail.add_field(name="Team", value=reg.team_name, inline=True)
         if reg.team_members:
             detail.add_field(name="Members", value=", ".join(reg.team_members), inline=True)
-        detail.add_field(name="Dietary", value=reg.dietary_restrictions or "—", inline=True)
-        detail.add_field(name="LinkedIn", value=reg.linkedin_url or "—", inline=False)
-        detail.add_field(name="GitHub", value=reg.github_url or "—", inline=False)
-        detail.add_field(name="Resume", value=reg.resume_url or "—", inline=False)
         detail.add_field(
             name="What They'll Build",
             value=reg.what_build or "—",
@@ -385,16 +392,43 @@ async def post_application_to_discord(registration_id: str) -> bool:
         timestamp=reg.registered_at,
     )
     embed.add_field(name="Status", value="`pending`", inline=False)
+
+    # Personal info
+    embed.add_field(name="Name", value=reg.user.name, inline=True)
     embed.add_field(name="Email", value=reg.user.email, inline=True)
+    embed.add_field(name="Phone", value=reg.phone or "—", inline=True)
+    embed.add_field(name="Age", value=str(reg.age) if reg.age else "—", inline=True)
+    embed.add_field(name="Pronouns", value=reg.pronouns or "—", inline=True)
+
+    # Academic
+    embed.add_field(name="School", value=reg.school or "—", inline=True)
+    embed.add_field(name="Major", value=reg.major or "—", inline=True)
+
+    # Skills & Links
     embed.add_field(name="Experience", value=reg.experience_level or "—", inline=True)
+    skills = ", ".join(reg.skills) if reg.skills else "—"
+    embed.add_field(name="Skills", value=skills[:200] + ("..." if len(skills) > 200 else ""), inline=True)
+    embed.add_field(name="GitHub", value=reg.github_url or "—", inline=True)
+    embed.add_field(name="LinkedIn", value=reg.linkedin_url or "—", inline=True)
+    embed.add_field(name="Resume", value=reg.resume_url or "—", inline=True)
+
+    # Logistics
+    embed.add_field(name="T-Shirt", value=reg.t_shirt_size or "—", inline=True)
+    embed.add_field(name="Dietary", value=reg.dietary_restrictions or "—", inline=True)
+    embed.add_field(name="Emergency Contact", value=f"{reg.emergency_contact_name or '—'}\n{reg.emergency_contact_phone or '—'}", inline=True)
+
+    # Team (if applicable)
     if reg.team_name:
         embed.add_field(name="Team", value=reg.team_name, inline=True)
     if reg.team_members:
         embed.add_field(name="Members", value=", ".join(reg.team_members), inline=True)
-    embed.add_field(name="T-Shirt", value=reg.t_shirt_size or "—", inline=True)
-    embed.add_field(name="Phone", value=reg.phone or "—", inline=True)
+
+    # Short answers
     what = reg.what_build or "—"
     embed.add_field(name="What They'll Build", value=what[:200] + ("..." if len(what) > 200 else ""), inline=False)
+    why = reg.why_participate or "—"
+    embed.add_field(name="Why Participate", value=why[:200] + ("..." if len(why) > 200 else ""), inline=False)
+
     embed.add_field(
         name="Actions",
         value="Click **Review** for full details, then **Accept** or **Reject**",
