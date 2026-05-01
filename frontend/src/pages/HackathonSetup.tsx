@@ -1,26 +1,53 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import * as api from '../services/api';
-import { PRIMARY, GOLD, SUCCESS, WARNING, ERROR, TEXT_PRIMARY, TEXT_MUTED, TEXT_WHITE, CARD_BG, INPUT_BG, INPUT_BORDER, BORDER, STATUS_ACCEPTED } from '../theme';
+import {
+  PRIMARY, PRIMARY_BG20, CYAN, CYAN_BG20, GOLD, GOLD_BG20,
+  SUCCESS, SUCCESS_BG20, WARNING, WARNING_BG20,
+  TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_WHITE,
+  CARD_BG, INPUT_BG, INPUT_BORDER, BORDER,
+  TYPO, SPACE, RADIUS,
+} from '../theme';
 
 export default function HackathonSetup() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [hackathons, setHackathons] = useState<any[]>([]);
+  const { isMobile } = useMediaQuery();
+  const [hackathon, setHackathon] = useState<any>(null);
+  const [stats, setStats] = useState<any>(null);
+  const [regCount, setRegCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // Create form state (only when no hackathon exists)
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
     if (!user) { navigate('/auth'); return; }
-    loadHackathons();
+    loadData();
   }, [user]);
 
-  const loadHackathons = () => {
-    api.getHackathons().then(setHackathons).catch(() => {});
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const hackathons = await api.getHackathons();
+      if (hackathons.length > 0) {
+        const h = hackathons[0];
+        setHackathon(h);
+        // Load stats and registrations in parallel
+        const [s, regs] = await Promise.all([
+          api.getHackathonStats(h.id).catch(() => null),
+          api.getRegistrations({ hackathon_id: h.id }).catch(() => ({ total: 0 })),
+        ]);
+        setStats(s);
+        setRegCount(regs.total ?? 0);
+      }
+    } catch {}
+    setLoading(false);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -28,128 +55,157 @@ export default function HackathonSetup() {
     try {
       await api.createHackathon({ name, start_date: startDate, end_date: endDate, description: description || undefined });
       setName(''); setDescription(''); setStartDate(''); setEndDate('');
-      loadHackathons();
+      loadData();
     } catch {}
   };
 
-  const handleViewStats = async (id: string) => {
-    try {
-      const data = await api.getHackathonStats(id);
-      setStats(data);
-    } catch {}
-  };
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: SPACE.xl }}>
+        <p style={{ color: TEXT_MUTED }}>Loading...</p>
+      </div>
+    );
+  }
 
-  const STATS_COLORS = { Clean: SUCCESS, Review: WARNING, Flagged: ERROR };
-
-  return (
-    <div>
-      <h2 data-mobile-h1 style={{ fontSize: 24, marginBottom: 20 }}>Hackathons</h2>
-
-      {hackathons.length === 0 && (
-        <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
-          <h3 style={{ fontSize: 16, marginBottom: 16 }}>Create New Hackathon</h3>
-          <form onSubmit={handleCreate} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+  // No hackathon yet — show create form
+  if (!hackathon) {
+    return (
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? SPACE.md : SPACE.xl }}>
+        <div style={{ textAlign: 'center', marginBottom: SPACE.xl }}>
+          <div style={{ fontSize: 48, marginBottom: SPACE.md }}>🚀</div>
+          <h2 style={{ ...TYPO.h1, marginBottom: SPACE.sm }}>Create Your Hackathon</h2>
+          <p style={{ color: TEXT_SECONDARY }}>Set up your hackathon event to get started.</p>
+        </div>
+        <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg, padding: SPACE.lg }}>
+          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>Name</label>
+              <label style={{ display: 'block', fontSize: 13, color: TEXT_MUTED, marginBottom: 4 }}>Name</label>
               <input value={name} onChange={e => setName(e.target.value)} required
-                style={{ padding: '8px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14 }} />
+                style={{ width: '100%', padding: '10px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 8, color: TEXT_PRIMARY, fontSize: 14, boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: SPACE.md }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, color: TEXT_MUTED, marginBottom: 4 }}>Start Date</label>
+                <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} required
+                  style={{ width: '100%', padding: '10px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 8, color: TEXT_PRIMARY, fontSize: 14, boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 13, color: TEXT_MUTED, marginBottom: 4 }}>End Date</label>
+                <input type="datetime-local" value={endDate} onChange={e => setEndDate(e.target.value)} required
+                  style={{ width: '100%', padding: '10px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 8, color: TEXT_PRIMARY, fontSize: 14, boxSizing: 'border-box' }} />
+              </div>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>Start Date</label>
-              <input type="datetime-local" value={startDate} onChange={e => setStartDate(e.target.value)} required
-                style={{ padding: '8px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14 }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>End Date</label>
-              <input type="datetime-local" value={endDate} onChange={e => setEndDate(e.target.value)} required
-                style={{ padding: '8px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14 }} />
-            </div>
-            <div style={{ width: '100%' }}>
-              <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>Description (optional)</label>
-              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
-                placeholder="Describe the hackathon..."
-                style={{ padding: '8px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14, width: '100%', resize: 'vertical', minWidth: 200 }} />
+              <label style={{ display: 'block', fontSize: 13, color: TEXT_MUTED, marginBottom: 4 }}>Description</label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
+                style={{ width: '100%', padding: '10px 12px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 8, color: TEXT_PRIMARY, fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
             </div>
             <button type="submit"
-              style={{ padding: '8px 20px', background: PRIMARY, border: 'none', borderRadius: 6, color: TEXT_WHITE, fontSize: 14, cursor: 'pointer', height: 38 }}>
-              Create
+              style={{ padding: '12px 24px', background: PRIMARY, border: 'none', borderRadius: 8, color: TEXT_WHITE, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
+              Create Hackathon
             </button>
           </form>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {stats && (
-        <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
-          <h3 style={{ fontSize: 16, marginBottom: 12 }}>Statistics</h3>
-          <div style={{ display: 'flex', gap: 24 }}>
-            <div><span style={{ color: TEXT_MUTED }}>Total: </span><strong>{stats.total_submissions}</strong></div>
-            <div><span style={{ color: TEXT_MUTED }}>Completed: </span><strong>{stats.completed}</strong></div>
-            <div><span style={{ color: TEXT_MUTED }}>Avg Risk: </span><strong>{stats.avg_risk_score}</strong></div>
-            {Object.entries(STATS_COLORS).map(([label, color]) => (
-              <div key={label}><span style={{ color }}>{label}: {stats.by_verdict?.[label.toLowerCase()] ?? 0}</span></div>
-            ))}
+  // Hackathon overview
+  const start = new Date(hackathon.start_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const end = new Date(hackathon.end_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  const actionCards = user?.role === 'organizer' ? [
+    { label: 'Registrations', desc: 'Review, accept, and manage hacker applications', icon: 'group', color: SUCCESS, bg: SUCCESS_BG20, to: `/hackathons/${hackathon.id}/registrations` },
+    { label: 'Judging Setup', desc: 'Create rubric, assign judges, configure scoring', icon: 'gavel', color: GOLD, bg: GOLD_BG20, to: `/hackathons/${hackathon.id}/judging/setup` },
+    { label: 'Leaderboard', desc: 'View ELO rankings and results', icon: 'leaderboard', color: CYAN, bg: CYAN_BG20, to: `/hackathons/${hackathon.id}/leaderboard` },
+    { label: 'Projects', desc: 'Browse submitted projects and risk scores', icon: 'inventory_2', color: '#ec4899', bg: '#ec489920', to: `/hackathons/${hackathon.id}/projects` },
+    { label: 'Tracks', desc: 'Challenge tracks, criteria, and prizes', icon: 'route', color: '#f97316', bg: '#f9731620', to: `/hackathons/${hackathon.id}/tracks` },
+    { label: 'Settings', desc: 'WiFi, Discord, schedule, and event config', icon: 'settings', color: '#a78bfa', bg: '#a78bfa20', to: `/hackathons/${hackathon.id}/settings` },
+  ] : [
+    { label: 'Register', desc: 'Sign up for this hackathon', icon: 'how_to_reg', color: SUCCESS, bg: SUCCESS_BG20, to: `/hackathons/${hackathon.id}/register` },
+    { label: 'Tracks', desc: 'Explore challenge tracks and prizes', icon: 'route', color: '#f97316', bg: '#f9731620', to: `/hackathons/${hackathon.id}/tracks` },
+    { label: 'Leaderboard', desc: 'See who\'s winning', icon: 'leaderboard', color: CYAN, bg: CYAN_BG20, to: `/hackathons/${hackathon.id}/leaderboard` },
+  ];
+
+  return (
+    <div style={{ maxWidth: 960, margin: '0 auto', padding: isMobile ? SPACE.md : SPACE.xl }}>
+      {/* Hero */}
+      <div style={{
+        background: `linear-gradient(135deg, ${PRIMARY_BG20} 0%, ${CYAN_BG20} 100%)`,
+        border: `1px solid ${BORDER}`,
+        borderRadius: RADIUS.lg,
+        padding: isMobile ? SPACE.lg : SPACE.xl,
+        marginBottom: SPACE.xl,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.md, marginBottom: SPACE.md }}>
+          <div style={{ fontSize: 40 }}>🛸</div>
+          <div>
+            <h1 style={{ ...TYPO.h1, margin: 0, fontSize: isMobile ? 24 : 32 }}>{hackathon.name}</h1>
+            <p style={{ color: TEXT_SECONDARY, marginTop: 4 }}>{start} – {end}</p>
           </div>
-          <button onClick={() => setStats(null)} style={{ marginTop: 12, background: 'none', border: 'none', color: TEXT_MUTED, cursor: 'pointer', fontSize: 13 }}>Dismiss</button>
         </div>
-      )}
+        {hackathon.description && (
+          <p style={{ color: TEXT_MUTED, lineHeight: 1.6 }}>{hackathon.description}</p>
+        )}
+      </div>
 
-      <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-          <thead>
-            <tr style={{ borderBottom: `1px solid ${BORDER}`, textAlign: 'left' }}>
-              <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500 }}>Name</th>
-              <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500 }}>Start</th>
-              <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500 }}>End</th>
-              <th style={{ padding: '10px 16px', color: TEXT_MUTED, fontWeight: 500 }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {hackathons.map(h => (
-              <tr key={h.id} style={{ borderBottom: '1px solid #080c1a' }}>
-                <td style={{ padding: '10px 16px' }}>
-                  <Link to={`/hackathons/${h.id}`} style={{ color: PRIMARY, textDecoration: 'none', fontWeight: 600 }}>
-                    {h.name}
-                  </Link>
-                </td>
-                <td style={{ padding: '10px 16px', color: TEXT_MUTED }}>{new Date(h.start_date).toLocaleDateString()}</td>
-                <td style={{ padding: '10px 16px', color: TEXT_MUTED }}>{new Date(h.end_date).toLocaleDateString()}</td>
-                <td style={{ padding: '10px 16px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <Link to={`/hackathons/${h.id}/register`}
-                    style={{ background: PRIMARY, border: 'none', borderRadius: 6, padding: '4px 12px', color: TEXT_WHITE, textDecoration: 'none', cursor: 'pointer', fontSize: 12 }}>
-                    Register
-                  </Link>
-                  {user?.role === 'organizer' && (
-                    <Link to={`/hackathons/${h.id}/registrations`}
-                      style={{ background: `${STATUS_ACCEPTED}20`, border: `1px solid ${STATUS_ACCEPTED}`, borderRadius: 6, padding: '4px 12px', color: STATUS_ACCEPTED, textDecoration: 'none', cursor: 'pointer', fontSize: 12 }}>
-                      Manage
-                    </Link>
-                  )}
-                  {user?.role === 'organizer' && (
-                    <Link to={`/hackathons/${h.id}/judging/setup`}
-                      style={{ background: `${GOLD}20`, border: `1px solid ${GOLD}`, borderRadius: 6, padding: '4px 12px', color: GOLD, textDecoration: 'none', cursor: 'pointer', fontSize: 12 }}>
-                      Judging
-                    </Link>
-                  )}
-                  {(user?.role === 'judge' || user?.role === 'organizer') && (
-                    <Link to={`/hackathons/${h.id}/judging`}
-                      style={{ background: `${PRIMARY}20`, border: `1px solid ${PRIMARY}`, borderRadius: 6, padding: '4px 12px', color: PRIMARY, textDecoration: 'none', cursor: 'pointer', fontSize: 12 }}>
-                      {user?.role === 'organizer' ? 'Score' : 'Judge'}
-                    </Link>
-                  )}
-                  <button onClick={() => handleViewStats(h.id)}
-                    style={{ background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, padding: '4px 12px', color: TEXT_MUTED, cursor: 'pointer', fontSize: 12 }}>
-                    Stats
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {hackathons.length === 0 && (
-              <tr><td colSpan={4} style={{ textAlign: 'center', padding: 24, color: TEXT_MUTED }}>No hackathons created yet.</td></tr>
-            )}
-          </tbody>
-        </table>
-        </div>
+      {/* Stat Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+        gap: SPACE.md,
+        marginBottom: SPACE.xl,
+      }}>
+        {[
+          { label: 'Registrations', value: regCount, color: CYAN },
+          { label: 'Submissions', value: stats?.total_submissions ?? 0, color: PRIMARY },
+          { label: 'Checked In', value: stats?.by_verdict ? (stats.by_verdict.clean ?? 0) + (stats.by_verdict.review ?? 0) + (stats.by_verdict.flagged ?? 0) : 0, color: SUCCESS },
+          { label: 'Avg Risk Score', value: stats?.avg_risk_score ? Math.round(stats.avg_risk_score) : '–', color: WARNING },
+        ].map(s => (
+          <div key={s.label} style={{
+            background: CARD_BG, border: `1px solid ${BORDER}`,
+            borderRadius: RADIUS.md, padding: SPACE.md, textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
+            <div style={{ fontSize: 12, color: TEXT_MUTED, marginTop: 4 }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Action Cards */}
+      <h3 style={{ ...TYPO.h3, marginBottom: SPACE.md }}>
+        {user?.role === 'organizer' ? 'Organizer Tools' : 'Quick Actions'}
+      </h3>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+        gap: SPACE.md,
+      }}>
+        {actionCards.map(card => (
+          <Link
+            key={card.label}
+            to={card.to}
+            style={{
+              background: CARD_BG,
+              border: `1px solid ${BORDER}`,
+              borderRadius: RADIUS.md,
+              padding: SPACE.md,
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: SPACE.sm,
+              transition: 'border-color 0.2s, transform 0.2s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = card.color; (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = BORDER; (e.currentTarget as HTMLElement).style.transform = ''; }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 24, color: card.color }}>{card.icon}</span>
+            <div>
+              <div style={{ fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 2 }}>{card.label}</div>
+              <div style={{ fontSize: 12, color: TEXT_MUTED }}>{card.desc}</div>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );
