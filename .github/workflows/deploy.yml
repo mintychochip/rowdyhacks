@@ -34,7 +34,7 @@ jobs:
             docker image prune -f
 
             echo "==> Health check..."
-            sleep 3
+            sleep 15
             curl -sf -o /dev/null http://localhost:8000/health && echo "  OK" || echo "  FAILED"
 
             echo "==> Deploy complete"
