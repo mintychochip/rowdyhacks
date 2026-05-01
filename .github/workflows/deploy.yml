@@ -1,0 +1,39 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v0.1.15
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/rowdyhacks
+
+            echo "==> Pulling latest code..."
+            git pull
+
+            echo "==> Rebuilding and restarting containers..."
+            docker compose -f docker-compose.yml up -d --build
+
+            echo "==> Pruning old images..."
+            docker image prune -f
+
+            echo "==> Health check..."
+            sleep 3
+            curl -sf -o /dev/null http://localhost:8000/health && echo "  OK" || echo "  FAILED"
+
+            echo "==> Deploy complete"

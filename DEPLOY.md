@@ -1,60 +1,82 @@
-# HackVerify Deployment Guide
+# RowdyHacks Deployment Guide
 
-## Single VPS Deployment (Docker Compose)
+## Digital Ocean Droplet Setup
 
-### Requirements
+### One-Time Setup
 
-- Ubuntu 22.04 LTS (or similar)
-- 2GB RAM minimum, 4GB recommended
-- Docker & Docker Compose installed
-- Domain name (optional, for SSL)
-
-### Quick Start
+Start with a fresh Ubuntu droplet (22.04 LTS, 2GB RAM minimum).
 
 ```bash
-# 1. Clone and enter directory
-cd /opt
-sudo git clone https://github.com/mintychochip/rowdyhacks.git
-sudo cd rowdyhacks
+# SSH into the droplet
+ssh root@your-droplet-ip
 
-# 2. Set environment variables
-sudo cp .env.example .env
-sudo nano .env  # Edit with your settings
+# Install Docker
+curl -fsSL https://get.docker.com | sh
+usermod -aG docker $USER
+# Log out and back in for group to take effect
 
-# 3. Initialize SSL (self-signed or Let's Encrypt)
-# For local testing:
-sudo ./scripts/init-ssl.sh
+# Clone the repo
+mkdir -p /opt
+git clone https://github.com/mintychochip/rowdyhacks.git /opt/rowdyhacks
+cd /opt/rowdyhacks
 
-# For production (replace with your domain):
-sudo ./scripts/init-ssl.sh hackverify.example.com admin@example.com
+# Configure environment
+cp .env.example .env
+nano .env  # Fill in SECRET_KEY, POSTGRES_PASSWORD, BASE_URL, etc.
 
-# 4. Start services
-sudo docker-compose up -d
+# Set up SSL
+./scripts/init-ssl.sh your-domain.com admin@your-domain.com
+# Or for IP-only / testing:
+./scripts/init-ssl.sh
 
-# 5. Check status
-sudo docker-compose ps
-sudo docker-compose logs -f backend
+# First start
+docker compose up -d
+
+# Auto-start on boot
+cp hackverify.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable hackverify
 ```
 
-### Systemd Service (Auto-start on boot)
+### Deploying Updates
+
+**Option A — Deploy script (from your local machine):**
+
+Edit `scripts/deploy.sh` and change `SSH_HOST` to your droplet's address, then:
 
 ```bash
-# Copy service file
-sudo cp hackverify.service /etc/systemd/system/
-sudo systemctl daemon-reload
-
-# Enable and start
-sudo systemctl enable hackverify
-sudo systemctl start hackverify
-
-# Check status
-sudo systemctl status hackverify
+./scripts/deploy.sh
 ```
+
+Or pass the host directly:
+
+```bash
+./scripts/deploy.sh root@your-droplet-ip
+```
+
+**Option B — GitHub Actions (auto-deploy on push to master):**
+
+Set these secrets in your GitHub repo (Settings > Secrets and variables > Actions):
+
+| Secret | Description |
+|---|---|
+| `DROPLET_HOST` | Your droplet's IP or hostname |
+| `DROPLET_USER` | SSH user (e.g. `root`) |
+| `DROPLET_SSH_KEY` | Private SSH key (generate with `ssh-keygen -t ed25519`) |
+
+Then add the corresponding public key to the droplet:
+
+```bash
+# On the droplet (as the deploy user):
+echo "ssh-ed25519 AAAAC3...your-public-key" >> ~/.ssh/authorized_keys
+```
+
+After that, every push to `master` deploys automatically.
 
 ### Environment Variables
 
 | Variable | Description | Required |
-|----------|-------------|----------|
+|---|---|---|
 | `SECRET_KEY` | JWT signing key (32+ chars) | Yes |
 | `POSTGRES_PASSWORD` | Database password | Yes |
 | `LLM_API_KEY` | Anthropic/Poolside API key | Optional |
@@ -66,21 +88,27 @@ sudo systemctl status hackverify
 
 ```bash
 # View logs
-sudo docker-compose logs -f
+docker compose logs -f
 
-# Update
-sudo docker-compose pull
-sudo docker-compose up -d
+# View specific service
+docker compose logs -f backend
+
+# Restart a service
+docker compose restart backend
 
 # Backup database
-sudo docker-compose exec db pg_dump -U hackverify hackverify > backup.sql
+docker compose exec db pg_dump -U hackverify hackverify > backup.sql
 
 # Restore database
-sudo docker-compose exec -T db psql -U hackverify hackverify < backup.sql
+docker compose exec -T db psql -U hackverify hackverify < backup.sql
+
+# Check status
+docker compose ps
 ```
 
 ### Troubleshooting
 
-- **Port conflicts**: Ensure ports 80, 443, 5432, 6379 are available
+- **Port conflicts**: Ensure ports 80, 443 are available (stop any existing nginx/apache)
 - **SSL issues**: Check `data/certbot/conf/live/` for certificates
-- **Database connection**: Verify `HACKVERIFY_DATABASE_URL` in .env
+- **Database connection**: Verify `HACKVERIFY_DATABASE_URL` in `.env`
+- **Deploy health check fails**: `docker compose logs backend` on the droplet
