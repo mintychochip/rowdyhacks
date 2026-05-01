@@ -99,12 +99,17 @@ export default function TracksPage() {
   const loadTracks = async () => {
     setLoading(true);
     try {
-      if (id) {
-        const hackathon = await api.getHackathon(id);
+      let hackathonId = id;
+      // If no ID in URL, find the latest hackathon
+      if (!hackathonId) {
+        const hackathons = await api.getHackathons();
+        if (hackathons.length > 0) {
+          hackathonId = hackathons[0].id;
+        }
+      }
+      if (hackathonId) {
+        const hackathon = await api.getHackathon(hackathonId);
         setHackathonName(hackathon.name);
-        // TODO: Replace with actual API call when backend supports tracks
-        // const data = await api.getHackathonTracks(id);
-        // setTracks(data.tracks);
       }
     } catch (e) {
       console.error('Failed to load hackathon:', e);

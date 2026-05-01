@@ -50,6 +50,7 @@ export default function App() {
             <Route path="/hackathons/:id/projects" element={<ProjectGallery />} />
             <Route path="/hackathons/:id/leaderboard" element={<PublicLeaderboard />} />
             <Route path="/hackathons/:id/tracks" element={<TracksPage />} />
+            <Route path="/tracks" element={<TracksPage />} />
             <Route path="/hackathons/:id/hacker-dashboard" element={<HackerDashboard />} />
             <Route path="/hackathons/:id/settings" element={<HackathonSettings />} />
             <Route path="/hackathons/:id" element={<HackathonDetailPage />} />
