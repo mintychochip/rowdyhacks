@@ -38,7 +38,7 @@ export default function App() {
             <Route path="/hackathons" element={<HackathonSetup />} />
             <Route path="/apply" element={<ApplyPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            <Route path="/hackathons/:id/register" element={<RegisterPage />} />
+            <Route path="/hackathons/:id/register" element={<ApplyPage />} />
             <Route path="/registrations" element={<RegistrationsPage />} />
             <Route path="/registrations/:id" element={<RegistrationDetailPage />} />
             <Route path="/hackathons/:id/registrations" element={<OrganizerRegistrationsPage />} />
