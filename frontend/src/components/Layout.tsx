@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -16,6 +16,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/', icon: 'home', label: 'Home' },
   { to: '/registrations', icon: 'badge', label: 'Your Application', roles: ['participant'] },
   { to: '/hackathons', icon: 'trophy', label: 'Hackathons', roles: ['organizer'] },
+  { to: '/tracks', icon: 'route', label: 'Tracks', roles: ['participant', 'organizer', 'judge'] },
   { to: '/check-in', icon: 'qr_code_scanner', label: 'Check-In', roles: ['organizer'] },
   { to: '/judge', icon: 'gavel', label: 'Judge Portal', roles: ['judge'] },
   { to: '/dashboard', icon: 'dashboard', label: 'Dashboard', roles: ['organizer'] },
@@ -28,6 +29,23 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const role = user?.role;
   const roleBadge = role && ROLE_LABELS[role];
+
+  // Add CSS animation for float effect
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
 
   const closeSidebar = () => setSidebarOpen(false);
   const toggleSidebar = () => setSidebarOpen(prev => !prev);
@@ -75,7 +93,10 @@ export default function Layout() {
             <img src="/rowdy-mascot.png" alt="Rowdy the Roadrunner" style={{ width: 160, height: 'auto' }} />
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: GOLD, letterSpacing: -0.5 }}>
-                CSUB Hacks
+                RowdyHacks
+              </div>
+              <div style={{ fontSize: 11, color: PRIMARY, letterSpacing: 1, textTransform: 'uppercase' }}>
+                Cosmos
               </div>
             </div>
           </Link>
@@ -208,7 +229,7 @@ export default function Layout() {
             </button>
           )}
           <span style={{ ...TYPO['body-sm'], color: TEXT_PRIMARY, fontWeight: 600 }}>
-            CSUB Hacks
+            RowdyHacks: Cosmos
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

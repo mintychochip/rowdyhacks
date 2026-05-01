@@ -23,6 +23,7 @@ import HackathonSettings from './pages/HackathonSettings';
 import JudgeRedirect from './pages/JudgeRedirect';
 import ProjectGallery from './pages/ProjectGallery';
 import PublicLeaderboard from './pages/PublicLeaderboard';
+import TracksPage from './pages/TracksPage';
 
 export default function App() {
   return (
@@ -48,6 +49,7 @@ export default function App() {
             <Route path="/hackathons/:id/judging/results" element={<JudgingResultsPage />} />
             <Route path="/hackathons/:id/projects" element={<ProjectGallery />} />
             <Route path="/hackathons/:id/leaderboard" element={<PublicLeaderboard />} />
+            <Route path="/hackathons/:id/tracks" element={<TracksPage />} />
             <Route path="/hackathons/:id/hacker-dashboard" element={<HackerDashboard />} />
             <Route path="/hackathons/:id/settings" element={<HackathonSettings />} />
             <Route path="/hackathons/:id" element={<HackathonDetailPage />} />

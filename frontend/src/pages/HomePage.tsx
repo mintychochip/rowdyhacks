@@ -9,7 +9,7 @@ import WalletButtons from '../components/WalletButtons';
 import ScheduleGrid from '../components/ScheduleGrid';
 import { Badge } from '../components/Primitives';
 import {
-  PRIMARY, PRIMARY_BG20, SUCCESS, SUCCESS_BG10, WARNING, WARNING_BG10,
+  PRIMARY, PRIMARY_BG20, CYAN, SUCCESS, SUCCESS_BG10, WARNING, WARNING_BG10,
   ERROR, ERROR_TEXT, ERROR_BG20,
   TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_WHITE,
   INPUT_BG, INPUT_BORDER, CARD_BG, BORDER, BORDER_LIGHT,
@@ -130,13 +130,13 @@ export default function HomePage() {
   if (!user) {
     return (
       <div style={{ textAlign: 'center', padding: isMobile ? SPACE.xl : 80 }}>
-        <div style={{ fontSize: 56, marginBottom: SPACE.lg }}>&#128640;</div>
-        <h1 style={{ ...TYPO.h1, marginBottom: SPACE.sm }}>CSUB Hacks</h1>
-        <p style={{ color: TEXT_SECONDARY, fontSize: 17, marginBottom: SPACE.lg, maxWidth: 420, margin: '0 auto ' + SPACE.lg + 'px' }}>
-          CSUB's annual hackathon. Build something amazing in 36 hours.
+        <div style={{ fontSize: 72, marginBottom: SPACE.lg, animation: 'float 6s ease-in-out infinite' }}>🚀</div>
+        <h1 style={{ ...TYPO.h1, marginBottom: SPACE.sm }}>RowdyHacks: Cosmos</h1>
+        <p style={{ color: TEXT_SECONDARY, fontSize: 18, marginBottom: SPACE.lg, maxWidth: 480, margin: '0 auto ' + SPACE.lg + 'px' }}>
+          Launch your ideas into orbit. A 36-hour hackathon mission for the next generation of cosmic builders.
         </p>
-        <Link to="/auth" style={{ display: 'inline-block', padding: '14px 36px', background: PRIMARY, borderRadius: RADIUS.md, color: TEXT_WHITE, textDecoration: 'none', fontSize: 16, fontWeight: 700 }}>
-          Sign In to Apply
+        <Link to="/auth" style={{ display: 'inline-block', padding: '14px 36px', background: `linear-gradient(135deg, ${PRIMARY} 0%, ${CYAN} 100%)`, borderRadius: RADIUS.md, color: TEXT_WHITE, textDecoration: 'none', fontSize: 16, fontWeight: 700 }}>
+          🚀 Launch Mission
         </Link>
       </div>
     );
@@ -147,14 +147,14 @@ export default function HomePage() {
     const isOrganizer = user.role === 'organizer';
     return (
       <div style={{ textAlign: 'center', padding: isMobile ? SPACE.xl : 80 }}>
-        <div style={{ fontSize: 56, marginBottom: SPACE.lg }}>&#127881;</div>
-        <h1 style={{ ...TYPO.h1, marginBottom: SPACE.sm }}>Welcome to CSUB Hacks</h1>
+        <div style={{ fontSize: 56, marginBottom: SPACE.lg }}>🌌</div>
+        <h1 style={{ ...TYPO.h1, marginBottom: SPACE.sm }}>Welcome to RowdyHacks: Cosmos</h1>
         <p style={{ color: TEXT_SECONDARY, fontSize: 16, marginBottom: SPACE.lg }}>
-          {isOrganizer ? 'Create your first hackathon to get started.' : 'No active hackathon right now.'}
+          {isOrganizer ? 'Initialize your first mission parameters.' : 'No active missions in orbit.'}
         </p>
         {isOrganizer && (
           <Link to="/hackathons" style={{ display: 'inline-block', padding: '14px 36px', background: PRIMARY, borderRadius: RADIUS.md, color: TEXT_WHITE, textDecoration: 'none', fontSize: 16, fontWeight: 700 }}>
-            Set Up Hackathon
+            Initialize Mission
           </Link>
         )}
       </div>
@@ -282,7 +282,7 @@ export default function HomePage() {
                 </div>
               )}
               <div style={{ height: 4, background: INPUT_BG, borderRadius: 2, overflow: 'hidden', marginTop: SPACE.sm }}>
-                <div style={{ height: '100%', width: `${countdown.elapsedPercent}%`, background: `linear-gradient(90deg, ${PRIMARY}, ${GOLD})`, borderRadius: 2, transition: 'width 1s linear' }} />
+                <div style={{ height: '100%', width: `${countdown.elapsedPercent}%`, background: `linear-gradient(90deg, ${PRIMARY}, ${CYAN})`, borderRadius: 2, transition: 'width 1s linear' }} />
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: SPACE.xs, fontSize: 10, color: TEXT_MUTED }}>
                 <span>Start</span><span>{countdown.elapsedPercent}%</span><span>End</span>
@@ -303,8 +303,8 @@ export default function HomePage() {
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? SPACE.md : SPACE.xl }}>
       <div style={{ textAlign: 'center', marginBottom: SPACE.xl }}>
-        <div style={{ fontSize: 13, color: GOLD, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: SPACE.sm }}>
-          CSUB · April 29–30, 2026
+        <div style={{ fontSize: 13, color: CYAN, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: SPACE.sm }}>
+          Mission Launch Window · April 29–30, 2026
         </div>
         <h1 style={{ ...TYPO.h1, marginBottom: SPACE.xs, fontSize: isMobile ? 28 : 36 }}>{hackathon.name}</h1>
         <p style={{ color: TEXT_SECONDARY, fontSize: 15 }}>{startDate} – {endDate}</p>
