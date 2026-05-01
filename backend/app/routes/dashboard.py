@@ -10,7 +10,18 @@ from app.auth import decode_token
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
-async def _get_organizer(db: AsyncSession, authorization: str | None = Header(alias="Authorization")):
+@router.get("")
+async def get_dashboard(
+    hackathon_id: str | None = Query(None),
+    status: str | None = Query(None),
+    verdict: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    authorization: str | None = Header(alias="Authorization"),
+):
+    """Get paginated submissions list. Organizer only."""
+    # Auth check
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401)
     try:
@@ -21,21 +32,7 @@ async def _get_organizer(db: AsyncSession, authorization: str | None = Header(al
     user = result.scalar_one_or_none()
     if not user or user.role != UserRole.organizer:
         raise HTTPException(status_code=403, detail="Organizer role required")
-    return user
 
-
-@router.get("")
-async def get_dashboard(
-    hackathon_id: str | None = Query(None),
-    status: str | None = Query(None),
-    verdict: str | None = Query(None),
-    page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
-    _user = Depends(_get_organizer),
-):
-    """Get paginated submissions list."""
-    _ = _user  # auth check via dependency
     query = select(Submission)
     count_query = select(func.count(Submission.id))
 

@@ -22,20 +22,6 @@ from app.schemas import JudgingSessionCreate, SubmitScoreRequest
 router = APIRouter(prefix="/api", tags=["judging"])
 
 
-async def _require_organizer(authorization: str | None = Header(alias="Authorization"), db: AsyncSession = Depends(get_db)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authentication required")
-    try:
-        payload = decode_token(authorization.removeprefix("Bearer "))
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    result = await db.execute(select(User).where(User.id == payload["sub"]))
-    user = result.scalar_one_or_none()
-    if not user or user.role != UserRole.organizer:
-        raise HTTPException(status_code=403, detail="Organizer role required")
-    return user
-
-
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 async def _get_judging_session(hackathon_id: uuid.UUID, db: AsyncSession) -> JudgingSession:
@@ -78,8 +64,19 @@ async def create_judging_session(
     hackathon_id: uuid.UUID,
     body: JudgingSessionCreate,
     db: AsyncSession = Depends(get_db),
-    _user = Depends(_require_organizer),
+    authorization: str | None = Header(alias="Authorization"),
 ):
+    # Auth check
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401)
+    try:
+        payload = decode_token(authorization.removeprefix("Bearer "))
+    except ValueError:
+        raise HTTPException(status_code=401)
+    result = await db.execute(select(User).where(User.id == payload["sub"]))
+    user = result.scalar_one_or_none()
+    if not user or user.role != UserRole.organizer:
+        raise HTTPException(status_code=403, detail="Organizer role required")
     """Create or replace a judging session with rubric criteria for a hackathon."""
     # Verify hackathon exists
     hk = await db.get(Hackathon, hackathon_id)
