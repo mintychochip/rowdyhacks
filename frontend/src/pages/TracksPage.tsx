@@ -198,11 +198,17 @@ export default function TracksPage() {
               </button>
 
               {/* Expanded content */}
-              {isExpanded && (
-                <div style={{
-                  padding: isMobile ? `0 ${SPACE.md}px ${SPACE.md}px` : `0 ${SPACE.lg}px ${SPACE.lg}px`,
-                  animation: 'slideDown 0.3s ease',
-                }}>
+              <div style={{
+                maxHeight: isExpanded ? '2000px' : '0px',
+                overflow: 'hidden',
+                transition: 'max-height 0.35s ease',
+                padding: isExpanded ? (isMobile ? `0 ${SPACE.md}px ${SPACE.md}px` : `0 ${SPACE.lg}px ${SPACE.lg}px`) : `0 ${isMobile ? SPACE.md : SPACE.lg}px`,
+                opacity: isExpanded ? 1 : 0,
+                transitionProperty: 'max-height, opacity, padding',
+                transitionDuration: '0.35s, 0.25s, 0.35s',
+                transitionTimingFunction: 'ease',
+              }}>
+                <div>
                   {/* Challenge prompt */}
                   <div style={{
                     background: `${track.color}10`,
@@ -311,7 +317,7 @@ export default function TracksPage() {
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           );
         })}
