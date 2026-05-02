@@ -28,6 +28,7 @@ interface HackathonData {
   wifi_password: string | null;
   discord_invite_url: string | null;
   discord_webhook_url: string | null;
+  devpost_url: string | null;
 }
 
 export default function HackathonSettings() {
@@ -42,6 +43,9 @@ export default function HackathonSettings() {
   const [wifiPassword, setWifiPassword] = useState('');
   const [discordUrl, setDiscordUrl] = useState('');
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [devpostUrl, setDevpostUrl] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -62,6 +66,7 @@ export default function HackathonSettings() {
       setWifiPassword(data.wifi_password || '');
       setDiscordUrl(data.discord_invite_url || '');
       setWebhookUrl(data.discord_webhook_url || '');
+      setDevpostUrl(data.devpost_url || '');
     } catch (e: any) {
       setError(e.message || 'Failed to load hackathon');
     }
@@ -103,6 +108,7 @@ export default function HackathonSettings() {
         wifi_password: wifiPassword || undefined,
         discord_invite_url: discordUrl || undefined,
         discord_webhook_url: webhookUrl || undefined,
+        devpost_url: devpostUrl || undefined,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -361,6 +367,67 @@ export default function HackathonSettings() {
           <p style={{ fontSize: 12, color: TEXT_MUTED, marginTop: SPACE.xs }}>
             New applications will be posted to this Discord channel.
           </p>
+        </div>
+      </div>
+
+      {/* Devpost Section */}
+      <div style={{
+        background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg,
+        padding: SPACE.lg, marginBottom: SPACE.md,
+      }}>
+        <h3 style={{ ...TYPO.h3, marginBottom: SPACE.md }}>Devpost Integration</h3>
+        <div>
+          <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>Hackathon URL</label>
+          <input
+            type="url"
+            value={devpostUrl}
+            onChange={(e) => setDevpostUrl(e.target.value)}
+            placeholder="https://csub-hacks.devpost.com"
+            style={{
+              width: '100%', padding: '10px 14px', background: INPUT_BG,
+              border: `1px solid ${INPUT_BORDER}`, borderRadius: RADIUS.md,
+              color: TEXT_PRIMARY, fontSize: 14, boxSizing: 'border-box', outline: 'none',
+            }}
+          />
+          <p style={{ fontSize: 12, color: TEXT_MUTED, marginTop: SPACE.xs }}>
+            Paste the URL of your Devpost hackathon page. Save settings first, then click Import below.
+          </p>
+        </div>
+        <div style={{ marginTop: SPACE.md }}>
+          <button
+            onClick={async () => {
+              if (!id || !devpostUrl) return;
+              setImporting(true);
+              setImportResult(null);
+              try {
+                const res = await api.request(`/hackathons/${id}/import-devpost`, { method: 'POST' });
+                setImportResult(res);
+              } catch (e: any) {
+                setImportResult({ error: e.message || 'Import failed' });
+              }
+              setImporting(false);
+            }}
+            disabled={importing || !devpostUrl}
+            style={{
+              padding: '10px 24px', background: devpostUrl ? SUCCESS : INPUT_BG,
+              border: 'none', borderRadius: RADIUS.md, color: TEXT_WHITE,
+              fontSize: 14, fontWeight: 600, cursor: devpostUrl ? 'pointer' : 'not-allowed',
+              opacity: importing ? 0.6 : 1,
+            }}
+          >
+            {importing ? 'Importing...' : 'Import Submissions from Devpost'}
+          </button>
+          {importResult && (
+            <div style={{
+              marginTop: SPACE.sm, padding: SPACE.sm, borderRadius: RADIUS.sm,
+              background: importResult.error ? '#ff444420' : SUCCESS_BG10,
+              color: importResult.error ? ERROR_TEXT : SUCCESS, fontSize: 13,
+            }}>
+              {importResult.error
+                ? importResult.error
+                : `Found ${importResult.found} projects — ${importResult.imported} new, ${importResult.skipped} already imported. Analysis queued.`}
+            </div>
+          )}
         </div>
       </div>
 

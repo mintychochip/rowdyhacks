@@ -201,6 +201,7 @@ class Hackathon(Base):
     discord_invite_url = Column(Text, nullable=True)
     discord_webhook_url = Column(Text, nullable=True)
     discord_application_channel_id = Column(BigInteger, nullable=True)
+    devpost_url = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     organizer = relationship("User", back_populates="hackathons")

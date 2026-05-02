@@ -84,7 +84,6 @@ class StealthClient:
         self._client = httpx.AsyncClient(
             timeout=self.timeout,
             follow_redirects=True,
-            http2=True,  # HTTP/2 looks more like a real browser
         )
         return self
     

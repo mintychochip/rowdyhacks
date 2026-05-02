@@ -69,6 +69,7 @@ class HackathonCreate(BaseModel):
     wifi_ssid: Optional[str] = None
     wifi_password: Optional[str] = None
     discord_invite_url: Optional[str] = None
+    devpost_url: Optional[str] = None
     schedule: Optional[list[dict]] = None  # [{"time": "", "title": "", "description": ""}]
 
 

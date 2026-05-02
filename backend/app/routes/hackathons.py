@@ -2,7 +2,13 @@
 import uuid
 import csv
 import io
+import asyncio
+import re
 from datetime import datetime, timezone
+from urllib.parse import urljoin, urlparse
+
+import httpx
+from bs4 import BeautifulSoup
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select, func, and_, desc
@@ -92,6 +98,7 @@ async def create_hackathon(
         wifi_ssid=body.wifi_ssid,
         wifi_password=body.wifi_password,
         discord_invite_url=body.discord_invite_url,
+        devpost_url=body.devpost_url,
         schedule=body.schedule,
     )
     db.add(hackathon)
@@ -858,5 +865,124 @@ async def remove_organizer(
     
     await db.delete(co_org)
     await db.commit()
-    
+
     return {"deleted": True}
+
+
+# ── Devpost Import ─────────────────────────────────────────────
+
+DEVPOST_PROJECT_RE = re.compile(r"/software/([^/?#]+)")
+
+
+@router.post("/{hackathon_id}/import-devpost")
+async def import_devpost_submissions(
+    hackathon_id: uuid.UUID,
+    authorization: str = Header(alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Scrape the Devpost hackathon gallery and import project URLs for analysis."""
+    user = await _get_current_user(db, authorization)
+    if user.role != UserRole.organizer:
+        raise HTTPException(status_code=403, detail="Only organizers can import")
+
+    result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
+    hackathon = result.scalar_one_or_none()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+    if not hackathon.devpost_url:
+        raise HTTPException(status_code=400, detail="No Devpost URL configured. Set it in hackathon settings first.")
+
+    gallery_url = hackathon.devpost_url.rstrip("/") + "/project-gallery"
+    found_urls: set[str] = set()
+    page = 1
+
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        while True:
+            try:
+                resp = await client.get(
+                    f"{gallery_url}?page={page}" if page > 1 else gallery_url,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    },
+                )
+                resp.raise_for_status()
+            except httpx.HTTPError as e:
+                # If page 1 fails, report error. Later pages failing is fine.
+                if page == 1:
+                    raise HTTPException(status_code=502, detail=f"Failed to fetch Devpost gallery: {e}")
+                break
+
+            soup = BeautifulSoup(resp.text, "lxml")
+            page_urls: set[str] = set()
+
+            # Find all project links on the gallery page
+            for link in soup.select("a[href*='/software/']"):
+                href = link.get("href", "")
+                match = DEVPOST_PROJECT_RE.search(href)
+                if match:
+                    full_url = f"https://devpost.com/software/{match.group(1)}"
+                    page_urls.add(full_url)
+
+            # Also try gallery-item links
+            for link in soup.select("[class*='gallery-item'] a, [class*='link-to-software']"):
+                href = link.get("href", "")
+                match = DEVPOST_PROJECT_RE.search(href)
+                if match:
+                    full_url = f"https://devpost.com/software/{match.group(1)}"
+                    page_urls.add(full_url)
+
+            if not page_urls:
+                break  # No more projects found
+
+            found_urls.update(page_urls)
+            page += 1
+
+            # Safety limit — 20 pages max
+            if page > 20:
+                break
+
+    if not found_urls:
+        raise HTTPException(status_code=404, detail="No project URLs found on the gallery. Make sure the Devpost URL is a valid hackathon page.")
+
+    # Create submissions for new URLs
+    from app.models import Submission, SubmissionStatus
+    from app.analyzer import analyze_submission
+    from app.auth import create_anonymous_token
+
+    imported = 0
+    skipped = 0
+
+    for url in found_urls:
+        # Check if already exists for this hackathon
+        existing = await db.execute(
+            select(Submission).where(
+                Submission.devpost_url == url,
+                Submission.hackathon_id == hackathon_id,
+            )
+        )
+        if existing.scalar_one_or_none():
+            skipped += 1
+            continue
+
+        sub = Submission(
+            devpost_url=url,
+            hackathon_id=hackathon_id,
+            status=SubmissionStatus.pending,
+            access_token=create_anonymous_token(),
+        )
+        db.add(sub)
+        await db.commit()
+        await db.refresh(sub)
+
+        # Queue analysis
+        asyncio.create_task(analyze_submission(sub.id))
+        imported += 1
+
+    return {
+        "hackathon_id": str(hackathon_id),
+        "gallery_url": gallery_url,
+        "found": len(found_urls),
+        "imported": imported,
+        "skipped": skipped,
+    }
