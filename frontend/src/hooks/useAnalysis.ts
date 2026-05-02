@@ -44,12 +44,14 @@ export function useAnalysis() {
   const [stage, setStage] = useState<string>('');
   const [checkProgress, setCheckProgress] = useState<CheckProgress | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [githubUrl, setGithubUrl] = useState<string | null>(null);
   const [error, setError] = useState<string>('');
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const submit = useCallback(async (url: string) => {
     setStatus('loading');
     setError('');
+    setGithubUrl(null);
     try {
       const data = await api.submitUrl(url);
       const submissionId = data.id;
@@ -62,6 +64,8 @@ export function useAnalysis() {
           const statusData = await api.getCheckStatus(submissionId, accessToken);
           if (statusData.stage) setStage(statusData.stage);
           if (statusData.check_progress) setCheckProgress(statusData.check_progress);
+          // Track github_url as soon as scraper finds it (before analysis completes)
+          if (statusData.github_url) setGithubUrl(statusData.github_url);
           if (statusData.status === 'completed' || statusData.status === 'failed') {
             if (pollingRef.current) clearInterval(pollingRef.current);
             setResult(statusData);
@@ -85,10 +89,11 @@ export function useAnalysis() {
     setStage('');
     setCheckProgress(null);
     setResult(null);
+    setGithubUrl(null);
     setError('');
   }, []);
 
-  const hasGithub = result?.github_url != null;
+  const hasGithub = githubUrl != null || result?.github_url != null;
 
   return { submit, reset, result, status, stage, checkProgress, CHECK_LABELS, error, hasGithub };
 }
