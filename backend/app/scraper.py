@@ -82,12 +82,35 @@ async def scrape_devpost(url: str) -> "ScrapedData":
             if name:
                 data.team_members.append({"name": name, "devpost_profile": profile_url})
 
-    # GitHub URL — look for links to github.com
+    # GitHub URL — look for links to github.com (multiple strategies)
+    # Strategy 1: direct links with github.com in href
     for link in soup.select("a[href*='github.com']"):
         href = link.get("href", "")
         if is_github_url(href):
             data.github_url = href
             break
+
+    # Strategy 2: links where the visible text or nearby text mentions "GitHub" or "Repo"
+    if not data.github_url:
+        for link in soup.find_all("a"):
+            href = link.get("href", "")
+            text = link.get_text(strip=True).lower()
+            if is_github_url(href):
+                data.github_url = href
+                break
+            # If the link text says GitHub/Repo but href is a Devpost redirect,
+            # try to extract the real URL from query params
+            if ("github" in text or "repo" in text) and "devpost.com" not in href:
+                if is_github_url(href):
+                    data.github_url = href
+                    break
+
+    # Strategy 3: scan all text for github.com/owner/repo patterns
+    if not data.github_url:
+        body_text = soup.get_text()
+        gh_match = re.search(r'github\.com/[\w.-]+/[\w.-]+', body_text)
+        if gh_match:
+            data.github_url = f"https://{gh_match.group(0)}"
 
     # Video URL
     for iframe in soup.select("iframe[src*='youtube.com'], iframe[src*='vimeo.com']"):
