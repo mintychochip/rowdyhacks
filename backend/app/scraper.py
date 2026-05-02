@@ -129,9 +129,12 @@ async def scrape_devpost(url: str) -> "ScrapedData":
     # Hackathon name/URL from "Submitted to" section
     submissions_div = soup.find("div", id="submissions")
     if submissions_div:
-        hackathon_link = submissions_div.find("a", href=True)
-        if hackathon_link:
-            data.hackathon_name = hackathon_link.get_text(strip=True)
-            data.hackathon_url = hackathon_link["href"]
+        # Find the first link with actual text content (not just an image)
+        for link in submissions_div.find_all("a", href=True):
+            text = link.get_text(strip=True)
+            if text:
+                data.hackathon_name = text
+                data.hackathon_url = link["href"]
+                break
 
     return data
