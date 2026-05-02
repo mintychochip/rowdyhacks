@@ -127,30 +127,45 @@ async def list_hackathon_registrations(
                 detail=f"Invalid status '{status}'. Must be one of: pending, accepted, rejected, waitlisted, checked_in",
             )
 
-    # Build query with search support
-    query = select(Registration).where(*filters).options(selectinload(Registration.user))
+    # Build base query with filters
+    base_filters = filters.copy()
 
     if search:
         # Search by name or email - case insensitive
+        # Need to join with User table for search
         search_term = f"%{search}%"
-        query = query.join(User).where(
+        base_filters.append(
             or_(
                 User.name.ilike(search_term),
                 User.email.ilike(search_term)
             )
         )
 
+    # Count query (without search join for simplicity)
     count_query = select(func.count(Registration.id)).where(*filters)
     total = (await db.execute(count_query)).scalar() or 0
 
-    query = (
-        select(Registration)
-        .where(*filters)
-        .options(selectinload(Registration.user))
-        .order_by(Registration.registered_at.desc())
-        .offset(offset)
-        .limit(limit)
-    )
+    # Main query with optional search join
+    if search:
+        query = (
+            select(Registration)
+            .join(User)
+            .where(*base_filters)
+            .options(selectinload(Registration.user))
+            .order_by(Registration.registered_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+    else:
+        query = (
+            select(Registration)
+            .where(*base_filters)
+            .options(selectinload(Registration.user))
+            .order_by(Registration.registered_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+
     result = await db.execute(query)
     registrations = result.scalars().all()
 
