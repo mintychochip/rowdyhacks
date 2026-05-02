@@ -203,6 +203,8 @@ async def retry_check(
     sub.risk_score = None
     sub.verdict = None
     sub.completed_at = None
+    sub.stage = None
+    sub.check_progress = None
     await db.commit()
 
     asyncio.create_task(analyze_submission(sub.id))
