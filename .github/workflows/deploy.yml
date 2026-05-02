@@ -26,11 +26,14 @@ jobs:
             echo "==> System resources ==="
             free -h
 
-            echo "==> Removing swap (upgraded to 2GB RAM) ==="
-            sudo swapoff -a 2>/dev/null || true
-            sudo rm -f /swapfile 2>/dev/null || true
-            sudo sed -i '/swapfile/d' /etc/fstab 2>/dev/null || true
-            echo "Swap cleanup attempted"
+            echo "==> Killing host nginx to free port 80 ==="
+            sudo systemctl stop nginx 2>/dev/null || true
+            sudo systemctl disable nginx 2>/dev/null || true
+            sudo systemctl mask nginx 2>/dev/null || true
+            sudo pkill -9 nginx 2>/dev/null || true
+            sudo fuser -k 80/tcp 2>/dev/null || true
+            sleep 2
+            ss -tlnp | grep :80 && echo "WARN: port 80 still busy" || echo "Port 80 free"
 
             echo "==> Fetching and resetting to latest..."
             git fetch origin master
