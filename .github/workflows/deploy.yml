@@ -29,13 +29,17 @@ jobs:
             git clean -fd
 
             echo "==> Rebuilding and restarting containers..."
-            docker compose -f docker-compose.yml up -d --build --force-recreate
+            docker compose -f docker-compose.yml up -d --build
+            docker compose -f docker-compose.yml restart nginx
 
             echo "==> Pruning old images..."
             docker image prune -f
 
             echo "==> Health check..."
-            sleep 15
-            curl -sf -o /dev/null http://localhost:8000/health && echo "  OK" || echo "  FAILED"
+            for i in \$(seq 1 10); do
+              curl -sf -o /dev/null http://localhost:8000/health && echo "  OK" && break
+              echo "  Waiting... (\$i/10)"
+              sleep 3
+            done
 
             echo "==> Deploy complete"

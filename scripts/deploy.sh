@@ -39,7 +39,7 @@ ok "Code updated"
 
 # ── 3. Rebuild & restart ────────────────────────────────
 say "Rebuilding containers..."
-ssh "$SSH_HOST" "cd ${APP_DIR} && docker compose -f ${COMPOSE_FILE} up -d --build --force-recreate"
+ssh "$SSH_HOST" "cd ${APP_DIR} && docker compose -f ${COMPOSE_FILE} up -d --build && docker compose -f ${COMPOSE_FILE} restart nginx"
 ok "Containers restarted"
 
 # ── 4. Cleanup old images ───────────────────────────────
