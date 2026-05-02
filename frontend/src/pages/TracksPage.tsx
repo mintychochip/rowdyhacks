@@ -7,7 +7,7 @@ import {
   PRIMARY, PRIMARY_BG20, CYAN, CYAN_BG20,
   TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_WHITE,
   CARD_BG, INPUT_BG, BORDER,
-  TYPO, SPACE, RADIUS,
+  TYPO, SPACE, RADIUS, SHADOW,
 } from '../theme';
 
 interface TrackResource {
@@ -171,8 +171,12 @@ export default function TracksPage() {
               </span>
             </div>
 
-            {/* Tracks in section */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
+            {/* Tracks in section — grid layout like Dashboard */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))',
+              gap: SPACE.md,
+            }}>
               {section.tracks.map((track) => {
                 const isExpanded = expandedTrack === track.id;
                 return (
@@ -185,7 +189,7 @@ export default function TracksPage() {
                       borderRadius: RADIUS.lg,
                       overflow: 'hidden',
                       transition: 'all 0.25s ease',
-                      boxShadow: isExpanded ? `0 4px 24px ${track.color}20` : 'none',
+                      boxShadow: isExpanded ? `0 4px 24px ${track.color}20` : SHADOW.card,
                     }}
                   >
                     {/* Header — always visible */}
