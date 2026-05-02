@@ -23,15 +23,25 @@ jobs:
             set -e
             cd /home/jlo/rowdyhacks
 
-            echo "==> System resources ==="
+            echo "==> System resources (before) ==="
             free -h
+            echo ""
+
+            echo "==> Removing swap (upgraded to 2GB RAM) ==="
+            swapoff -a 2>/dev/null || true
+            rm -f /swapfile 2>/dev/null || true
+            sed -i '/swapfile/d' /etc/fstab 2>/dev/null || true
+            echo "Swap removed"
+
             echo ""
             df -h /
             echo ""
-            top -bn1 | head -5
-            echo ""
             echo "==> Docker stats ==="
             docker stats --no-stream 2>/dev/null || true
+            echo ""
+
+            echo "==> System resources (after) ==="
+            free -h
             echo ""
 
             echo "==> Fetching and resetting to latest..."

@@ -1,5 +1,4 @@
 """HackVerify check registry."""
-import os
 from app.checks.interface import CheckFn, CheckContext, CheckResult, CheckCategory, ScrapedData, HackathonInfo
 from app.checks import (
     timeline, devpost_alignment_ai, submission_history, asset_integrity,
@@ -24,11 +23,6 @@ CHECKS: list[CheckFn] = [
     repeat_offender.check_repeat_offender,
     code_similarity.check_code_similarity,
 ]
-
-# Allow skipping memory-heavy checks on low-resource deployments
-if os.environ.get("HACKVERIFY_LOW_MEMORY", "").lower() in ("1", "true", "yes"):
-    # Skip AI alignment check — loads 130MB sentence_transformers model
-    CHECKS = [c for c in CHECKS if c is not devpost_alignment_ai.check_alignment_ai]
 
 WEIGHTS: dict[str, float] = {
     "timeline": 0.25,

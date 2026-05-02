@@ -6,12 +6,10 @@ services:
     restart: unless-stopped
     command: >
       postgres
-      -c shared_buffers=32MB
-      -c effective_cache_size=96MB
-      -c maintenance_work_mem=16MB
-      -c wal_buffers=1MB
-      -c max_connections=10
-      -c work_mem=2MB
+      -c shared_buffers=128MB
+      -c effective_cache_size=384MB
+      -c maintenance_work_mem=32MB
+      -c max_connections=20
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-hackverify}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
@@ -39,7 +37,6 @@ services:
       HACKVERIFY_GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       HACKVERIFY_DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
       HACKVERIFY_BASE_URL: ${BASE_URL:-https://localhost}
-      HACKVERIFY_LOW_MEMORY: "1"
     volumes:
       - ./data:/app/data
     depends_on:
