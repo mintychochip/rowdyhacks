@@ -145,11 +145,8 @@ export default function CheckInPage() {
     if (!searchQuery.trim() || !selectedHackathonId) return;
     setLoading(true);
     try {
-      // Use the hackathon registrations endpoint with search
-      const data = await api.getHackathonRegistrations(selectedHackathonId, {
-        search: searchQuery,
-        limit: 20,
-      });
+      // Use the search endpoint
+      const data = await api.searchHackathonRegistrations(selectedHackathonId, searchQuery, 20);
       setSearchResults(data.registrations || []);
     } catch (err: any) {
       setError(err.message || 'Search failed');

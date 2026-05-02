@@ -108,12 +108,11 @@ async def list_hackathon_registrations(
     hackathon_id: uuid.UUID,
     authorization: str = Header(alias="Authorization"),
     status: str | None = Query(None, description="Filter by status: pending, accepted, rejected, checked_in"),
-    search: str | None = Query(None, description="Search by name or email"),
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """Organizer view: list all registrations for a hackathon with optional search."""
+    """Organizer view: list all registrations for a hackathon."""
     payload = _get_current_user_payload(authorization)
     await _ensure_hackathon_organizer(db, payload["sub"], hackathon_id)
 
@@ -127,45 +126,17 @@ async def list_hackathon_registrations(
                 detail=f"Invalid status '{status}'. Must be one of: pending, accepted, rejected, waitlisted, checked_in",
             )
 
-    # Build base query with filters
-    base_filters = filters.copy()
-
-    if search:
-        # Search by name or email - case insensitive
-        # Need to join with User table for search
-        search_term = f"%{search}%"
-        base_filters.append(
-            or_(
-                User.name.ilike(search_term),
-                User.email.ilike(search_term)
-            )
-        )
-
-    # Count query (without search join for simplicity)
     count_query = select(func.count(Registration.id)).where(*filters)
     total = (await db.execute(count_query)).scalar() or 0
 
-    # Main query with optional search join
-    if search:
-        query = (
-            select(Registration)
-            .join(User)
-            .where(*base_filters)
-            .options(selectinload(Registration.user))
-            .order_by(Registration.registered_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
-    else:
-        query = (
-            select(Registration)
-            .where(*base_filters)
-            .options(selectinload(Registration.user))
-            .order_by(Registration.registered_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
-
+    query = (
+        select(Registration)
+        .where(*filters)
+        .options(selectinload(Registration.user))
+        .order_by(Registration.registered_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
     result = await db.execute(query)
     registrations = result.scalars().all()
 
@@ -176,6 +147,47 @@ async def list_hackathon_registrations(
         "total": total,
         "limit": limit,
         "offset": offset,
+    }
+
+
+@router.get("/hackathons/{hackathon_id}/registrations/search")
+async def search_registrations(
+    hackathon_id: uuid.UUID,
+    q: str = Query(..., description="Search query for name or email"),
+    authorization: str = Header(alias="Authorization"),
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """Search registrations by participant name or email (organizer only)."""
+    payload = _get_current_user_payload(authorization)
+    await _ensure_hackathon_organizer(db, payload["sub"], hackathon_id)
+
+    search_term = f"%{q}%"
+
+    # Query with join to User for searching name/email
+    query = (
+        select(Registration)
+        .join(User)
+        .where(
+            Registration.hackathon_id == hackathon_id,
+            or_(
+                User.name.ilike(search_term),
+                User.email.ilike(search_term)
+            )
+        )
+        .options(selectinload(Registration.user))
+        .limit(limit)
+    )
+
+    result = await db.execute(query)
+    registrations = result.scalars().all()
+
+    return {
+        "registrations": [
+            _registration_to_response(r, r.user) for r in registrations
+        ],
+        "query": q,
+        "count": len(registrations),
     }
 
 
