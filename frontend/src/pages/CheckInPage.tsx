@@ -145,9 +145,15 @@ export default function CheckInPage() {
     if (!searchQuery.trim() || !selectedHackathonId) return;
     setLoading(true);
     try {
-      // Use the search endpoint
-      const data = await api.searchHackathonRegistrations(selectedHackathonId, searchQuery, 20);
-      setSearchResults(data.registrations || []);
+      // Fetch all registrations and filter client-side
+      const data = await api.getHackathonRegistrations(selectedHackathonId, { limit: 100 });
+      const allRegistrations = data.registrations || [];
+      // Filter by name or email
+      const filtered = allRegistrations.filter((r: any) =>
+        r.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.email?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setSearchResults(filtered);
     } catch (err: any) {
       setError(err.message || 'Search failed');
     } finally {

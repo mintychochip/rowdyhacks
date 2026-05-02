@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Header, Query
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -147,47 +147,6 @@ async def list_hackathon_registrations(
         "total": total,
         "limit": limit,
         "offset": offset,
-    }
-
-
-@router.get("/hackathons/{hackathon_id}/registrations/search")
-async def search_registrations(
-    hackathon_id: uuid.UUID,
-    q: str = Query(..., description="Search query for name or email"),
-    authorization: str = Header(alias="Authorization"),
-    limit: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
-):
-    """Search registrations by participant name or email (organizer only)."""
-    payload = _get_current_user_payload(authorization)
-    await _ensure_hackathon_organizer(db, payload["sub"], hackathon_id)
-
-    search_term = f"%{q}%"
-
-    # Query with join to User for searching name/email
-    query = (
-        select(Registration)
-        .join(User)
-        .where(
-            Registration.hackathon_id == hackathon_id,
-            or_(
-                User.name.ilike(search_term),
-                User.email.ilike(search_term)
-            )
-        )
-        .options(selectinload(Registration.user))
-        .limit(limit)
-    )
-
-    result = await db.execute(query)
-    registrations = result.scalars().all()
-
-    return {
-        "registrations": [
-            _registration_to_response(r, r.user) for r in registrations
-        ],
-        "query": q,
-        "count": len(registrations),
     }
 
 
