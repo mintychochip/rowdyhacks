@@ -29,6 +29,8 @@ class ScrapedData:
     github_url: str | None = None
     video_url: str | None = None
     slides_url: str | None = None
+    hackathon_name: str | None = None  # Name of hackathon on Devpost
+    hackathon_url: str | None = None   # Devpost URL of the hackathon
 
 
 @dataclass

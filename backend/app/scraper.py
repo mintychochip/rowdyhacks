@@ -126,4 +126,12 @@ async def scrape_devpost(url: str) -> "ScrapedData":
         data.slides_url = link.get("href", "")
         break
 
+    # Hackathon name/URL from "Submitted to" section
+    submissions_div = soup.find("div", id="submissions")
+    if submissions_div:
+        hackathon_link = submissions_div.find("a", href=True)
+        if hackathon_link:
+            data.hackathon_name = hackathon_link.get_text(strip=True)
+            data.hackathon_url = hackathon_link["href"]
+
     return data

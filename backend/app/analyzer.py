@@ -73,9 +73,36 @@ async def analyze_submission(submission_id: uuid.UUID) -> None:
                     pass
             timings["clone"] = round(time.monotonic() - t2, 2)
 
-            # 3. Build context
+            # 3. Build context — resolve hackathon from scraped data first
             hackathon_info = None
-            if sub.hackathon_id:
+            hk_name = scraped.hackathon_name
+            hk_url = scraped.hackathon_url
+
+            # Try crawled_hackathons first (has real Devpost dates)
+            if hk_url or hk_name:
+                from app.models import CrawledHackathon
+                chk = None
+                if hk_url:
+                    r = await db.execute(
+                        select(CrawledHackathon).where(CrawledHackathon.devpost_url == hk_url)
+                    )
+                    chk = r.scalar_one_or_none()
+                if not chk and hk_name:
+                    r = await db.execute(
+                        select(CrawledHackathon).where(
+                            CrawledHackathon.name.ilike(f"%{hk_name}%")
+                        )
+                    )
+                    chk = r.scalar_one_or_none()
+                if chk and chk.start_date:
+                    hackathon_info = HackathonInfo(
+                        id=chk.id, name=chk.name,
+                        start_date=chk.start_date.isoformat(),
+                        end_date=(chk.end_date or chk.start_date).isoformat(),
+                    )
+
+            # Fall back to the submission's linked hackathon
+            if not hackathon_info and sub.hackathon_id:
                 from app.models import Hackathon
                 hk_result = await db.execute(select(Hackathon).where(Hackathon.id == sub.hackathon_id))
                 hk = hk_result.scalar_one_or_none()
