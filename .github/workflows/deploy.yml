@@ -36,9 +36,9 @@ jobs:
             docker image prune -f
 
             echo "==> Health check..."
-            for i in \$(seq 1 10); do
+            for i in 1 2 3 4 5 6 7 8 9 10; do
               curl -sf -o /dev/null http://localhost:8000/health && echo "  OK" && break
-              echo "  Waiting... (\$i/10)"
+              echo "  Waiting... ($i/10)"
               sleep 3
             done
 
