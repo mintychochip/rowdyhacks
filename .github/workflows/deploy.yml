@@ -56,20 +56,12 @@ jobs:
             echo "==> Pruning old images..."
             docker image prune -f
 
-            echo "==> Docker containers ==="
-            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || true
-            echo ""
-            echo "==> Verifying port 80 ==="
-            ss -tlnp | grep :80 || echo "  Nothing on port 80!"
+            echo "==> Docker nginx logs (last 10 lines) ==="
+            docker compose -f docker-compose.yml logs --tail=10 nginx 2>/dev/null || true
             echo ""
 
-            echo "==> Internal connectivity test ==="
-            echo "Direct to backend:"
-            curl -sf http://localhost:8000/api/health && echo "  OK" || echo "  FAIL"
-            echo "Via Docker nginx:"
-            curl -sf http://localhost:80/api/health && echo "  OK" || echo "  FAIL"
-            echo "Nginx version from Docker:"
-            curl -sI http://localhost:80/ 2>&1 | grep -i "server:" || echo "  No Server header"
+            echo "==> Docker containers ==="
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || true
             echo ""
 
             echo "==> Health check..."
