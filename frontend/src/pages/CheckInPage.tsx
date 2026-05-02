@@ -470,7 +470,7 @@ export default function CheckInPage() {
           {/* Search Results */}
           {searchResults.length > 0 && (
             <div style={{ marginTop: SPACE.lg }}>
-              <h4 style={{ ...TYPO.h4, marginBottom: SPACE.sm, color: TEXT_SECONDARY }}>
+              <h4 style={{ ...TYPO.h3, marginBottom: SPACE.sm, color: TEXT_SECONDARY }}>
                 Found {searchResults.length} participant{searchResults.length !== 1 ? 's' : ''}
               </h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
@@ -592,7 +592,7 @@ export default function CheckInPage() {
           borderRadius: RADIUS.lg,
           border: `1px solid ${BORDER}`,
         }}>
-          <h4 style={{ ...TYPO.h4, marginBottom: SPACE.md }}>💡 Quick Tips</h4>
+          <h4 style={{ ...TYPO.h3, marginBottom: SPACE.md }}>💡 Quick Tips</h4>
           <ul style={{ color: TEXT_SECONDARY, fontSize: 14, lineHeight: 1.8, margin: 0, paddingLeft: 20 }}>
             <li><strong>Camera mode:</strong> Best for fast check-ins. Hold phone steady 6-12 inches from QR code.</li>
             <li><strong>Manual mode:</strong> Use if camera fails or for testing. Paste the QR token directly.</li>
