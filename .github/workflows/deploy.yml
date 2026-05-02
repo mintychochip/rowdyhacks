@@ -63,6 +63,15 @@ jobs:
             ss -tlnp | grep :80 || echo "  Nothing on port 80!"
             echo ""
 
+            echo "==> Internal connectivity test ==="
+            echo "Direct to backend:"
+            curl -sf http://localhost:8000/api/health && echo "  OK" || echo "  FAIL"
+            echo "Via Docker nginx:"
+            curl -sf http://localhost:80/api/health && echo "  OK" || echo "  FAIL"
+            echo "Nginx version from Docker:"
+            curl -sI http://localhost:80/ 2>&1 | grep -i "server:" || echo "  No Server header"
+            echo ""
+
             echo "==> Health check..."
             for i in 1 2 3 4 5 6 7 8 9 10; do
               curl -sf -o /dev/null http://localhost:8000/api/health && echo "  OK" && break
