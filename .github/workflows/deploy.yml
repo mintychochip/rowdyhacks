@@ -25,41 +25,19 @@ jobs:
 
             echo "==> System resources ==="
             free -h
-            echo ""
 
             echo "==> Removing swap (upgraded to 2GB RAM) ==="
-            swapoff -a 2>/dev/null || true
-            rm -f /swapfile 2>/dev/null || true
-            sed -i '/swapfile/d' /etc/fstab 2>/dev/null || true
-            echo "Swap removed"
+            sudo swapoff -a 2>/dev/null || true
+            sudo rm -f /swapfile 2>/dev/null || true
+            sudo sed -i '/swapfile/d' /etc/fstab 2>/dev/null || true
 
-            echo "==> Configuring host nginx as reverse proxy to Docker ==="
-            sudo tee /etc/nginx/sites-available/default > /dev/null << 'EOF'
-server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    location /api/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_read_timeout 86400;
-    }
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-}
-EOF
-            sudo nginx -t && sudo nginx -s reload || sudo systemctl restart nginx
-            echo "Host nginx configured"
-
-            echo "==> Stopping Docker nginx (host nginx handles port 80) ==="
-            docker compose -f docker-compose.yml stop nginx 2>/dev/null || true
+            echo "==> Killing host nginx to free port 80 ==="
+            sudo systemctl stop nginx 2>/dev/null || true
+            sudo systemctl disable nginx 2>/dev/null || true
+            sudo systemctl mask nginx 2>/dev/null || true
+            sudo fuser -k 80/tcp 2>/dev/null || true
+            sleep 1
+            echo "Port 80 freed"
 
             echo "==> Fetching and resetting to latest..."
             git fetch origin master
@@ -74,16 +52,12 @@ EOF
 
             echo "==> Docker containers ==="
             docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || true
-            echo ""
 
             echo "==> Health check..."
             for i in 1 2 3 4 5 6 7 8 9 10; do
-              curl -sf -o /dev/null http://localhost:8000/api/health && echo "  OK" && break
+              curl -sf -o /dev/null http://localhost:8000/api/health && echo "  Backend OK" && break
               echo "  Waiting... ($i/10)"
               sleep 3
             done
-
-            echo "==> Recent backend logs (last 30 lines) ==="
-            docker compose -f docker-compose.yml logs --tail=30 backend 2>/dev/null || true
 
             echo "==> Deploy complete"
