@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Header, Query
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -108,11 +108,12 @@ async def list_hackathon_registrations(
     hackathon_id: uuid.UUID,
     authorization: str = Header(alias="Authorization"),
     status: str | None = Query(None, description="Filter by status: pending, accepted, rejected, checked_in"),
+    search: str | None = Query(None, description="Search by name or email"),
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """Organizer view: list all registrations for a hackathon."""
+    """Organizer view: list all registrations for a hackathon with optional search."""
     payload = _get_current_user_payload(authorization)
     await _ensure_hackathon_organizer(db, payload["sub"], hackathon_id)
 
@@ -125,6 +126,19 @@ async def list_hackathon_registrations(
                 status_code=422,
                 detail=f"Invalid status '{status}'. Must be one of: pending, accepted, rejected, waitlisted, checked_in",
             )
+
+    # Build query with search support
+    query = select(Registration).where(*filters).options(selectinload(Registration.user))
+
+    if search:
+        # Search by name or email - case insensitive
+        search_term = f"%{search}%"
+        query = query.join(User).where(
+            or_(
+                User.name.ilike(search_term),
+                User.email.ilike(search_term)
+            )
+        )
 
     count_query = select(func.count(Registration.id)).where(*filters)
     total = (await db.execute(count_query)).scalar() or 0

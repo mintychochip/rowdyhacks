@@ -97,10 +97,11 @@ export const registerForHackathon = (hackathonId: string, data?: {
   });
 };
 
-export const getRegistrations = (params?: { hackathon_id?: string; status?: string }) => {
+export const getRegistrations = (params?: { hackathon_id?: string; status?: string; search?: string }) => {
   const searchParams = new URLSearchParams();
   if (params?.hackathon_id) searchParams.set('hackathon_id', params.hackathon_id);
   if (params?.status) searchParams.set('status', params.status);
+  if (params?.search) searchParams.set('search', params.search);
   const query = searchParams.toString();
   return request(`/registrations${query ? `?${query}` : ''}`);
 };
@@ -113,6 +114,17 @@ export const checkIn = (qrToken: string) =>
 
 export const getRegistrationStats = (hackathonId: string) =>
   request(`/registrations/stats?hackathon_id=${hackathonId}`);
+
+// Organizer: get all registrations for a hackathon with search
+export const getHackathonRegistrations = (hackathonId: string, params?: { status?: string; search?: string; offset?: number; limit?: number }) => {
+  const searchParams = new URLSearchParams();
+  if (params?.status) searchParams.set('status', params.status);
+  if (params?.search) searchParams.set('search', params.search);
+  if (params?.offset !== undefined) searchParams.set('offset', String(params.offset));
+  if (params?.limit !== undefined) searchParams.set('limit', String(params.limit));
+  const query = searchParams.toString();
+  return request(`/hackathons/${hackathonId}/registrations${query ? `?${query}` : ''}`);
+};
 
 export const getMyRegistrations = (params?: { offset?: number; limit?: number }) => {
   const searchParams = new URLSearchParams();
