@@ -566,7 +566,6 @@ export default function CheckInPage() {
           {searchResults.length > 0 && (
             <div style={{ maxHeight: '400px', overflow: 'auto' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
                 {searchResults.map((p) => (
                   <div
                     key={p.id}
