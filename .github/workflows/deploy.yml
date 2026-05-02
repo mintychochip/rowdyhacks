@@ -23,6 +23,17 @@ jobs:
             set -e
             cd /home/jlo/rowdyhacks
 
+            echo "==> System resources ==="
+            free -h
+            echo ""
+            df -h /
+            echo ""
+            top -bn1 | head -5
+            echo ""
+            echo "==> Docker stats ==="
+            docker stats --no-stream 2>/dev/null || true
+            echo ""
+
             echo "==> Fetching and resetting to latest..."
             git fetch origin master
             git checkout -f origin/master -- .
@@ -41,5 +52,8 @@ jobs:
               echo "  Waiting... ($i/10)"
               sleep 3
             done
+
+            echo "==> Recent backend logs (last 30 lines) ==="
+            docker compose -f docker-compose.yml logs --tail=30 backend 2>/dev/null || true
 
             echo "==> Deploy complete"
