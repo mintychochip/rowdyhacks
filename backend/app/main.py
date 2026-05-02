@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from sqlalchemy import text
 from app.database import engine
 from app.models import Base
 from app.routes.auth import router as auth_router
@@ -45,6 +46,13 @@ async def lifespan(app: FastAPI):
     """Create database tables on startup and start the crawler scheduler."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Add track_type column if missing (on existing DBs without this column)
+        try:
+            await conn.execute(
+                text("ALTER TABLE tracks ADD COLUMN IF NOT EXISTS track_type VARCHAR(50)")
+            )
+        except Exception:
+            pass  # Column may already exist or table not yet created
 
     try:
         await _seed_demo_data()

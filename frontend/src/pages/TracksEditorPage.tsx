@@ -16,6 +16,7 @@ interface Track {
   icon: string;
   color: string;
   prize: string;
+  track_type?: string | null;
   criteria: string[];
   resources: { name: string; url: string }[];
 }
@@ -55,7 +56,7 @@ export default function TracksEditorPage() {
     } else {
       setEditing({
         id: '', name: '', description: '', challenge: '', icon: '🛸', color: COLORS[0],
-        prize: '', criteria: [], resources: [],
+        prize: '', track_type: null, criteria: [], resources: [],
       });
       setCriteriaInput('');
       setResourceName('');
@@ -97,6 +98,7 @@ export default function TracksEditorPage() {
         icon: editing.icon,
         color: editing.color,
         prize: editing.prize,
+        track_type: editing.track_type || null,
         criteria: editing.criteria,
         resources: editing.resources,
       };
@@ -154,7 +156,16 @@ export default function TracksEditorPage() {
               alignItems: 'center', justifyContent: 'center', fontSize: 20,
             }}>{track.icon}</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, color: track.color }}>{track.name}</div>
+              <div style={{ fontWeight: 600, color: track.color, display: 'flex', alignItems: 'center', gap: 8 }}>
+                {track.name}
+                {track.track_type && (
+                  <span style={{
+                    padding: '1px 8px', borderRadius: RADIUS.full,
+                    background: `${PRIMARY}20`, color: PRIMARY,
+                    fontSize: 11, fontWeight: 600, textTransform: 'capitalize',
+                  }}>{track.track_type}</span>
+                )}
+              </div>
               <div style={{ fontSize: 12, color: TEXT_MUTED }}>{track.prize}</div>
             </div>
             <button onClick={() => startEdit(track)} style={{
@@ -209,6 +220,19 @@ export default function TracksEditorPage() {
                     }} />
                   ))}
                 </div>
+              </div>
+              <div>
+                <label style={fieldLabel}>Track Type</label>
+                <select
+                  value={editing.track_type || ''}
+                  onChange={e => setEditing({ ...editing, track_type: e.target.value || null })}
+                  style={fieldStyle}
+                >
+                  <option value="">General</option>
+                  <option value="prize">Prize</option>
+                  <option value="themed">Themed</option>
+                  <option value="sponsor">Sponsor</option>
+                </select>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={fieldLabel}>Short Description</label>

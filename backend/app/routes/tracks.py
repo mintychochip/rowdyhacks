@@ -54,6 +54,7 @@ def _track_to_response(t: Track) -> dict:
         "icon": t.icon,
         "color": t.color,
         "prize": t.prize,
+        "track_type": t.track_type,
         "criteria": t.criteria or [],
         "resources": t.resources or [],
     }
@@ -67,6 +68,7 @@ DEFAULT_TRACKS = [
         "icon": "\U0001f680",
         "color": "#8b5cf6",
         "prize": "$1,000 + SpaceX Tour",
+        "track_type": "prize",
         "criteria": ["Innovation", "Technical Complexity", "Space Applicability", "Use of Real Data"],
         "resources": [
             {"name": "NASA Open APIs", "url": "https://api.nasa.gov/"},
@@ -82,6 +84,7 @@ DEFAULT_TRACKS = [
         "icon": "\U0001f48e",
         "color": "#06b6d4",
         "prize": "$800 + Starlink Kit",
+        "track_type": "prize",
         "criteria": ["Business Viability", "UX Design", "Market Potential", "Technical Execution"],
         "resources": [
             {"name": "Space Economy Report", "url": "https://spacefoundation.org/research/"},
@@ -96,6 +99,7 @@ DEFAULT_TRACKS = [
         "icon": "\U0001f30c",
         "color": "#fbbf24",
         "prize": "$600 + Celestron Telescope",
+        "track_type": "themed",
         "criteria": ["Social Impact", "Accessibility", "Community Engagement", "Innovation"],
         "resources": [
             {"name": "Zooniverse Projects", "url": "https://www.zooniverse.org/"},
@@ -110,6 +114,7 @@ DEFAULT_TRACKS = [
         "icon": "\u2728",
         "color": "#ec4899",
         "prize": "$500 + Wacom Tablet",
+        "track_type": "themed",
         "criteria": ["Aesthetic Quality", "Technical Execution", "Concept Originality", "Emotional Impact"],
         "resources": [
             {"name": "Three.js Docs", "url": "https://threejs.org/"},
@@ -125,6 +130,7 @@ DEFAULT_TRACKS = [
         "icon": "\U0001f916",
         "color": "#10b981",
         "prize": "$1,200 + NVIDIA Jetson Kit",
+        "track_type": "prize",
         "criteria": ["AI Innovation", "Model Performance", "Problem Relevance", "Presentation Clarity"],
         "resources": [
             {"name": "NASA Telemetry Datasets", "url": "https://data.nasa.gov/"},
@@ -140,6 +146,7 @@ DEFAULT_TRACKS = [
         "icon": "\U0001f315",
         "color": "#f97316",
         "prize": "$900 + 3D Printer",
+        "track_type": "themed",
         "criteria": ["Systems Thinking", "Feasibility", "Innovation", "Sustainability"],
         "resources": [
             {"name": "NASA Artemis Program", "url": "https://www.nasa.gov/artemis/"},
@@ -160,6 +167,7 @@ def seed_tracks(hackathon_id: uuid.UUID) -> list[Track]:
             icon=t["icon"],
             color=t["color"],
             prize=t["prize"],
+            track_type=t.get("track_type"),
             criteria=t["criteria"],
             resources=t["resources"],
         )
@@ -195,6 +203,7 @@ async def create_track(
         icon=body.get("icon", ""),
         color=body.get("color", "#8b5cf6"),
         prize=body.get("prize", ""),
+        track_type=body.get("track_type"),
         criteria=body.get("criteria", []),
         resources=body.get("resources", []),
     )
@@ -221,7 +230,7 @@ async def update_track(
     if not track:
         raise HTTPException(status_code=404, detail="Track not found")
 
-    for field in ("name", "description", "challenge", "icon", "color", "prize", "criteria", "resources"):
+    for field in ("name", "description", "challenge", "icon", "color", "prize", "track_type", "criteria", "resources"):
         if field in body:
             setattr(track, field, body[field])
     await db.commit()

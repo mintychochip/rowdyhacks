@@ -23,6 +23,7 @@ interface Track {
   icon: string;
   color: string;
   prize: string;
+  track_type?: string | null;
   criteria: string[];
   resources: TrackResource[];
 }
@@ -140,189 +141,222 @@ export default function TracksPage() {
         </p>
       </div>
 
-      {/* Tracks Accordion */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md, marginBottom: SPACE.xl }}>
-        {tracks.map((track) => {
-          const isExpanded = expandedTrack === track.id;
-          return (
-            <div
-              key={track.id}
-              style={{
-                background: CARD_BG,
-                border: `1px solid ${isExpanded ? track.color : BORDER}`,
-                borderLeft: `4px solid ${track.color}`,
-                borderRadius: RADIUS.lg,
-                overflow: 'hidden',
-                transition: 'all 0.25s ease',
-                boxShadow: isExpanded ? `0 4px 24px ${track.color}20` : 'none',
-              }}
-            >
-              {/* Header — always visible */}
-              <button
-                onClick={() => toggleTrack(track.id)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: SPACE.md,
-                  padding: isMobile ? SPACE.md : SPACE.lg,
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  color: TEXT_PRIMARY,
-                }}
-              >
-                <div style={{
-                  width: 56, height: 56, borderRadius: RADIUS.md,
-                  background: `${track.color}20`, display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
-                  fontSize: 28, flexShrink: 0,
-                }}>
-                  {track.icon || '🛸'}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ ...TYPO.h3, marginBottom: 4, color: isExpanded ? track.color : TEXT_PRIMARY }}>
-                    {track.name}
-                  </h3>
-                  <p style={{ color: TEXT_SECONDARY, fontSize: 14, margin: 0 }}>
-                    {track.description}
-                  </p>
-                </div>
-                <div style={{
-                  fontSize: 20, color: TEXT_MUTED,
-                  transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                  transition: 'transform 0.25s ease', flexShrink: 0,
-                }}>
-                  ▾
-                </div>
-              </button>
+      {/* Grouped Tracks */}
+      {(() => {
+        const sections: { key: string; label: string; icon: string; color: string; tracks: Track[] }[] = [
+          { key: 'prize', label: 'Prize Tracks', icon: '🏆', color: '#f59e0b', tracks: tracks.filter(t => t.track_type === 'prize') },
+          { key: 'themed', label: 'Themed Tracks', icon: '🎨', color: '#8b5cf6', tracks: tracks.filter(t => t.track_type === 'themed') },
+          { key: 'sponsor', label: 'Sponsor Tracks', icon: '🤝', color: '#06b6d4', tracks: tracks.filter(t => t.track_type === 'sponsor') },
+          { key: 'general', label: 'General Tracks', icon: '🛰️', color: '#10b981', tracks: tracks.filter(t => !t.track_type || !['prize', 'themed', 'sponsor'].includes(t.track_type)) },
+        ].filter(s => s.tracks.length > 0);
 
-              {/* Expanded content */}
-              <div style={{
-                maxHeight: isExpanded ? '2000px' : '0px',
-                overflow: 'hidden',
-                transition: 'max-height 0.35s ease',
-                padding: isExpanded ? (isMobile ? `0 ${SPACE.md}px ${SPACE.md}px` : `0 ${SPACE.lg}px ${SPACE.lg}px`) : `0 ${isMobile ? SPACE.md : SPACE.lg}px`,
-                opacity: isExpanded ? 1 : 0,
-                transitionProperty: 'max-height, opacity, padding',
-                transitionDuration: '0.35s, 0.25s, 0.35s',
-                transitionTimingFunction: 'ease',
+        return sections.map(section => (
+          <div key={section.key} style={{ marginBottom: SPACE.xl }}>
+            {/* Section header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: SPACE.sm,
+              marginBottom: SPACE.md, paddingBottom: SPACE.sm,
+              borderBottom: `2px solid ${section.color}30`,
+            }}>
+              <span style={{ fontSize: 24 }}>{section.icon}</span>
+              <h2 style={{ ...TYPO.h2, color: section.color, margin: 0, fontSize: 20 }}>
+                {section.label}
+              </h2>
+              <span style={{
+                background: `${section.color}20`, color: section.color,
+                padding: '2px 10px', borderRadius: RADIUS.full,
+                fontSize: 12, fontWeight: 600,
               }}>
-                <div>
-                  {/* Challenge prompt */}
-                  <div style={{
-                    background: `${track.color}10`,
-                    border: `1px solid ${track.color}30`,
-                    borderRadius: RADIUS.md,
-                    padding: SPACE.md,
-                    marginBottom: SPACE.lg,
-                    whiteSpace: 'pre-line',
-                    fontSize: 15,
-                    color: TEXT_PRIMARY,
-                    lineHeight: 1.7,
-                  }}>
-                    {track.challenge || track.description}
-                  </div>
-
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-                    gap: SPACE.lg,
-                  }}>
-                    {/* Left column */}
-                    <div>
-                      <h4 style={{
-                        ...TYPO['label-caps'], color: track.color,
-                        marginBottom: SPACE.sm, display: 'flex', alignItems: 'center', gap: 6,
-                      }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>gavel</span>
-                        Judging Criteria
-                      </h4>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.xs, marginBottom: SPACE.lg }}>
-                        {(track.criteria || []).map((criterion, idx) => (
-                          <span key={idx} style={{
-                            padding: '6px 12px', borderRadius: RADIUS.full,
-                            background: `${track.color}15`, color: track.color,
-                            fontSize: 13, fontWeight: 500,
-                          }}>
-                            {criterion}
-                          </span>
-                        ))}
-                      </div>
-
-                      <h4 style={{
-                        ...TYPO['label-caps'], color: track.color,
-                        marginBottom: SPACE.sm, display: 'flex', alignItems: 'center', gap: 6,
-                      }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>trophy</span>
-                        Prize
-                      </h4>
-                      <div style={{
-                        padding: SPACE.md, borderRadius: RADIUS.md,
-                        background: `${track.color}10`, border: `1px solid ${track.color}30`,
-                        color: track.color, fontSize: 18, fontWeight: 700, textAlign: 'center',
-                      }}>
-                        {track.prize || 'Prize TBA'}
-                      </div>
-                    </div>
-
-                    {/* Right column */}
-                    <div>
-                      {(track.resources && track.resources.length > 0) && (
-                        <>
-                          <h4 style={{
-                            ...TYPO['label-caps'], color: track.color,
-                            marginBottom: SPACE.sm, display: 'flex', alignItems: 'center', gap: 6,
-                          }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>bookmark</span>
-                            Starter Resources
-                          </h4>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm, marginBottom: SPACE.lg }}>
-                            {track.resources.map((resource, idx) => (
-                              <a
-                                key={idx}
-                                href={resource.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  display: 'flex', alignItems: 'center', gap: SPACE.sm,
-                                  padding: '10px 14px', borderRadius: RADIUS.md,
-                                  background: INPUT_BG, color: CYAN,
-                                  textDecoration: 'none', fontSize: 14, fontWeight: 500,
-                                  border: `1px solid ${BORDER}`,
-                                }}
-                              >
-                                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>link</span>
-                                {resource.name}
-                              </a>
-                            ))}
-                          </div>
-                        </>
-                      )}
-
-                      {/* Register CTA */}
-                      <Link
-                        to={hackathonId ? `/hackathons/${hackathonId}/register` : '/register'}
-                        style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                          width: '100%', padding: '12px 24px',
-                          background: track.color, borderRadius: RADIUS.md,
-                          color: TEXT_WHITE, textDecoration: 'none',
-                          fontSize: 15, fontWeight: 700, boxSizing: 'border-box',
-                          marginTop: track.resources && track.resources.length > 0 ? 0 : SPACE.md,
-                        }}
-                      >
-                        Register for {track.name} →
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                {section.tracks.length}
+              </span>
             </div>
-          );
-        })}
-      </div>
+
+            {/* Tracks in section */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
+              {section.tracks.map((track) => {
+                const isExpanded = expandedTrack === track.id;
+                return (
+                  <div
+                    key={track.id}
+                    style={{
+                      background: CARD_BG,
+                      border: `1px solid ${isExpanded ? track.color : BORDER}`,
+                      borderLeft: `4px solid ${track.color}`,
+                      borderRadius: RADIUS.lg,
+                      overflow: 'hidden',
+                      transition: 'all 0.25s ease',
+                      boxShadow: isExpanded ? `0 4px 24px ${track.color}20` : 'none',
+                    }}
+                  >
+                    {/* Header — always visible */}
+                    <button
+                      onClick={() => toggleTrack(track.id)}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: SPACE.md,
+                        padding: isMobile ? SPACE.md : SPACE.lg,
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        color: TEXT_PRIMARY,
+                      }}
+                    >
+                      <div style={{
+                        width: 56, height: 56, borderRadius: RADIUS.md,
+                        background: `${track.color}20`, display: 'flex',
+                        alignItems: 'center', justifyContent: 'center',
+                        fontSize: 28, flexShrink: 0,
+                      }}>
+                        {track.icon || '🛸'}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <h3 style={{ ...TYPO.h3, marginBottom: 4, color: isExpanded ? track.color : TEXT_PRIMARY }}>
+                          {track.name}
+                        </h3>
+                        <p style={{ color: TEXT_SECONDARY, fontSize: 14, margin: 0 }}>
+                          {track.description}
+                        </p>
+                      </div>
+                      <div style={{
+                        fontSize: 20, color: TEXT_MUTED,
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.25s ease', flexShrink: 0,
+                      }}>
+                        ▾
+                      </div>
+                    </button>
+
+                    {/* Expanded content */}
+                    <div style={{
+                      maxHeight: isExpanded ? '2000px' : '0px',
+                      overflow: 'hidden',
+                      transition: 'max-height 0.35s ease',
+                      padding: isExpanded ? (isMobile ? `0 ${SPACE.md}px ${SPACE.md}px` : `0 ${SPACE.lg}px ${SPACE.lg}px`) : `0 ${isMobile ? SPACE.md : SPACE.lg}px`,
+                      opacity: isExpanded ? 1 : 0,
+                      transitionProperty: 'max-height, opacity, padding',
+                      transitionDuration: '0.35s, 0.25s, 0.35s',
+                      transitionTimingFunction: 'ease',
+                    }}>
+                      <div>
+                        {/* Challenge prompt */}
+                        <div style={{
+                          background: `${track.color}10`,
+                          border: `1px solid ${track.color}30`,
+                          borderRadius: RADIUS.md,
+                          padding: SPACE.md,
+                          marginBottom: SPACE.lg,
+                          whiteSpace: 'pre-line',
+                          fontSize: 15,
+                          color: TEXT_PRIMARY,
+                          lineHeight: 1.7,
+                        }}>
+                          {track.challenge || track.description}
+                        </div>
+
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                          gap: SPACE.lg,
+                        }}>
+                          {/* Left column */}
+                          <div>
+                            <h4 style={{
+                              ...TYPO['label-caps'], color: track.color,
+                              marginBottom: SPACE.sm, display: 'flex', alignItems: 'center', gap: 6,
+                            }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>gavel</span>
+                              Judging Criteria
+                            </h4>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.xs, marginBottom: SPACE.lg }}>
+                              {(track.criteria || []).map((criterion, idx) => (
+                                <span key={idx} style={{
+                                  padding: '6px 12px', borderRadius: RADIUS.full,
+                                  background: `${track.color}15`, color: track.color,
+                                  fontSize: 13, fontWeight: 500,
+                                }}>
+                                  {criterion}
+                                </span>
+                              ))}
+                            </div>
+
+                            <h4 style={{
+                              ...TYPO['label-caps'], color: track.color,
+                              marginBottom: SPACE.sm, display: 'flex', alignItems: 'center', gap: 6,
+                            }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>trophy</span>
+                              Prize
+                            </h4>
+                            <div style={{
+                              padding: SPACE.md, borderRadius: RADIUS.md,
+                              background: `${track.color}10`, border: `1px solid ${track.color}30`,
+                              color: track.color, fontSize: 18, fontWeight: 700, textAlign: 'center',
+                            }}>
+                              {track.prize || 'Prize TBA'}
+                            </div>
+                          </div>
+
+                          {/* Right column */}
+                          <div>
+                            {(track.resources && track.resources.length > 0) && (
+                              <>
+                                <h4 style={{
+                                  ...TYPO['label-caps'], color: track.color,
+                                  marginBottom: SPACE.sm, display: 'flex', alignItems: 'center', gap: 6,
+                                }}>
+                                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>bookmark</span>
+                                  Starter Resources
+                                </h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm, marginBottom: SPACE.lg }}>
+                                  {track.resources.map((resource, idx) => (
+                                    <a
+                                      key={idx}
+                                      href={resource.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{
+                                        display: 'flex', alignItems: 'center', gap: SPACE.sm,
+                                        padding: '10px 14px', borderRadius: RADIUS.md,
+                                        background: INPUT_BG, color: CYAN,
+                                        textDecoration: 'none', fontSize: 14, fontWeight: 500,
+                                        border: `1px solid ${BORDER}`,
+                                      }}
+                                    >
+                                      <span className="material-symbols-outlined" style={{ fontSize: 18 }}>link</span>
+                                      {resource.name}
+                                    </a>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+
+                            {/* Register CTA */}
+                            <Link
+                              to={hackathonId ? `/hackathons/${hackathonId}/register` : '/register'}
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                width: '100%', padding: '12px 24px',
+                                background: track.color, borderRadius: RADIUS.md,
+                                color: TEXT_WHITE, textDecoration: 'none',
+                                fontSize: 15, fontWeight: 700, boxSizing: 'border-box',
+                                marginTop: track.resources && track.resources.length > 0 ? 0 : SPACE.md,
+                              }}
+                            >
+                              Register for {track.name} →
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ));
+      })()}
 
       {/* Bottom CTA */}
       <div style={{

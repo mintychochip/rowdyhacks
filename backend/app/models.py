@@ -225,6 +225,7 @@ class Track(Base):
     icon = Column(String(10), nullable=True)
     color = Column(String(20), nullable=True)
     prize = Column(String(300), nullable=True)
+    track_type = Column(String(50), nullable=True)  # "prize", "themed", "sponsor", or null
     criteria = Column(JsonType, nullable=True)
     resources = Column(JsonType, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
