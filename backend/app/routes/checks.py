@@ -12,7 +12,7 @@ from app.database import get_db
 from app.models import Hackathon, Submission, SubmissionStatus
 from app.schemas import SubmitRequest
 from app.scraper import is_devpost_url, is_github_url
-from app.auth import create_anonymous_token
+from app.auth import create_anonymous_token, decode_token
 from app.analyzer import analyze_submission
 from app.checks import WEIGHTS
 
@@ -137,8 +137,6 @@ async def get_check_status(
         ],
     }
 
-
-from app.auth import decode_token
 
 @router.get("/{submission_id}/report")
 async def get_check_report(
