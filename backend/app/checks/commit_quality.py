@@ -1,6 +1,6 @@
 """Check commit message quality for suspicious patterns."""
 import re
-import subprocess
+import asyncio
 from app.checks.interface import CheckContext, CheckResult
 
 
@@ -24,22 +24,24 @@ async def check_commit_quality(context: CheckContext) -> CheckResult:
         )
 
     try:
-        result = subprocess.run(
-            ["git", "-C", str(context.repo_path), "log", "--format=%s"],
-            capture_output=True, text=True, timeout=15,
+        proc = await asyncio.create_subprocess_exec(
+            "git", "-C", str(context.repo_path), "log", "--format=%s",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
-        if result.returncode != 0:
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=15)
+        if proc.returncode != 0:
             return CheckResult(
                 check_name="commit-quality", check_category="timeline",
                 score=10, status="pass", details={"reason": "Git log failed"},
             )
-    except (subprocess.TimeoutExpired, FileNotFoundError):
+    except (asyncio.TimeoutError, FileNotFoundError, OSError):
         return CheckResult(
             check_name="commit-quality", check_category="timeline",
             score=10, status="pass", details={"reason": "Git command error"},
         )
 
-    messages = [m.strip().lower() for m in result.stdout.strip().split("\n") if m.strip()]
+    messages = [m.strip().lower() for m in stdout.decode().strip().split("\n") if m.strip()]
     total = len(messages)
     if total == 0:
         return CheckResult(

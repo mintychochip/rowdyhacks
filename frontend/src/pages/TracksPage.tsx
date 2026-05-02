@@ -87,7 +87,6 @@ export default function TracksPage() {
   }, [id]);
 
   const loadTracks = async () => {
-    setLoading(true);
     try {
       let hId = id;
       if (!hId) {
@@ -96,15 +95,14 @@ export default function TracksPage() {
       }
       if (hId) {
         setHackathonId(hId);
-        const hackathon = await api.getHackathon(hId);
-        setHackathonName(hackathon.name);
-        try {
-          const data = await api.getHackathonTracks(hId);
-          if (data.tracks && data.tracks.length > 0) {
-            setTracks(data.tracks);
-          }
-        } catch {
-          // Use fallback tracks if API fails
+        // Parallelize: fetch hackathon + tracks simultaneously
+        const [hackathon, tracksData] = await Promise.all([
+          api.getHackathon(hId).catch(() => null),
+          api.getHackathonTracks(hId).catch(() => ({ tracks: [] })),
+        ]);
+        if (hackathon) setHackathonName(hackathon.name);
+        if (tracksData.tracks && tracksData.tracks.length > 0) {
+          setTracks(tracksData.tracks);
         }
       }
     } catch (e) {
@@ -117,17 +115,20 @@ export default function TracksPage() {
     setExpandedTrack(expandedTrack === trackId ? null : trackId);
   };
 
-  if (loading) {
-    return (
-      <div style={{ textAlign: 'center', padding: SPACE.xl }}>
-        <div style={{ fontSize: 48, marginBottom: SPACE.md }}>🌙</div>
-        <p style={{ color: TEXT_MUTED }}>Loading tracks from orbit...</p>
-      </div>
-    );
-  }
-
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: isMobile ? SPACE.md : SPACE.xl }}>
+      {/* Loading toast — subtle, non-blocking */}
+      {loading && (
+        <div style={{
+          textAlign: 'center', padding: `${SPACE.sm}px ${SPACE.md}px`,
+          marginBottom: SPACE.md, borderRadius: RADIUS.md,
+          background: 'rgba(139,92,246,0.1)', color: '#8b5cf6',
+          fontSize: 13, fontWeight: 500,
+        }}>
+          Syncing tracks from orbit...
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: SPACE.xl }}>
         <div style={{ fontSize: 56, marginBottom: SPACE.md }}>🛰️</div>

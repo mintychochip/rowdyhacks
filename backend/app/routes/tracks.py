@@ -6,8 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import Hackathon, Track, User, UserRole
 from app.auth import decode_token
+from app.cache import cached, cache_delete_pattern
 
 router = APIRouter(prefix="/api/hackathons", tags=["tracks"])
+
+TRACKS_CACHE_TTL = 300  # 5 minutes
+CACHE_PFX = "tracks"
 
 
 def _get_current_user_payload(authorization: str | None):
@@ -60,7 +64,7 @@ DEFAULT_TRACKS = [
         "name": "Deep Space Exploration",
         "description": "Push the boundaries of space technology. Build tools for satellite data analysis, mission planning, orbital mechanics simulations, or astronaut support systems.",
         "challenge": "Your mission: create a working prototype that solves a real problem in space exploration. This could be a satellite trajectory planner, a telemetry dashboard, a radiation exposure calculator for astronauts, or an AI system that classifies celestial objects from telescope imagery.\n\nLooking for projects that demonstrate technical depth — bonus points for using real NASA/ESA datasets, simulating realistic physics, or building hardware prototypes with sensors.",
-        "icon": "\ud83d\ude80",
+        "icon": "\U0001f680",
         "color": "#8b5cf6",
         "prize": "$1,000 + SpaceX Tour",
         "criteria": ["Innovation", "Technical Complexity", "Space Applicability", "Use of Real Data"],
@@ -75,7 +79,7 @@ DEFAULT_TRACKS = [
         "name": "Orbital Commerce",
         "description": "Create the future of the space economy. Develop marketplace platforms, logistics coordination tools, supply chain trackers, or financial systems for the growing orbital industry.",
         "challenge": "The commercialization of low Earth orbit is accelerating. Your challenge: build a tool, platform, or system that enables commerce in space. Ideas: a marketplace for satellite services, a launch logistics scheduler, a space debris cleanup bidding platform, or a DeFi protocol for satellite time-sharing.\n\nJudges are looking for viable business models and clean UX — this track rewards product thinking as much as technical execution.",
-        "icon": "\ud83d\udc8e",
+        "icon": "\U0001f48e",
         "color": "#06b6d4",
         "prize": "$800 + Starlink Kit",
         "criteria": ["Business Viability", "UX Design", "Market Potential", "Technical Execution"],
@@ -89,7 +93,7 @@ DEFAULT_TRACKS = [
         "name": "Cosmic Commons",
         "description": "Democratize access to space. Build educational platforms, citizen science tools, community-driven research initiatives, or accessibility solutions that bring space exploration to everyone.",
         "challenge": "Space shouldn't just be for billionaires and government agencies. Your task: create something that makes space more accessible. A VR planetarium for schools, a mobile app that lets anyone contribute to astronomy research, a translation layer for scientific papers, or a platform connecting amateur astronomers with professional researchers.\n\nImpact matters here — judges weigh social good and accessibility as highly as technical complexity.",
-        "icon": "\ud83c\udf0c",
+        "icon": "\U0001f30c",
         "color": "#fbbf24",
         "prize": "$600 + Celestron Telescope",
         "criteria": ["Social Impact", "Accessibility", "Community Engagement", "Innovation"],
@@ -118,7 +122,7 @@ DEFAULT_TRACKS = [
         "name": "Mission Control AI",
         "description": "Apply artificial intelligence to space operations. Build ML models for anomaly detection, predictive maintenance, autonomous navigation, mission scheduling, or spacecraft health monitoring.",
         "challenge": "AI is transforming how we operate in space. Your challenge: apply machine learning to a real space operations problem. Train a model to detect anomalies in telemetry data, build a reinforcement learning agent for autonomous docking, create an LLM-powered mission planning assistant, or develop a computer vision system for satellite inspection.\n\nUse any ML framework. Bonus for live demos, real datasets, or creative model architectures suited to edge deployment.",
-        "icon": "\ud83e\udd16",
+        "icon": "\U0001f916",
         "color": "#10b981",
         "prize": "$1,200 + NVIDIA Jetson Kit",
         "criteria": ["AI Innovation", "Model Performance", "Problem Relevance", "Presentation Clarity"],
@@ -133,7 +137,7 @@ DEFAULT_TRACKS = [
         "name": "Lunar Settlements",
         "description": "Design for life beyond Earth. Create habitat concepts, life support system simulations, resource utilization tools, agricultural tech for microgravity, or urban planning for off-world colonies.",
         "challenge": "If we're going to stay on the Moon (and eventually Mars), we need to figure out how to live there. Your mission: design and prototype a system for sustaining human life off-world. A hydroponics controller for microgravity, a 3D habitat layout tool using ISRU (in-situ resource utilization), a water recycling system simulator, or a crew psychology dashboard.\n\nThis track values systems thinking — how does your solution fit into the bigger picture of a self-sustaining settlement?",
-        "icon": "\ud83c\udf15",
+        "icon": "\U0001f315",
         "color": "#f97316",
         "prize": "$900 + 3D Printer",
         "criteria": ["Systems Thinking", "Feasibility", "Innovation", "Sustainability"],
@@ -166,6 +170,7 @@ def seed_tracks(hackathon_id: uuid.UUID) -> list[Track]:
 # ── Routes ────────────────────────────────────────────────
 
 @router.get("/{hackathon_id}/tracks")
+@cached(ttl_seconds=TRACKS_CACHE_TTL, key_prefix=CACHE_PFX)
 async def list_tracks(hackathon_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Track).where(Track.hackathon_id == hackathon_id).order_by(Track.created_at)
@@ -196,6 +201,7 @@ async def create_track(
     db.add(track)
     await db.commit()
     await db.refresh(track)
+    await _bust_tracks_cache(hackathon_id)
     return _track_to_response(track)
 
 
@@ -220,6 +226,7 @@ async def update_track(
             setattr(track, field, body[field])
     await db.commit()
     await db.refresh(track)
+    await _bust_tracks_cache(hackathon_id)
     return _track_to_response(track)
 
 
@@ -239,4 +246,10 @@ async def delete_track(
         raise HTTPException(status_code=404, detail="Track not found")
     await db.delete(track)
     await db.commit()
+    await _bust_tracks_cache(hackathon_id)
     return {"detail": "ok"}
+
+
+async def _bust_tracks_cache(hackathon_id: str):
+    """Invalidate cached track listings after a mutation."""
+    await cache_delete_pattern(f"{CACHE_PFX}:list_tracks:*")

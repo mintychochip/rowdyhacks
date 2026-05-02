@@ -2,7 +2,6 @@
 import asyncio
 import os
 import shutil
-import subprocess
 import tempfile
 import time
 import uuid
@@ -61,14 +60,16 @@ async def analyze_submission(submission_id: uuid.UUID) -> None:
             if github_url and is_github_url(github_url):
                 tmp_dir = tempfile.mkdtemp(prefix="hackverify_")
                 try:
-                    result_git = subprocess.run(
-                        ["git", "clone", "--depth", "1", "--single-branch", github_url, tmp_dir],
-                        capture_output=True, text=True, timeout=300,
+                    proc = await asyncio.create_subprocess_exec(
+                        "git", "clone", "--depth", "1", "--single-branch", github_url, tmp_dir,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
                         env={**os.environ, "GIT_CLONE_PROTECTION_ACTIVE": "false"},
                     )
-                    if result_git.returncode == 0:
+                    await asyncio.wait_for(proc.communicate(), timeout=120)
+                    if proc.returncode == 0:
                         repo_path = Path(tmp_dir)
-                except (subprocess.TimeoutExpired, FileNotFoundError):
+                except (asyncio.TimeoutError, FileNotFoundError, OSError):
                     pass
             timings["clone"] = round(time.monotonic() - t2, 2)
 

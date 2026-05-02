@@ -14,7 +14,7 @@ from app.routes.registrations import router as registrations_router
 from app.routes.registrations_organizer import router as registrations_org_router
 from app.routes.checkin import router as checkin_router
 from app.routes.qr import router as qr_router
-# from app.routes.crawler import router as crawler_router  # disabled — requires Playwright
+from app.routes.crawler import router as crawler_router
 from app.routes.judging import router as judging_router
 from app.routes.oauth import router as oauth_router
 from app.routes.websocket import router as websocket_router
@@ -136,7 +136,7 @@ app.include_router(registrations_router)
 app.include_router(registrations_org_router)
 app.include_router(checkin_router)
 app.include_router(qr_router)
-# app.include_router(crawler_router, prefix="/api/crawler", tags=["crawler"])  # disabled
+app.include_router(crawler_router, prefix="/api/crawler", tags=["crawler"])
 app.include_router(judging_router)
 app.include_router(oauth_router, prefix="/api/auth/oauth", tags=["oauth"])
 app.include_router(websocket_router)

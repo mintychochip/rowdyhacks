@@ -25,8 +25,12 @@ from app.schemas import (
 )
 from app.checks.similarity import run_similarity
 from app.auth import decode_token
+from app.cache import cached, cache_delete, cache_delete_pattern
 
 router = APIRouter(prefix="/api/hackathons", tags=["hackathons"])
+
+HK_CACHE_TTL = 300  # 5 minutes
+HK_CACHE_PFX = "hackathons"
 
 
 def _get_current_user_payload(authorization: str | None):
@@ -110,6 +114,8 @@ async def create_hackathon(
         db.add(track)
     await db.commit()
 
+    await _bust_hackathon_list_cache()
+
     return {
         "id": str(hackathon.id),
         "name": hackathon.name,
@@ -122,6 +128,7 @@ async def create_hackathon(
 
 
 @router.get("")
+@cached(ttl_seconds=HK_CACHE_TTL, key_prefix=HK_CACHE_PFX)
 async def list_hackathons(db: AsyncSession = Depends(get_db)):
     """List all hackathons."""
     result = await db.execute(select(Hackathon).order_by(Hackathon.created_at.desc()))
@@ -139,6 +146,7 @@ async def list_hackathons(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{hackathon_id}")
+@cached(ttl_seconds=HK_CACHE_TTL, key_prefix=HK_CACHE_PFX)
 async def get_hackathon(hackathon_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     """Get a single hackathon by ID."""
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
@@ -307,6 +315,7 @@ async def update_hackathon(
 
     if updated:
         await db.commit()
+        await _bust_hackathon_cache(str(hackathon_id))
 
     return {"id": str(hackathon_id), "updated": updated}
 
@@ -986,3 +995,15 @@ async def import_devpost_submissions(
         "imported": imported,
         "skipped": skipped,
     }
+
+
+# ── Cache helpers ───────────────────────────────────────────
+
+async def _bust_hackathon_list_cache():
+    await cache_delete_pattern(f"{HK_CACHE_PFX}:list_hackathons:*")
+
+
+async def _bust_hackathon_cache(hackathon_id: str):
+    await cache_delete_pattern(f"{HK_CACHE_PFX}:get_hackathon:*")
+    await cache_delete_pattern(f"{HK_CACHE_PFX}:list_hackathons:*")
+    await cache_delete_pattern(f"tracks:list_tracks:*")

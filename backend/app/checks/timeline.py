@@ -1,5 +1,5 @@
 """Check commit timeline against hackathon window."""
-import subprocess
+import asyncio
 from pathlib import Path
 from app.checks.interface import CheckContext, CheckResult
 
@@ -16,13 +16,13 @@ async def check_commits(context: CheckContext) -> CheckResult:
         )
 
     try:
-        result = subprocess.run(
-            ["git", "-C", str(context.repo_path), "log", "--format=%H|%aI|%s"],
-            capture_output=True,
-            text=True,
-            timeout=30,
+        proc = await asyncio.create_subprocess_exec(
+            "git", "-C", str(context.repo_path), "log", "--format=%H|%aI|%s",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
-        if result.returncode != 0:
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
+        if proc.returncode != 0:
             return CheckResult(
                 check_name="commit-timestamps",
                 check_category="timeline",
@@ -30,7 +30,7 @@ async def check_commits(context: CheckContext) -> CheckResult:
                 status="warn",
                 details={"reason": "Git log failed"},
             )
-    except (subprocess.TimeoutExpired, FileNotFoundError):
+    except (asyncio.TimeoutError, FileNotFoundError, OSError):
         return CheckResult(
             check_name="commit-timestamps",
             check_category="timeline",
@@ -39,7 +39,7 @@ async def check_commits(context: CheckContext) -> CheckResult:
             details={"reason": "Git command error"},
         )
 
-    lines = result.stdout.strip().split("\n")
+    lines = stdout.decode().strip().split("\n")
     commits = []
     current = None
     for line in lines:

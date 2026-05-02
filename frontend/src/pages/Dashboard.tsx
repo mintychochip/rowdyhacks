@@ -43,6 +43,7 @@ export default function Dashboard() {
   const [filterStatus, setFilterStatus] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) { navigate('/auth'); return; }
@@ -60,6 +61,15 @@ export default function Dashboard() {
       setSubmissions(data.submissions);
       setTotal(data.total);
     } catch {} finally { setLoading(false); }
+  };
+
+  const handleRetry = async (e: React.MouseEvent, subId: string) => {
+    e.stopPropagation();
+    setRetrying(subId);
+    try {
+      await api.retryCheck(subId);
+      loadSubmissions();
+    } catch {} finally { setRetrying(null); }
   };
 
   const stats = [
@@ -171,7 +181,25 @@ export default function Dashboard() {
                   <td style={{ padding: '14px 20px', ...TYPO['body-sm'], fontWeight: 500, color: TEXT_PRIMARY }}>
                     {sub.project_title || (sub.devpost_url ? new URL(sub.devpost_url).pathname.split('/').pop() : 'Untitled')}
                   </td>
-                  <td style={{ padding: '14px 20px' }}><StatusBadge status={sub.status} /></td>
+                  <td style={{ padding: '14px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <StatusBadge status={sub.status} />
+                      {(sub.status === 'analyzing' || sub.status === 'failed' || sub.status === 'pending') && (
+                        <button
+                          onClick={(e) => handleRetry(e, sub.id)}
+                          disabled={retrying === sub.id}
+                          title="Retry analysis"
+                          style={{
+                            background: 'none', border: `1px solid ${'#555'}`, borderRadius: 4,
+                            color: '#aaa', cursor: 'pointer', fontSize: 11, padding: '2px 8px',
+                            fontFamily: 'inherit', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {retrying === sub.id ? '...' : 'Retry'}
+                        </button>
+                      )}
+                    </div>
+                  </td>
                   <td style={{
                     padding: '14px 20px', fontFamily: "'Space Mono', monospace", fontSize: 15, fontWeight: 700,
                     color: (sub.risk_score ?? 0) <= 30 ? SUCCESS : (sub.risk_score ?? 0) <= 60 ? WARNING : ERROR,

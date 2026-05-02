@@ -1,5 +1,5 @@
 """Forensic analysis of commit timestamps to detect manipulation."""
-import subprocess
+import asyncio
 import re
 from datetime import datetime, timezone
 from collections import defaultdict
@@ -33,11 +33,14 @@ async def check_commit_forensics(context: CheckContext) -> CheckResult:
     
     try:
         # Get detailed commit log with author date, commit date, and author
-        result = subprocess.run(
-            ["git", "-C", str(context.repo_path), "log", "--format=%H|%ai|%ci|%an|%ae|%s"],
-            capture_output=True, text=True, timeout=15,
+        proc = await asyncio.create_subprocess_exec(
+            "git", "-C", str(context.repo_path), "log",
+            "--format=%H|%ai|%ci|%an|%ae|%s",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
-        if result.returncode != 0:
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=15)
+        if proc.returncode != 0:
             return CheckResult(
                 check_name="commit-forensics",
                 check_category="timeline",
@@ -45,7 +48,7 @@ async def check_commit_forensics(context: CheckContext) -> CheckResult:
                 status="pass",
                 details={"reason": "Git log failed"},
             )
-    except (subprocess.TimeoutExpired, FileNotFoundError):
+    except (asyncio.TimeoutError, FileNotFoundError, OSError):
         return CheckResult(
             check_name="commit-forensics",
             check_category="timeline",
@@ -53,9 +56,9 @@ async def check_commit_forensics(context: CheckContext) -> CheckResult:
             status="pass",
             details={"reason": "Git command error"},
         )
-    
+
     commits = []
-    for line in result.stdout.strip().split("\n"):
+    for line in stdout.decode().strip().split("\n"):
         if "|" not in line:
             continue
         parts = line.split("|")

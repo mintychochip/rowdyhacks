@@ -7,7 +7,7 @@ import { getOAuthAuthorizeUrl } from '../services/api';
 import BrandIcon from '../components/BrandIcon';
 
 export default function AuthPage() {
-  const { login, register } = useAuth();
+  const { user, login, register } = useAuth();
   const navigate = useNavigate();
   const { isMobile } = useMediaQuery();
   const [searchParams] = useSearchParams();
@@ -25,6 +25,11 @@ export default function AuthPage() {
       setError(decodeURIComponent(urlError));
     }
   }, [urlError]);
+
+  // Redirect already-logged-in users away from the auth page
+  useEffect(() => {
+    if (user) navigate('/', { replace: true });
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
