@@ -38,7 +38,6 @@ function ElapsedTimer({ running }: { running: boolean }) {
     return () => { if (ref.current) clearInterval(ref.current); };
   }, [running]);
 
-  if (!running || elapsed < 2) return null;
   const mins = Math.floor(elapsed / 60);
   const secs = elapsed % 60;
   return (
@@ -48,107 +47,123 @@ function ElapsedTimer({ running }: { running: boolean }) {
   );
 }
 
-const STAGES = [
-  { key: 'scraping', label: 'Scraping Devpost page', desc: 'Extracting project info, tech stack, and team members' },
-  { key: 'cloning', label: 'Cloning repository', desc: 'Downloading source code for analysis' },
-  { key: 'checking', label: 'Running integrity checks', desc: 'Analyzing commits, code, assets, and more' },
-  { key: 'scoring', label: 'Computing risk score', desc: 'Aggregating results into final report' },
-];
+function AnalysisProgress({ stage, checkProgress, labels, hasGithub }: {
+  stage: string;
+  checkProgress: { completed: string[]; pending: string[]; current: string | null } | null;
+  labels: Record<string, string>;
+  hasGithub: boolean;
+}) {
+  const stageLabel: Record<string, string> = {
+    scraping: 'Scraping Devpost page',
+    cloning: hasGithub ? 'Downloading source code' : 'Preparing analysis',
+    checking: 'Running integrity checks',
+    scoring: 'Computing final report',
+  };
 
-function ProgressSteps({ currentStage }: { currentStage: string }) {
-  const currentIdx = STAGES.findIndex(s => s.key === currentStage);
+  const stageDesc: Record<string, string> = {
+    scraping: 'Extracting project info, tech stack, and team members',
+    cloning: hasGithub ? 'Cloning repository for analysis' : 'No GitHub repo found — skipping',
+    checking: '',
+    scoring: 'Aggregating all results into your report',
+  };
 
-  return (
-    <div style={{ maxWidth: 400, margin: '0 auto' }}>
-      {STAGES.map((s, i) => {
-        const done = i < currentIdx;
-        const active = i === currentIdx;
-        const pending = i > currentIdx;
+  const totalChecks = checkProgress ? checkProgress.completed.length + checkProgress.pending.length : 0;
+  const doneChecks = checkProgress ? checkProgress.completed.length : 0;
+  const checkPct = totalChecks > 0 ? Math.round((doneChecks / totalChecks) * 100) : 0;
 
-        return (
-          <div key={s.key} style={{ display: 'flex', gap: SPACE.sm + 4, alignItems: 'flex-start', marginBottom: i < STAGES.length - 1 ? SPACE.md : 0 }}>
-            <div style={{
-              width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-              background: done ? SUCCESS : active ? PRIMARY : INPUT_BG,
-              border: pending ? `2px solid ${INPUT_BORDER}` : 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12, color: done || active ? TEXT_WHITE : TEXT_DIM,
-              transition: 'all 0.3s ease',
-            }}>
-              {done ? '\u2713' : active ? '\u25CF' : i + 1}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{
-                ...TYPO['body-lg'], fontWeight: active ? 600 : 400,
-                color: active ? TEXT_WHITE : done ? TEXT_MUTED : TEXT_DIM,
-                transition: 'color 0.3s ease',
-              }}>
-                {s.label}
-              </div>
-              {active && (
-                <div style={{ ...TYPO['body-sm'], color: PRIMARY, marginTop: SPACE.xs / 2 }}>
-                  {s.desc}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+  // Progress bar percentage: 25% for scraping, 50% at cloning, 75%+ at checking, 100% at scoring
+  const stagePct: Record<string, number> = {
+    scraping: 15,
+    cloning: hasGithub ? 35 : 50,
+    checking: 50 + (checkPct * 0.45),
+    scoring: 98,
+  };
 
-function CheckProgressBars({ progress, labels }: { progress: any; labels: Record<string, string> }) {
-  if (!progress) return null;
-  const { completed, pending, current } = progress;
-  const all = [...completed, ...pending];
-  const done = completed.length;
-  const total = all.length;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const pct = stagePct[stage] || 0;
 
   return (
-    <div style={{ maxWidth: 360, margin: '20px auto 0' }}>
-      <div style={{ ...TYPO['body-sm'], color: TEXT_MUTED, marginBottom: SPACE.xs + 2 }}>
-        Checks: {done}/{total} ({pct}%)
-      </div>
-      <div style={{ height: 4, background: INPUT_BG, borderRadius: 2, marginBottom: SPACE.sm + 4, overflow: 'hidden' }}>
+    <div style={{ maxWidth: 500, margin: '0 auto' }}>
+      {/* Main progress bar */}
+      <div style={{
+        height: 6, background: INPUT_BG, borderRadius: 3, overflow: 'hidden', marginBottom: SPACE.md,
+      }}>
         <div style={{
-          height: '100%', width: `${pct}%`,
-          background: PRIMARY, borderRadius: 2,
-          transition: 'width 0.3s ease',
+          height: '100%',
+          width: `${Math.round(pct)}%`,
+          background: `linear-gradient(90deg, ${PRIMARY}, #a78bfa)`,
+          borderRadius: 3,
+          transition: 'width 0.6s ease',
         }} />
       </div>
-      {all.map((name: string) => {
-        const isDone = completed.includes(name);
-        const isCurrent = name === current;
-        const label = labels[name] || name.replace(/_/g, ' ');
-        return (
-          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm, marginBottom: SPACE.xs, fontSize: 12 }}>
-            <span style={{
-              width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
-              background: isDone ? SUCCESS : isCurrent ? PRIMARY : INPUT_BG,
-              border: !isDone && !isCurrent ? `1.5px solid ${INPUT_BORDER}` : 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 9, color: TEXT_WHITE,
-            }}>
-              {isDone ? '\u2713' : isCurrent ? '\u25CF' : ''}
-            </span>
-            <span style={{
-              color: isCurrent ? TEXT_WHITE : isDone ? SUCCESS : TEXT_MUTED,
-              fontWeight: isCurrent ? 500 : 400,
-            }}>
-              {label}
-              {isCurrent && <span style={{ color: PRIMARY, marginLeft: SPACE.xs + 2, fontSize: 10 }}>running...</span>}
-            </span>
+
+      {/* Current stage */}
+      <div style={{ textAlign: 'center', marginBottom: SPACE.xs }}>
+        <span style={{
+          ...TYPO['body-lg'], fontWeight: 600, color: TEXT_WHITE,
+        }}>
+          {stageLabel[stage] || 'Analyzing...'}
+        </span>
+      </div>
+      {stageDesc[stage] && (
+        <div style={{ ...TYPO['body-sm'], color: TEXT_MUTED, textAlign: 'center', marginBottom: SPACE.md }}>
+          {stageDesc[stage]}
+        </div>
+      )}
+
+      {/* Check progress during checking stage */}
+      {stage === 'checking' && checkProgress && (
+        <div style={{ marginTop: SPACE.lg }}>
+          <div style={{ ...TYPO['body-sm'], color: TEXT_MUTED, marginBottom: SPACE.sm, textAlign: 'center' }}>
+            {doneChecks}/{totalChecks} checks complete
           </div>
-        );
-      })}
+
+          {/* Completed checks scrolling in */}
+          <div style={{
+            maxHeight: 200, overflow: 'hidden',
+            maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+          }}>
+            {checkProgress.completed.map((name: string) => (
+              <div key={name} style={{
+                display: 'flex', alignItems: 'center', gap: SPACE.sm,
+                padding: '4px 0', fontSize: 12,
+                animation: 'slideDown 0.3s ease',
+              }}>
+                <span style={{
+                  width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+                  background: SUCCESS, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 9, color: TEXT_WHITE,
+                }}>{'\u2713'}</span>
+                <span style={{ color: SUCCESS }}>{labels[name] || name.replace(/_/g, ' ')}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Current check */}
+          {checkProgress.current && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: SPACE.sm,
+              padding: '8px 0', fontSize: 13, fontWeight: 500,
+            }}>
+              <div style={{
+                width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+                background: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 9, color: TEXT_WHITE,
+                animation: 'pulse 1.5s infinite',
+              }}>{'\u25CF'}</div>
+              <span style={{ color: TEXT_WHITE }}>
+                {labels[checkProgress.current] || checkProgress.current.replace(/_/g, ' ')}
+              </span>
+              <span style={{ color: PRIMARY, fontSize: 10 }}>running...</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 export default function AnalyzePage() {
-  const { submit, reset, result, status, stage, checkProgress, CHECK_LABELS, error } = useAnalysis();
+  const { submit, reset, result, status, stage, checkProgress, CHECK_LABELS, error, hasGithub } = useAnalysis();
   const { isMobile } = useMediaQuery();
 
   return (
@@ -166,8 +181,12 @@ export default function AnalyzePage() {
           <div style={{ ...TYPO.h2, marginBottom: SPACE.lg, fontWeight: 600 }} data-mobile-h1>
             Analyzing Submission
           </div>
-          <ProgressSteps currentStage={stage} />
-          {stage === 'checking' && <CheckProgressBars progress={checkProgress} labels={CHECK_LABELS} />}
+          <AnalysisProgress
+            stage={stage}
+            checkProgress={checkProgress}
+            labels={CHECK_LABELS}
+            hasGithub={hasGithub}
+          />
           <ElapsedTimer running={true} />
         </div>
       )}
@@ -190,7 +209,6 @@ export default function AnalyzePage() {
               checks={checks}
             />
 
-            {/* Drill down */}
             <details style={{ marginTop: SPACE.sm }}>
               <summary style={{
                 cursor: 'pointer', padding: `${SPACE.sm + 4}px ${SPACE.md}px`,

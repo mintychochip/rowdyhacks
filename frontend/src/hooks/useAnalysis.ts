@@ -87,5 +87,7 @@ export function useAnalysis() {
     setError('');
   }, []);
 
-  return { submit, reset, result, status, stage, checkProgress, CHECK_LABELS, error };
+  const hasGithub = result?.github_url != null;
+
+  return { submit, reset, result, status, stage, checkProgress, CHECK_LABELS, error, hasGithub };
 }

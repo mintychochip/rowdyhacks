@@ -66,7 +66,7 @@ async def check_alignment_ai(context: CheckContext) -> CheckResult:
             score=30, status="warn", details={"reason": "No repo available"},
         )
 
-    if not settings.llm_api_key and not settings.poolside_api_key:
+    if not settings.poolside_api_key:
         return CheckResult(
             check_name="claimed-vs-actual-tech", check_category="devpost_alignment",
             score=0, status="pass", details={"reason": "LLM not configured"},
@@ -113,53 +113,31 @@ async def check_alignment_ai(context: CheckContext) -> CheckResult:
         github_url=context.scraped.github_url or "https://github.com/unknown/repo",
     )
 
-    # Use Poolside if configured, otherwise fall back to default LLM
-    api_url = f"{settings.poolside_api_url}/chat/completions" if settings.poolside_api_key else settings.llm_api_url
-    api_key = settings.poolside_api_key or settings.llm_api_key
-    model = settings.poolside_model if settings.poolside_api_key else settings.llm_fast_model
+    api_url = f"{settings.poolside_api_url}/chat/completions"
+    api_key = settings.poolside_api_key
+    model = settings.poolside_model
 
     try:
         async with httpx.AsyncClient(timeout=120) as client:
-            if settings.poolside_api_key:
-                # OpenAI-compatible API (Poolside)
-                resp = await client.post(
-                    api_url,
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": model,
-                        "max_tokens": 16384,
-                        "messages": [
-                            {"role": "system", "content": RETRIEVAL_PROMPT},
-                            {"role": "user", "content": prompt},
-                        ],
-                    },
-                )
-                resp.raise_for_status()
-                data = resp.json()
-                content = data["choices"][0]["message"]["content"]
-            else:
-                # Anthropic-compatible API (DeepSeek)
-                resp = await client.post(
-                    api_url,
-                    headers={
-                        "x-api-key": api_key,
-                        "anthropic-version": "2023-06-01",
-                        "content-type": "application/json",
-                    },
-                    json={
-                        "model": model,
-                        "max_tokens": 16384,
-                        "messages": [{"role": "user", "content": prompt}],
-                    },
-                )
-                resp.raise_for_status()
-                llm_response = resp.json()
-                content_blocks = llm_response.get("content", [])
-                text_blocks = [b.get("text", "") for b in content_blocks if b.get("type") == "text"]
-                content = "\n".join(text_blocks) if text_blocks else "{}"
+            # Poolside API (OpenAI-compatible)
+            resp = await client.post(
+                api_url,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "max_tokens": 16384,
+                    "messages": [
+                        {"role": "system", "content": RETRIEVAL_PROMPT},
+                        {"role": "user", "content": prompt},
+                    ],
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            content = data["choices"][0]["message"]["content"]
     except Exception as e:
         return CheckResult(
             check_name="claimed-vs-actual-tech", check_category="devpost_alignment",
