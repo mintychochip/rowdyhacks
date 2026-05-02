@@ -40,7 +40,7 @@ jobs:
             git clean -fd
 
             echo "==> Rebuilding and restarting containers..."
-            docker compose -f docker-compose.yml up -d --build
+            docker compose -f docker-compose.yml up -d --build --remove-orphans
             docker compose -f docker-compose.yml restart nginx
 
             echo "==> Pruning old images..."
