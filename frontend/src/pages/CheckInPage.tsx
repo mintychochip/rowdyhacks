@@ -194,9 +194,12 @@ export default function CheckInPage() {
   const loadAllParticipants = async () => {
     if (!selectedHackathonId) return;
     setLoading(true);
+    setError('');
     try {
       const data = await api.getHackathonRegistrations(selectedHackathonId, { limit: 500 });
-      const registrations = data.registrations || [];
+      console.log('API response:', data);
+      // Handle both {registrations: [...]} and direct array response
+      const registrations = Array.isArray(data) ? data : (data.registrations || []);
       // Map API response to Participant interface
       const participants: Participant[] = registrations.map((r: any) => ({
         id: r.id,
@@ -207,7 +210,7 @@ export default function CheckInPage() {
         checked_in_at: r.checked_in_at,
       }));
       setAllParticipants(participants);
-      // Initially show all (sorted)
+      // Initially show all (sorted: pending/accepted first, checked_in last)
       const sorted = [...participants].sort((a, b) => {
         if (a.status === b.status) return a.name.localeCompare(b.name);
         if (a.status === 'checked_in') return 1;
@@ -216,7 +219,9 @@ export default function CheckInPage() {
       });
       setSearchResults(sorted);
     } catch (err: any) {
-      setError(err.message || 'Failed to load participants');
+      const errorMsg = err?.message || err?.detail || (typeof err === 'string' ? err : 'Failed to load participants');
+      console.error('Failed to load participants:', err);
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -640,8 +645,8 @@ export default function CheckInPage() {
       {/* Error Display */}
       {error && (
         <div style={{
-          background: error.includes('already') ? WARNING_BG10 : ERROR_BG20,
-          border: `1px solid ${error.includes('already') ? WARNING : ERROR}`,
+          background: error.includes?.('already') ? WARNING_BG10 : ERROR_BG20,
+          border: `1px solid ${error.includes?.('already') ? WARNING : ERROR}`,
           borderRadius: RADIUS.lg,
           padding: SPACE.lg,
           marginTop: SPACE.lg,
@@ -649,9 +654,9 @@ export default function CheckInPage() {
           alignItems: 'center',
           gap: SPACE.md,
         }}>
-          <span style={{ fontSize: 24 }}>{error.includes('already') ? '⚠️' : '❌'}</span>
-          <span style={{ color: error.includes('already') ? WARNING : ERROR_TEXT, fontWeight: 500 }}>
-            {error}
+          <span style={{ fontSize: 24 }}>{error.includes?.('already') ? '⚠️' : '❌'}</span>
+          <span style={{ color: error.includes?.('already') ? WARNING : ERROR_TEXT, fontWeight: 500 }}>
+            {typeof error === 'string' ? error : JSON.stringify(error)}
           </span>
         </div>
       )}
