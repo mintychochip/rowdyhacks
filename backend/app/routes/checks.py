@@ -138,13 +138,23 @@ async def get_check_status(
     }
 
 
+from app.auth import decode_token
+
 @router.get("/{submission_id}/report")
 async def get_check_report(
     submission_id: uuid.UUID,
     token: str | None = None,
+    authorization: str | None = Header(None, alias="Authorization"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get full report JSON for a submission."""
+    """Get full report JSON for a submission.
+
+    Access rules:
+    - If no access_token is set on submission: public
+    - If token query param matches: access granted
+    - If Authorization header has valid organizer JWT: access granted
+    - Otherwise: access denied
+    """
     result = await db.execute(
         select(Submission).where(Submission.id == submission_id).options(selectinload(Submission.check_results))
     )
@@ -152,7 +162,19 @@ async def get_check_report(
     if not sub:
         raise HTTPException(status_code=404, detail="Submission not found")
 
-    if sub.access_token and sub.access_token != token:
+    # Check if user is organizer (bypasses token check)
+    is_organizer = False
+    if authorization and authorization.startswith("Bearer "):
+        jwt_token = authorization.removeprefix("Bearer ")
+        try:
+            payload = decode_token(jwt_token)
+            if payload and payload.get("role") == "organizer":
+                is_organizer = True
+        except:
+            pass
+
+    # Token check (skip if organizer)
+    if not is_organizer and sub.access_token and sub.access_token != token:
         raise HTTPException(status_code=403, detail="Access denied")
 
     return {
