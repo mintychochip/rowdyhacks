@@ -25,7 +25,9 @@ interface Hackathon {
 
 export default function CheckInPage() {
   const { hackathonId: urlHackathonId } = useParams<{ hackathonId?: string }>();
-  const [mode, setMode] = useState<'camera' | 'manual' | 'name'>('camera');
+  const { isMobile } = useMediaQuery();
+  // Default to camera on mobile, manual on desktop (camera often blocked on web)
+  const [mode, setMode] = useState<'camera' | 'manual' | 'name'>(isMobile ? 'camera' : 'manual');
   const [qrInput, setQrInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Participant[]>([]);
@@ -35,9 +37,9 @@ export default function CheckInPage() {
   const [scanning, setScanning] = useState(false);
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [selectedHackathonId, setSelectedHackathonId] = useState<string>(urlHackathonId || '');
+  const [cameraSupported, setCameraSupported] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { isMobile } = useMediaQuery();
 
   // Load hackathons on mount
   useEffect(() => {
@@ -58,21 +60,37 @@ export default function CheckInPage() {
       return;
     }
 
+    // Check if camera is supported in this environment
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraSupported(false);
+      setError('Camera not available in this browser. Using manual mode.');
+      setMode('manual');
+      return;
+    }
+
     let stream: MediaStream | null = null;
     let animationId: number | null = null;
 
     const startCamera = async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' }
+          video: { facingMode: isMobile ? 'environment' : 'user' }
         });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
         setScanning(true);
         scanLoop();
-      } catch (err) {
-        setError('Camera access denied. Switch to manual mode or allow camera permissions.');
+      } catch (err: any) {
+        const isPermissionDenied = err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError';
+        const isNotFound = err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError';
+        if (isPermissionDenied) {
+          setError('Camera access denied. Click the camera icon in your browser address bar to allow access, or switch to manual mode.');
+        } else if (isNotFound) {
+          setError('No camera found. Please use manual mode to enter QR codes.');
+        } else {
+          setError(`Camera error: ${err.message || 'Unknown error'}. Switch to manual mode.`);
+        }
         setMode('manual');
       }
     };
@@ -249,13 +267,14 @@ export default function CheckInPage() {
         marginBottom: SPACE.lg,
       }}>
         {[
-          { key: 'camera', label: '📷 Camera', icon: '📷' },
-          { key: 'manual', label: '⌨️ Manual', icon: '⌨️' },
-          { key: 'name', label: '🔍 Name Search', icon: '🔍' },
+          { key: 'camera', label: '📷 Camera', icon: '📷', disabled: !cameraSupported },
+          { key: 'manual', label: '⌨️ Manual', icon: '⌨️', disabled: false },
+          { key: 'name', label: '🔍 Name Search', icon: '🔍', disabled: false },
         ].map((m) => (
           <button
             key={m.key}
             onClick={() => {
+              if (m.disabled) return;
               setMode(m.key as any);
               setError('');
               setResult(null);
@@ -266,10 +285,11 @@ export default function CheckInPage() {
               background: mode === m.key ? CARD_BG : 'transparent',
               border: 'none',
               borderRadius: RADIUS.md,
-              color: mode === m.key ? TEXT_PRIMARY : TEXT_MUTED,
+              color: m.disabled ? TEXT_MUTED : (mode === m.key ? TEXT_PRIMARY : TEXT_MUTED),
               fontSize: 14,
               fontWeight: 600,
-              cursor: 'pointer',
+              cursor: m.disabled ? 'not-allowed' : 'pointer',
+              opacity: m.disabled ? 0.4 : 1,
               transition: 'all 0.2s',
             }}
           >
@@ -594,10 +614,11 @@ export default function CheckInPage() {
         }}>
           <h4 style={{ ...TYPO.h3, marginBottom: SPACE.md }}>💡 Quick Tips</h4>
           <ul style={{ color: TEXT_SECONDARY, fontSize: 14, lineHeight: 1.8, margin: 0, paddingLeft: 20 }}>
-            <li><strong>Camera mode:</strong> Best for fast check-ins. Hold phone steady 6-12 inches from QR code.</li>
-            <li><strong>Manual mode:</strong> Use if camera fails or for testing. Paste the QR token directly.</li>
+            {!cameraSupported && <li style={{ color: WARNING }}><strong>Web browser detected:</strong> Camera mode not available. Use Manual or Name Search mode.</li>}
+            <li><strong>Camera mode:</strong> {cameraSupported ? 'Best for fast check-ins. Hold phone steady 6-12 inches from QR code.' : 'Not available in this browser.'}</li>
+            <li><strong>Manual mode:</strong> Paste the QR token directly. Best for desktop browsers.</li>
             <li><strong>Name search:</strong> Lookup participants when they forgot their QR code.</li>
-            <li>Green border = Ready to scan. Red = Camera not available.</li>
+            {cameraSupported && <li>Green border = Ready to scan. Red = Camera not available.</li>}
           </ul>
         </div>
       )}
