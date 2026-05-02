@@ -54,6 +54,19 @@ export default function ProjectGallery() {
     return '-';
   };
 
+  // Deduplicate projects by extracting project slug from Devpost URL
+  const dedupedProjects = projects.filter((p, index, self) => {
+    // Extract project slug from URL like https://devpost.com/software/signlingo?...
+    const match = p.devpost_url?.match(/\/software\/([^/?]+)/);
+    const slug = match ? match[1] : p.id;
+    // Keep only the first occurrence of each slug
+    return self.findIndex((other) => {
+      const otherMatch = other.devpost_url?.match(/\/software\/([^/?]+)/);
+      const otherSlug = otherMatch ? otherMatch[1] : other.id;
+      return otherSlug === slug;
+    }) === index;
+  });
+
   if (loading) {
     return <p style={{ color: TEXT_MUTED, textAlign: 'center', padding: SPACE.xl }}>Loading projects...</p>;
   }
@@ -74,7 +87,7 @@ export default function ProjectGallery() {
           <p style={{ color: ERROR_TEXT, marginBottom: SPACE.sm + 4 }}>{error}</p>
           <Button onClick={() => window.location.reload()}>Try Again</Button>
         </Card>
-      ) : projects.length === 0 ? (
+      ) : dedupedProjects.length === 0 ? (
         <Card style={{ padding: SPACE.xl, textAlign: 'center' }}>
           <p style={{ color: TEXT_MUTED }}>No completed projects yet.</p>
           <p style={{ color: TEXT_SECONDARY, fontSize: 13, marginTop: SPACE.sm }}>
@@ -92,7 +105,7 @@ export default function ProjectGallery() {
               <TableHeadCell align="right">Report</TableHeadCell>
             </TableHeader>
             <tbody>
-              {projects.map(p => (
+              {dedupedProjects.map(p => (
                 <TableRow key={p.id}>
                   <TableCell>
                     <div style={{ fontWeight: 600 }}>{p.project_title || 'Untitled'}</div>
