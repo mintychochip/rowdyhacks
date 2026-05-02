@@ -67,19 +67,21 @@ function AnalysisProgress({ stage, checkProgress, labels, hasGithub }: {
     scoring: 'Aggregating all results into your report',
   };
 
-  const totalChecks = checkProgress ? checkProgress.completed.length + checkProgress.pending.length : 0;
+  const totalChecks = checkProgress ? checkProgress.completed.length + checkProgress.pending.length : 13;
   const doneChecks = checkProgress ? checkProgress.completed.length : 0;
-  const checkPct = totalChecks > 0 ? Math.round((doneChecks / totalChecks) * 100) : 0;
 
-  // Progress bar percentage: 25% for scraping, 50% at cloning, 75%+ at checking, 100% at scoring
-  const stagePct: Record<string, number> = {
-    scraping: 15,
-    cloning: hasGithub ? 35 : 50,
-    checking: 50 + (checkPct * 0.45),
-    scoring: 98,
-  };
-
-  const pct = stagePct[stage] || 0;
+  // Progress bar: 0-8% scraping, 8-15% cloning, 15-95% per-check, 95-100% scoring
+  const pct = (() => {
+    if (stage === 'scraping') return doneChecks > 0 ? 8 : 3;
+    if (stage === 'cloning') return hasGithub ? 12 : 15;
+    if (stage === 'scoring') return 97;
+    if (stage === 'checking') {
+      const base = hasGithub ? 15 : 18;
+      const range = 80; // 15% to 95%
+      return base + (doneChecks / Math.max(totalChecks, 1)) * range;
+    }
+    return 0;
+  })();
 
   return (
     <div style={{ maxWidth: 500, margin: '0 auto' }}>
@@ -110,8 +112,8 @@ function AnalysisProgress({ stage, checkProgress, labels, hasGithub }: {
         </div>
       )}
 
-      {/* Check progress during checking stage */}
-      {stage === 'checking' && checkProgress && (
+      {/* Check progress — show whenever we have check data */}
+      {checkProgress && (
         <div style={{ marginTop: SPACE.lg }}>
           <div style={{ ...TYPO['body-sm'], color: TEXT_MUTED, marginBottom: SPACE.sm, textAlign: 'center' }}>
             {doneChecks}/{totalChecks} checks complete
