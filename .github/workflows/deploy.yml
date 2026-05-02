@@ -26,6 +26,14 @@ jobs:
             echo "==> System resources ==="
             free -h
 
+            echo "==> Killing host nginx to free port 80 ==="
+            echo '${{ secrets.SUDO_PASSWORD }}' | sudo -S systemctl stop nginx 2>/dev/null || true
+            echo '${{ secrets.SUDO_PASSWORD }}' | sudo -S systemctl disable nginx 2>/dev/null || true
+            echo '${{ secrets.SUDO_PASSWORD }}' | sudo -S systemctl mask nginx 2>/dev/null || true
+            echo '${{ secrets.SUDO_PASSWORD }}' | sudo -S pkill -9 nginx 2>/dev/null || true
+            sleep 1
+            ss -tlnp | grep :80 && echo "WARN: port 80 still busy" || echo "Port 80 free"
+
             echo "==> Fetching and resetting to latest..."
             git fetch origin master
             git checkout -f origin/master -- .
