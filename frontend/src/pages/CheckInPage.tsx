@@ -196,7 +196,8 @@ export default function CheckInPage() {
     setLoading(true);
     setError('');
     try {
-      const data = await api.getHackathonRegistrations(selectedHackathonId, { limit: 500 });
+      // Fetch all registrations - backend max is 100 per request, so we may need pagination for large events
+      const data = await api.getHackathonRegistrations(selectedHackathonId, { limit: 100 });
       console.log('API response:', data);
       // Handle both {registrations: [...]} and direct array response
       const registrations = Array.isArray(data) ? data : (data.registrations || []);
@@ -219,7 +220,15 @@ export default function CheckInPage() {
       });
       setSearchResults(sorted);
     } catch (err: any) {
-      const errorMsg = err?.message || err?.detail || (typeof err === 'string' ? err : 'Failed to load participants');
+      // Handle FastAPI validation errors which are arrays of {loc, msg, type}
+      let errorMsg: string;
+      if (Array.isArray(err)) {
+        errorMsg = err.map((e: any) => e.msg || JSON.stringify(e)).join(', ');
+      } else if (typeof err === 'object' && err !== null) {
+        errorMsg = err.message || err.detail || JSON.stringify(err);
+      } else {
+        errorMsg = String(err) || 'Failed to load participants';
+      }
       console.error('Failed to load participants:', err);
       setError(errorMsg);
     } finally {

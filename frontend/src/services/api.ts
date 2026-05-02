@@ -11,7 +11,13 @@ export async function request(path: string, options: RequestInit = {}) {
   const res = await fetch(`${BASE}${path}`, { ...options, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Request failed');
+    // Handle FastAPI validation errors (array) or standard {detail} errors
+    if (Array.isArray(err)) {
+      // Validation errors: [{loc: [...], msg: "...", type: "..."}]
+      const messages = err.map((e: any) => e.msg || String(e)).join(', ');
+      throw new Error(messages || 'Validation failed');
+    }
+    throw new Error(err.detail || err.message || JSON.stringify(err) || 'Request failed');
   }
   return res.json();
 }
