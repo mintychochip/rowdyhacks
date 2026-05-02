@@ -33,26 +33,10 @@ jobs:
             sed -i '/swapfile/d' /etc/fstab 2>/dev/null || true
             echo "Swap removed"
 
-            echo "==> Checking for host nginx interfering ==="
-            echo "Port 80 listener:"
-            ss -tlnp | grep :80 || echo "  Nothing on port 80"
-            echo ""
-            if systemctl is-active --quiet nginx 2>/dev/null; then
-              echo "!!! Host nginx is RUNNING - stopping it !!!"
-              systemctl stop nginx
-              systemctl disable nginx
-              echo "Host nginx stopped and disabled"
-            else
-              echo "Host nginx not running (good)"
-            fi
-            echo ""
-
-            echo "==> Docker containers ==="
-            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || true
-            echo ""
-            echo "==> Docker stats ==="
-            docker stats --no-stream 2>/dev/null || true
-            echo ""
+            echo "==> Stopping host nginx (must free port 80 before Docker starts) ==="
+            systemctl stop nginx 2>/dev/null || true
+            systemctl disable nginx 2>/dev/null || true
+            echo "Host nginx disabled"
 
             echo "==> Fetching and resetting to latest..."
             git fetch origin master
@@ -65,6 +49,13 @@ jobs:
 
             echo "==> Pruning old images..."
             docker image prune -f
+
+            echo "==> Docker containers ==="
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || true
+            echo ""
+            echo "==> Verifying port 80 ==="
+            ss -tlnp | grep :80 || echo "  Nothing on port 80!"
+            echo ""
 
             echo "==> Health check..."
             for i in 1 2 3 4 5 6 7 8 9 10; do
