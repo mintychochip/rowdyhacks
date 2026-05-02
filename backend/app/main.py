@@ -51,6 +51,21 @@ async def lifespan(app: FastAPI):
             await conn.execute(
                 text("ALTER TABLE tracks ADD COLUMN IF NOT EXISTS track_type VARCHAR(50)")
             )
+            # Backfill existing tracks with correct track_type values
+            await conn.execute(
+                text(
+                    "UPDATE tracks SET track_type = 'prize' "
+                    "WHERE track_type IS NULL AND name = ANY(:names)"
+                ),
+                {"names": ("Deep Space Exploration", "Orbital Commerce", "Mission Control AI")},
+            )
+            await conn.execute(
+                text(
+                    "UPDATE tracks SET track_type = 'themed' "
+                    "WHERE track_type IS NULL AND name = ANY(:names)"
+                ),
+                {"names": ("Cosmic Commons", "Nebula Arts", "Lunar Settlements")},
+            )
         except Exception:
             pass  # Column may already exist or table not yet created
 
