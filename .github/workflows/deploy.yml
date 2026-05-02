@@ -23,7 +23,7 @@ jobs:
             set -e
             cd /home/jlo/rowdyhacks
 
-            echo "==> System resources (before) ==="
+            echo "==> System resources ==="
             free -h
             echo ""
 
@@ -33,15 +33,25 @@ jobs:
             sed -i '/swapfile/d' /etc/fstab 2>/dev/null || true
             echo "Swap removed"
 
+            echo "==> Checking for host nginx interfering ==="
+            echo "Port 80 listener:"
+            ss -tlnp | grep :80 || echo "  Nothing on port 80"
             echo ""
-            df -h /
+            if systemctl is-active --quiet nginx 2>/dev/null; then
+              echo "!!! Host nginx is RUNNING - stopping it !!!"
+              systemctl stop nginx
+              systemctl disable nginx
+              echo "Host nginx stopped and disabled"
+            else
+              echo "Host nginx not running (good)"
+            fi
+            echo ""
+
+            echo "==> Docker containers ==="
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || true
             echo ""
             echo "==> Docker stats ==="
             docker stats --no-stream 2>/dev/null || true
-            echo ""
-
-            echo "==> System resources (after) ==="
-            free -h
             echo ""
 
             echo "==> Fetching and resetting to latest..."
