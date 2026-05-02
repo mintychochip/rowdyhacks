@@ -10,6 +10,7 @@ interface CheckProgress {
 interface AnalysisResult {
   id: string;
   project_title?: string;
+  github_url?: string;
   status: string;
   stage?: string;
   check_progress?: CheckProgress;
