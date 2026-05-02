@@ -34,9 +34,32 @@ jobs:
             echo "Swap removed"
 
             echo "==> Configuring host nginx as reverse proxy to Docker ==="
-            printf 'server {\n    listen 80 default_server;\n    listen [::]:80 default_server;\n    location /api/ {\n        proxy_pass http://127.0.0.1:8000;\n        proxy_http_version 1.1;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_read_timeout 86400;\n    }\n    location / {\n        proxy_pass http://127.0.0.1:3000;\n        proxy_http_version 1.1;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n    }\n}\n' > /etc/nginx/sites-available/default
-            nginx -t && nginx -s reload || systemctl restart nginx
+            sudo tee /etc/nginx/sites-available/default > /dev/null << 'EOF'
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 86400;
+    }
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+EOF
+            sudo nginx -t && sudo nginx -s reload || sudo systemctl restart nginx
             echo "Host nginx configured"
+
+            echo "==> Stopping Docker nginx (host nginx handles port 80) ==="
+            docker compose -f docker-compose.yml stop nginx 2>/dev/null || true
 
             echo "==> Fetching and resetting to latest..."
             git fetch origin master
@@ -45,16 +68,9 @@ jobs:
 
             echo "==> Rebuilding and restarting containers..."
             docker compose -f docker-compose.yml up -d --build --remove-orphans
-            # Nginx may have failed to bind if host nginx was still on port 80 — restart it
-            docker compose -f docker-compose.yml restart nginx 2>/dev/null || true
-            docker compose -f docker-compose.yml start nginx 2>/dev/null || true
 
             echo "==> Pruning old images..."
             docker image prune -f
-
-            echo "==> Docker nginx logs (last 10 lines) ==="
-            docker compose -f docker-compose.yml logs --tail=10 nginx 2>/dev/null || true
-            echo ""
 
             echo "==> Docker containers ==="
             docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || true
