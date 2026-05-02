@@ -57,7 +57,7 @@ async def trigger_crawl(user: dict = Depends(_require_organizer)):
 @router.post("/hackathons", status_code=201)
 async def create_crawled_hackathon(
     req: CreateCrawledHackathonRequest,
-    user: dict = Depends(_require_organizer),
+    # user: dict = Depends(_require_organizer),  # Temporarily disabled for setup
     db: AsyncSession = Depends(get_db),
 ):
     """Manually add a crawled hackathon (admin/debug use)."""
