@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import Registration, RegistrationStatus, Hackathon, User, HackathonOrganizer
 from app.auth import decode_token, create_qr_token
+from app.waitlist import promote_from_waitlist, get_waitlist_position
 
 router = APIRouter(prefix="/api/hackathons", tags=["organizer-registrations"])
 
@@ -169,8 +170,15 @@ async def reject_registration(
     if reg.status not in (RegistrationStatus.pending, RegistrationStatus.accepted):
         raise HTTPException(status_code=409, detail=f"Cannot reject a {reg.status.value} registration")
 
+    was_accepted = reg.status == RegistrationStatus.accepted
     reg.status = RegistrationStatus.rejected
     reg.qr_token = None  # invalidate QR
+
+    # If rejecting an accepted registration, promote from waitlist
+    if was_accepted:
+        await db.flush()
+        await promote_from_waitlist(hackathon_id, db)
+
     await db.commit()
 
     return {"id": str(reg.id), "status": reg.status.value}
@@ -202,3 +210,128 @@ async def checkin_registration(
     await db.commit()
 
     return {"id": str(reg.id), "status": reg.status.value, "checked_in_at": reg.checked_in_at.isoformat()}
+
+
+@router.post("/{hackathon_id}/registrations/{registration_id}/waitlist")
+async def move_to_waitlist(
+    hackathon_id: uuid.UUID,
+    registration_id: uuid.UUID,
+    authorization: str = Header(alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Move a pending registration to waitlist. Organizer only."""
+    user = await _get_organizer(authorization, db)
+    hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
+
+    query = select(Registration).where(
+        and_(Registration.id == registration_id, Registration.hackathon_id == hackathon_id)
+    )
+    result = await db.execute(query)
+    reg = result.scalar_one_or_none()
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    if reg.status != RegistrationStatus.pending:
+        raise HTTPException(status_code=409, detail=f"Cannot waitlist a {reg.status.value} registration")
+
+    reg.status = RegistrationStatus.waitlisted
+    await db.commit()
+
+    return {"id": str(reg.id), "status": reg.status.value}
+
+
+@router.post("/{hackathon_id}/registrations/{registration_id}/unwaitlist")
+async def remove_from_waitlist(
+    hackathon_id: uuid.UUID,
+    registration_id: uuid.UUID,
+    authorization: str = Header(alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Move a waitlisted registration back to pending. Organizer only."""
+    user = await _get_organizer(authorization, db)
+    hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
+
+    query = select(Registration).where(
+        and_(Registration.id == registration_id, Registration.hackathon_id == hackathon_id)
+    )
+    result = await db.execute(query)
+    reg = result.scalar_one_or_none()
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    if reg.status != RegistrationStatus.waitlisted:
+        raise HTTPException(status_code=409, detail=f"Cannot unwaitlist a {reg.status.value} registration")
+
+    reg.status = RegistrationStatus.pending
+    reg.declined_count = 0
+    await db.commit()
+
+    return {"id": str(reg.id), "status": reg.status.value}
+
+
+@router.post("/{hackathon_id}/waitlist/promote")
+async def manual_promote_waitlist(
+    hackathon_id: uuid.UUID,
+    authorization: str = Header(alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Manually promote top waitlisted person to offered. Organizer only."""
+    user = await _get_organizer(authorization, db)
+    hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
+
+    promoted = await promote_from_waitlist(hackathon_id, db)
+    if not promoted:
+        raise HTTPException(status_code=409, detail="No one to promote or hackathon at capacity")
+
+    return {
+        "id": str(promoted.id),
+        "status": promoted.status.value,
+        "offer_expires_at": promoted.offer_expires_at.isoformat()
+    }
+
+
+@router.get("/{hackathon_id}/waitlist")
+async def list_waitlist(
+    hackathon_id: uuid.UUID,
+    authorization: str = Header(alias="Authorization"),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """List waitlisted registrations with position. Organizer only."""
+    user = await _get_organizer(authorization, db)
+    hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
+
+    # Get waitlist ordered by priority
+    result = await db.execute(
+        select(Registration)
+        .where(Registration.hackathon_id == hackathon_id)
+        .where(Registration.status == RegistrationStatus.waitlisted)
+        .order_by(Registration.declined_count.asc(), Registration.registered_at.asc())
+        .offset(offset).limit(limit)
+    )
+    registrations = result.scalars().all()
+
+    # Get users
+    user_ids = [r.user_id for r in registrations]
+    users_result = await db.execute(select(User).where(User.id.in_(user_ids)))
+    users = {str(u.id): u for u in users_result.scalars().all()}
+
+    # Calculate positions (1-indexed)
+    base_position = offset + 1
+    return {
+        "waitlist": [
+            {
+                "id": str(r.id),
+                "position": base_position + idx,
+                "user_name": users.get(str(r.user_id)).name if str(r.user_id) in users else None,
+                "user_email": users.get(str(r.user_id)).email if str(r.user_id) in users else None,
+                "registered_at": r.registered_at.isoformat(),
+                "declined_count": r.declined_count or 0,
+                "dietary_restrictions": r.dietary_restrictions,
+                "t_shirt_size": r.t_shirt_size,
+            }
+            for idx, r in enumerate(registrations)
+        ],
+        "total": len(registrations),
+        "offset": offset,
+        "limit": limit,
+    }
