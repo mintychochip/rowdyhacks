@@ -15,7 +15,7 @@ import {
   INPUT_BG, INPUT_BORDER, CARD_BG, BORDER, BORDER_LIGHT,
   STATUS_ACCEPTED, STATUS_PENDING, STATUS_REJECTED, STATUS_CHECKED_IN,
   GOLD, GOLD_BG10,
-  TYPO, SPACE, RADIUS,
+  SPACE, RADIUS,
 } from '../theme';
 
 interface ScheduleEvent { datetime: string; title: string; description?: string; location?: string; }
@@ -125,14 +125,26 @@ export default function HomePage() {
   if (!user) {
     return (
       <div style={{ textAlign: 'center', padding: isMobile ? SPACE.xl : 80 }}>
-        <div style={{ fontSize: 72, marginBottom: SPACE.lg, animation: 'float 6s ease-in-out infinite' }}>🚀</div>
-        <h1 style={{ ...TYPO.h1, marginBottom: SPACE.sm }}>RowdyHacks: Cosmos</h1>
-        <p style={{ color: TEXT_SECONDARY, fontSize: 18, marginBottom: SPACE.lg, maxWidth: 480, margin: '0 auto ' + SPACE.lg + 'px' }}>
-          Launch your ideas into orbit. A 36-hour hackathon mission for the next generation of cosmic builders.
+        <div style={{ marginBottom: SPACE.lg }}>
+          <span style={{ fontSize: 56, fontWeight: 800, color: TEXT_WHITE, letterSpacing: '-0.02em' }}>Build. Create. </span>
+          <span style={{ fontSize: 56, fontWeight: 800, color: PRIMARY, letterSpacing: '-0.02em' }}>Innovate.</span>
+        </div>
+        <p style={{ color: TEXT_SECONDARY, fontSize: 18, marginBottom: SPACE.lg, maxWidth: 520, margin: '0 auto ' + SPACE.lg + 'px', lineHeight: 1.6 }}>
+          Join 50 students for 36 hours of hacking, mentorship, and breakthrough projects at RowdyHacks — Bakersfield's intimate, community-focused hackathon.
         </p>
-        <Link to="/auth" style={{ display: 'inline-block', padding: '14px 36px', background: `linear-gradient(135deg, ${PRIMARY} 0%, ${CYAN} 100%)`, borderRadius: RADIUS.md, color: TEXT_WHITE, textDecoration: 'none', fontSize: 16, fontWeight: 700 }}>
-          🚀 Launch Mission
+        <Link to="/auth" style={{ display: 'inline-block', padding: '16px 40px', background: PRIMARY, borderRadius: RADIUS.md, color: '#0B1120', textDecoration: 'none', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>
+          Register Now
         </Link>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: SPACE.xl, marginTop: SPACE.xl }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 36, fontWeight: 800, color: PRIMARY, fontFamily: 'JetBrains Mono, monospace' }}>50</div>
+            <div style={{ fontSize: 12, color: TEXT_MUTED, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Students</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 36, fontWeight: 800, color: PRIMARY, fontFamily: 'JetBrains Mono, monospace' }}>$500</div>
+            <div style={{ fontSize: 12, color: TEXT_MUTED, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Grand Prize</div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -142,14 +154,17 @@ export default function HomePage() {
     const isOrganizer = user.role === 'organizer';
     return (
       <div style={{ textAlign: 'center', padding: isMobile ? SPACE.xl : 80 }}>
-        <div style={{ fontSize: 56, marginBottom: SPACE.lg }}>🌌</div>
-        <h1 style={{ ...TYPO.h1, marginBottom: SPACE.sm }}>Welcome to RowdyHacks: Cosmos</h1>
+        <div style={{ marginBottom: SPACE.lg }}>
+          <span style={{ fontSize: 40, fontWeight: 800, color: TEXT_WHITE, letterSpacing: '-0.02em' }}>Build. Create. </span>
+          <span style={{ fontSize: 40, fontWeight: 800, color: PRIMARY, letterSpacing: '-0.02em' }}>Innovate.</span>
+        </div>
+        <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: SPACE.sm, color: TEXT_PRIMARY }}>Welcome to RowdyHacks</h1>
         <p style={{ color: TEXT_SECONDARY, fontSize: 16, marginBottom: SPACE.lg }}>
-          {isOrganizer ? 'Initialize your first mission parameters.' : 'No active missions in orbit.'}
+          {isOrganizer ? 'Set up your first hackathon event.' : 'No active events right now.'}
         </p>
         {isOrganizer && (
-          <Link to="/hackathons" style={{ display: 'inline-block', padding: '14px 36px', background: PRIMARY, borderRadius: RADIUS.md, color: TEXT_WHITE, textDecoration: 'none', fontSize: 16, fontWeight: 700 }}>
-            Initialize Mission
+          <Link to="/hackathons" style={{ display: 'inline-block', padding: '14px 36px', background: PRIMARY, borderRadius: RADIUS.md, color: '#0B1120', textDecoration: 'none', fontSize: 16, fontWeight: 700 }}>
+            Create Event
           </Link>
         )}
       </div>
@@ -170,7 +185,7 @@ export default function HomePage() {
       <div style={{ padding: isMobile ? SPACE.md : SPACE.xl, maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: SPACE.lg, flexWrap: 'wrap', gap: SPACE.md }}>
           <div>
-            <h1 style={{ ...TYPO.h1, marginBottom: SPACE.xs }}>{hackathon.name}</h1>
+            <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: SPACE.xs, color: TEXT_WHITE, letterSpacing: '-0.02em' }}>{hackathon.name}</h1>
             <p style={{ color: TEXT_MUTED, fontSize: 14, margin: 0 }}>Hacker Dashboard</p>
           </div>
           {hackathon.discord_invite_url && (
@@ -206,7 +221,7 @@ export default function HomePage() {
             {/* WiFi Card */}
             {hackathon.wifi_ssid && (
               <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg, padding: SPACE.lg }}>
-                <h3 style={{ ...TYPO.h3, marginBottom: SPACE.sm }}>WiFi</h3>
+                <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: SPACE.sm, color: TEXT_WHITE }}>WiFi</h3>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: INPUT_BG, borderRadius: RADIUS.md, marginBottom: SPACE.sm }}>
                   <div>
                     <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>Network</div>
@@ -237,7 +252,7 @@ export default function HomePage() {
 
             {/* Scan History */}
             <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg, padding: SPACE.lg }}>
-              <h3 style={{ ...TYPO.h3, marginBottom: SPACE.sm }}>
+              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: SPACE.sm, color: TEXT_WHITE }}>
                 Scan History
                 {registration.scan_count ? <Badge color={PRIMARY} bgColor={PRIMARY_BG20} style={{ marginLeft: SPACE.sm }}>{registration.scan_count} scan{registration.scan_count !== 1 ? 's' : ''}</Badge> : null}
               </h3>
@@ -268,7 +283,7 @@ export default function HomePage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: SPACE.sm, marginBottom: SPACE.md }}>
                   {[{ label: 'Days', value: countdown.days }, { label: 'Hours', value: countdown.hours }, { label: 'Min', value: countdown.minutes }, { label: 'Sec', value: countdown.seconds }].map(unit => (
                     <div key={unit.label}>
-                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: isMobile ? 28 : 36, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: GOLD, lineHeight: 1.1 }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: isMobile ? 28 : 36, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: PRIMARY, lineHeight: 1.1 }}>
                         {String(unit.value).padStart(2, '0')}
                       </div>
                       <div style={{ fontSize: 10, color: TEXT_MUTED, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 4 }}>{unit.label}</div>
@@ -301,7 +316,7 @@ export default function HomePage() {
         <div style={{ fontSize: 13, color: CYAN, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: SPACE.sm }}>
           {startDate} – {endDate}
         </div>
-        <h1 style={{ ...TYPO.h1, marginBottom: SPACE.xs, fontSize: isMobile ? 28 : 36 }}>{hackathon.name}</h1>
+        <h1 style={{ fontSize: isMobile ? 28 : 36, fontWeight: 700, marginBottom: SPACE.xs, color: TEXT_WHITE, letterSpacing: '-0.02em' }}>{hackathon.name}</h1>
         <p style={{ color: TEXT_SECONDARY, fontSize: 15 }}>{startDate} – {endDate}</p>
         {hackathon.description && <p style={{ color: TEXT_MUTED, fontSize: 14, maxWidth: 450, margin: '0 auto', marginTop: SPACE.xs }}>{hackathon.description}</p>}
       </div>
@@ -309,7 +324,7 @@ export default function HomePage() {
       {/* NOT REGISTERED */}
       {!isOrganizer && !registration && (
         <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg, padding: SPACE.xl }}>
-          <h2 style={{ ...TYPO.h2, marginBottom: SPACE.xs }}>Apply to participate</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: SPACE.xs, color: TEXT_WHITE }}>Apply to participate</h2>
           <p style={{ color: TEXT_MUTED, fontSize: 14, marginBottom: SPACE.lg }}>Submit your application below.</p>
           <form onSubmit={handleRegister}>
             <div style={{ marginBottom: SPACE.md }}>
@@ -331,7 +346,7 @@ export default function HomePage() {
         <div style={{ background: CARD_BG, border: `2px solid ${STATUS_PENDING}40`, borderRadius: RADIUS.lg, padding: SPACE.xl, textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: SPACE.md }}>&#9993;</div>
           <Badge color={STATUS_PENDING} style={{ marginBottom: SPACE.md }}>pending review</Badge>
-          <h2 style={{ ...TYPO.h2, marginBottom: SPACE.sm }}>Application submitted</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: SPACE.sm, color: TEXT_WHITE }}>Application submitted</h2>
           <p style={{ color: TEXT_PRIMARY, fontWeight: 600, marginBottom: SPACE.xs, fontSize: 16 }}>{registration.team_name || user.name}</p>
           <p style={{ color: TEXT_MUTED, fontSize: 14, maxWidth: 360, margin: '0 auto' }}>Your application is being reviewed. You'll see your QR pass here once accepted.</p>
         </div>
@@ -348,7 +363,7 @@ export default function HomePage() {
       {/* ORGANIZER TOOLS */}
       {isOrganizer && (
         <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg, padding: SPACE.lg, marginTop: registration ? SPACE.lg : 0 }}>
-          <h3 style={{ ...TYPO.h3, marginBottom: SPACE.md }}>Organizer Tools</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: SPACE.md, color: TEXT_WHITE }}>Organizer Tools</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.sm }}>
             <button onClick={() => navigate(`/hackathons/${hackathon.id}/registrations`)} style={{ padding: '8px 18px', background: PRIMARY, border: 'none', borderRadius: RADIUS.md, color: TEXT_WHITE, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Manage Registrations</button>
             <button onClick={() => navigate(`/hackathons/${hackathon.id}/settings`)} style={{ padding: '8px 18px', background: 'none', border: `1px solid ${BORDER}`, borderRadius: RADIUS.md, color: TEXT_SECONDARY, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Event Settings</button>

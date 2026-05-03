@@ -1,45 +1,45 @@
 // ============================================================
-// RowdyHacks Design System — Space/Cosmic Theme
-// Inspired by deep space: nebulas, stars, cosmic phenomena
+// RowdyHacks Design System — Hack the Valley Inspired
+// Clean, modern hackathon aesthetic: Dark Navy + Cyan Energy
 //
-// Brand: Deep Void (#0a0a12) + Cosmic Purple (#7c3aed) + Starlight (#e0e7ff)
+// Brand: Deep Navy (#0B1120) + Electric Cyan (#00D4FF) + White
 // ============================================================
 
-// ── Color Tokens (surface layering, deepest space → nebula) ─────
-export const PAGE_BG = '#0a0a12';
-export const CARD_BG = '#12121c';
-export const INPUT_BG = '#1a1a2e';
-export const NAV_BG = '#0a0a12';
-export const EXPANDED_BG = '#0f0f1a';
-export const TABLE_HOVER = '#1e1e32';
+// ── Color Tokens (surface layering, deep navy → card surfaces) ─────
+export const PAGE_BG = '#0B1120';
+export const CARD_BG = '#111827';
+export const INPUT_BG = '#1a2332';
+export const NAV_BG = '#0B1120';
+export const EXPANDED_BG = '#0f172a';
+export const TABLE_HOVER = '#1e293b';
 
-// Primary accent (Cosmic Purple — nebula energy)
-export const PRIMARY = '#8b5cf6';
-export const PRIMARY_HOVER = '#7c3aed';
-export const PRIMARY_DISABLED = '#4c1d95';
-export const PRIMARY_BG20 = '#8b5cf620';
+// Primary accent (Electric Cyan — the "Innovate" energy)
+export const PRIMARY = '#00D4FF';
+export const PRIMARY_HOVER = '#00bcd4';
+export const PRIMARY_DISABLED = '#0891b2';
+export const PRIMARY_BG20 = '#00D4FF20';
 
-// Secondary accent (Cyan — starlight, tech)
-export const CYAN = '#06b6d4';
-export const CYAN_BG20 = '#06b6d420';
-export const CYAN_BG10 = '#06b6d410';
+// Secondary accent (Deeper teal for gradients)
+export const CYAN = '#0891b2';
+export const CYAN_BG20 = '#0891b220';
+export const CYAN_BG10 = '#0891b210';
 
-// Cosmic Gold (kept but warmer — like a distant star)
+// Accent Gold (for highlights and prizes)
 export const GOLD = '#fbbf24';
 export const GOLD_BG20 = '#fbbf2420';
 export const GOLD_BG10 = '#fbbf2410';
 
 // Text hierarchy
-export const TEXT_PRIMARY = '#e8e8f0';
-export const TEXT_SECONDARY = '#b0b8d0';
-export const TEXT_MUTED = '#8088a0';
-export const TEXT_DIM = '#556';
+export const TEXT_PRIMARY = '#f1f5f9';
+export const TEXT_SECONDARY = '#94a3b8';
+export const TEXT_MUTED = '#64748b';
+export const TEXT_DIM = '#475569';
 export const TEXT_WHITE = '#fff';
 
-// Borders (cosmic dust / nebula edges)
-export const BORDER = '#2d2d44';
-export const BORDER_LIGHT = '#3d3d5c';
-export const INPUT_BORDER = '#4a4a6a';
+// Borders (subtle navy divisions)
+export const BORDER = '#1e293b';
+export const BORDER_LIGHT = '#334155';
+export const INPUT_BORDER = '#475569';
 
 // Semantic
 export const SUCCESS = '#00c853';
@@ -66,9 +66,9 @@ export const STATUS_REJECTED = '#ef4444';
 export const STATUS_CHECKED_IN = '#3b82f6';
 
 // ── Typography Tokens ───────────────────────────────────────
-// Font family: Space Grotesk (system fallback)
+// Font family: Inter (system fallback)
 const font = (size: number, weight: number, lineHeight: number, letterSpacing = 'normal') => ({
-  fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   fontSize: size,
   fontWeight: weight,
   lineHeight,
@@ -82,7 +82,7 @@ export const TYPO = {
   'body-lg': font(16, 400, 1.6),
   'body-sm': font(14, 400, 1.5),
   'mono-data': {
-    fontFamily: "'Space Mono', 'JetBrains Mono', 'Fira Code', monospace",
+    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
     fontSize: 13,
     fontWeight: 500,
     lineHeight: 1.0,

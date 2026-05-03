@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import * as api from '../services/api';
-import { PRIMARY, GOLD, SUCCESS, STATUS_ACCEPTED, TEXT_PRIMARY, TEXT_MUTED, TEXT_DIM, TEXT_WHITE, PAGE_BG, NAV_BG, CARD_BG, INPUT_BG, BORDER, INPUT_BORDER, TYPO, SPACE, RADIUS } from '../theme';
+import { PRIMARY, GOLD, SUCCESS, STATUS_ACCEPTED, TEXT_PRIMARY, TEXT_MUTED, TEXT_DIM, TEXT_WHITE, PAGE_BG, NAV_BG, CARD_BG, INPUT_BG, BORDER, INPUT_BORDER, SPACE, RADIUS } from '../theme';
 
 const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   organizer: { label: 'Organizer', color: GOLD, bg: '#FFC72C20' },
@@ -117,11 +117,11 @@ export default function Layout() {
           <Link to="/" onClick={closeSidebar} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <img src="/rowdy-mascot.png" alt="Rowdy the Roadrunner" style={{ width: 90, height: 'auto' }} />
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: GOLD, letterSpacing: -0.5 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: TEXT_WHITE, letterSpacing: -0.5, fontFamily: 'Inter, sans-serif' }}>
                 RowdyHacks
               </div>
-              <div style={{ fontSize: 11, color: PRIMARY, letterSpacing: 1, textTransform: 'uppercase' }}>
-                Cosmos
+              <div style={{ fontSize: 10, color: PRIMARY, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600, marginTop: 2 }}>
+                Build. Create. Innovate.
               </div>
             </div>
           </Link>
@@ -139,16 +139,17 @@ export default function Layout() {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 12px', borderRadius: RADIUS.md,
-                  color: active ? TEXT_PRIMARY : TEXT_MUTED,
-                  background: active ? 'rgba(26,92,231,0.12)' : 'transparent',
+                  color: active ? PRIMARY : TEXT_MUTED,
+                  background: active ? 'rgba(0,212,255,0.08)' : 'transparent',
                   borderLeft: active ? `3px solid ${PRIMARY}` : '3px solid transparent',
                   textDecoration: 'none',
-                  ...TYPO['body-sm'],
+                  fontSize: 14,
                   fontWeight: active ? 600 : 400,
+                  fontFamily: 'Inter, sans-serif',
                   transition: 'all 0.15s',
                 }}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>{item.icon}</span>
+                <span className="material-symbols-outlined" style={{ fontSize: 20, color: active ? PRIMARY : 'inherit' }}>{item.icon}</span>
                 {item.label}
               </Link>
             );
@@ -162,7 +163,7 @@ export default function Layout() {
               <div style={{
                 width: 32, height: 32, borderRadius: RADIUS.md,
                 background: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: TEXT_WHITE, fontSize: 13, fontWeight: 700,
+                color: '#0B1120', fontSize: 13, fontWeight: 700,
               }}>
                 {(user.name || user.email || '?')[0].toUpperCase()}
               </div>
@@ -197,8 +198,9 @@ export default function Layout() {
             <Link to="/auth" onClick={closeSidebar} style={{
               display: 'block', textAlign: 'center',
               background: PRIMARY, border: 'none', borderRadius: RADIUS.md,
-              padding: '8px 16px', color: TEXT_WHITE,
-              textDecoration: 'none', ...TYPO['body-sm'], fontWeight: 600,
+              padding: '8px 16px', color: '#0B1120',
+              textDecoration: 'none', fontSize: 14, fontWeight: 600,
+              fontFamily: 'Inter, sans-serif',
             }}>
               Sign In
             </Link>
@@ -209,7 +211,7 @@ export default function Layout() {
       {/* Top bar */}
       <header style={{
         position: 'fixed', top: 0, right: 0, left: isMobile ? 0 : 240, height: 56,
-        background: 'rgba(8,12,26,0.85)', backdropFilter: 'blur(12px)',
+        background: 'rgba(11,17,32,0.85)', backdropFilter: 'blur(12px)',
         borderBottom: `1px solid ${BORDER}`,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: isMobile ? '0 14px' : '0 24px', zIndex: 40,
@@ -243,8 +245,8 @@ export default function Layout() {
               }} />
             </button>
           )}
-          <span style={{ ...TYPO['body-sm'], color: TEXT_PRIMARY, fontWeight: 600 }}>
-            RowdyHacks: Cosmos
+          <span style={{ fontSize: 14, color: TEXT_PRIMARY, fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>
+            RowdyHacks 2026
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

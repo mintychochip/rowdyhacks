@@ -1,5 +1,5 @@
 import React from 'react';
-import { CARD_BG, BORDER, TEXT_MUTED, TEXT_SECONDARY, TEXT_WHITE, PRIMARY, RADIUS, SHADOW, TYPO } from '../theme';
+import { CARD_BG, BORDER, TEXT_MUTED, TEXT_SECONDARY, TEXT_WHITE, PRIMARY, RADIUS, SHADOW } from '../theme';
 
 // ── Card ────────────────────────────────────────────────────
 interface CardProps {
@@ -148,7 +148,10 @@ export function TableCell({ children, align = 'left', style, colSpan }: { childr
 export function SectionTitle({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      ...TYPO['label-caps'],
+      fontSize: 12,
+      fontWeight: 700,
+      lineHeight: 1,
+      letterSpacing: '0.08em',
       textTransform: 'uppercase',
       color: TEXT_MUTED,
       marginBottom: 16,
