@@ -38,9 +38,8 @@ def upgrade() -> None:
     op.add_column('registrations', sa.Column('declined_count', sa.Integer(), nullable=True, server_default='0'))
 
     # Add additional registration data fields
-    # Note: dietary_restrictions, experience_level already exist in some form
-    # We'll add the missing ones
-    op.add_column('registrations', sa.Column('shirt_size', sa.String(length=10), nullable=True))
+    # Note: dietary_restrictions, experience_level, t_shirt_size already exist in models
+    # We only add the missing ones
     op.add_column('registrations', sa.Column('special_needs', sa.Text(), nullable=True))
     op.add_column('registrations', sa.Column('school_company', sa.Text(), nullable=True))
     op.add_column('registrations', sa.Column('graduation_year', sa.Integer(), nullable=True))
@@ -131,7 +130,6 @@ def downgrade() -> None:
     op.drop_column('registrations', 'graduation_year')
     op.drop_column('registrations', 'school_company')
     op.drop_column('registrations', 'special_needs')
-    op.drop_column('registrations', 'shirt_size')
     op.drop_column('registrations', 'declined_count')
     op.drop_column('registrations', 'offer_expires_at')
     op.drop_column('registrations', 'offered_at')
