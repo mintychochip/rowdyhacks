@@ -27,6 +27,7 @@ from app.discord_bot import start_bot, bot as discord_bot
 from app.config import settings
 from app.cache import close_redis
 from app.logging_config import configure_logging
+from app.background_jobs import start_scheduler, shutdown_scheduler
 import sentry_sdk
 
 # Configure structured logging
@@ -93,6 +94,9 @@ async def lifespan(app: FastAPI):
     # Start Discord bot (if token configured, fails gracefully)
     await start_bot()
 
+    # Start background job scheduler
+    start_scheduler()
+
     yield
 
     # Shutdown Discord bot
@@ -102,8 +106,9 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
-    # scheduler.shutdown(wait=False)
-    
+    # Shutdown background scheduler
+    shutdown_scheduler()
+
     # Close Redis connection
     await close_redis()
 
