@@ -10,6 +10,7 @@ import {
   getHackathons,
 } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
+import { WaitlistManager } from '../components/WaitlistManager';
 import { PRIMARY, ERROR, ERROR_BG20, ERROR_TEXT, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_DIM, INPUT_BG, INPUT_BORDER, BORDER_LIGHT, SUCCESS, STATUS_PENDING, STATUS_ACCEPTED, STATUS_REJECTED, INFO } from '../theme';
 
 interface Registration {
@@ -92,8 +93,29 @@ export default function OrganizerRegistrationsPage() {
   const totalPages = Math.ceil(total / limit);
   const currentPage = Math.floor(offset / limit) + 1;
 
+  // Calculate status counts from loaded registrations for display
+  const pendingCount = registrations.filter(r => r.status === 'pending').length;
+  const acceptedCount = registrations.filter(r => r.status === 'accepted').length;
+  const waitlistCount = registrations.filter(r => r.status === 'waitlisted').length;
+  const checkedInCount = registrations.filter(r => r.status === 'checked_in').length;
+  const rejectedCount = registrations.filter(r => r.status === 'rejected').length;
+
+  // Filter definitions with counts
+  const FILTERS = [
+    { key: '', label: 'All', count: total },
+    { key: 'pending', label: 'Pending', count: pendingCount },
+    { key: 'accepted', label: 'Accepted', count: acceptedCount },
+    { key: 'waitlisted', label: 'Waitlist', count: waitlistCount },
+    { key: 'checked_in', label: 'Checked In', count: checkedInCount },
+    { key: 'rejected', label: 'Rejected', count: rejectedCount },
+  ];
+
   const STATS_MAP = [
     { label: 'Total', value: total, color: TEXT_MUTED },
+    { label: 'Pending', value: pendingCount, color: STATUS_PENDING },
+    { label: 'Accepted', value: acceptedCount, color: STATUS_ACCEPTED },
+    { label: 'Waitlist', value: waitlistCount, color: INFO },
+    { label: 'Checked In', value: checkedInCount, color: SUCCESS },
   ];
 
   return (
@@ -169,39 +191,42 @@ export default function OrganizerRegistrationsPage() {
 
       {/* Filter Buttons */}
       <div style={{ marginBottom: 20, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {['', 'pending', 'accepted', 'rejected', 'checked_in'].map(s => (
+        {FILTERS.map(f => (
           <button
-            key={s}
-            onClick={() => { setStatusFilter(s); setOffset(0); }}
+            key={f.key}
+            onClick={() => { setStatusFilter(f.key); setOffset(0); }}
             style={{
               padding: '6px 14px',
               borderRadius: 6,
               border: `1px solid ${INPUT_BORDER}`,
-              background: statusFilter === s ? PRIMARY : 'transparent',
-              color: statusFilter === s ? '#fff' : TEXT_MUTED,
+              background: statusFilter === f.key ? PRIMARY : 'transparent',
+              color: statusFilter === f.key ? '#fff' : TEXT_MUTED,
               cursor: 'pointer',
               fontSize: 13,
-              textTransform: 'capitalize',
             }}
           >
-            {s ? s.replace('_', ' ') : 'All'}
+            {f.label} ({f.count})
           </button>
         ))}
       </div>
 
-      {loading && (
+      {statusFilter === 'waitlisted' && id && (
+        <WaitlistManager hackathonId={id} />
+      )}
+
+      {statusFilter !== 'waitlisted' && loading && (
         <div style={{ color: TEXT_MUTED, textAlign: 'center', padding: isMobile ? 20 : 40 }}>
           Loading...
         </div>
       )}
 
-      {!loading && registrations.length === 0 && (
+      {statusFilter !== 'waitlisted' && !loading && registrations.length === 0 && (
         <div style={{ textAlign: 'center', padding: isMobile ? 20 : 40, color: TEXT_MUTED }}>
           No registrations found.
         </div>
       )}
 
-      {!loading && registrations.map(reg => (
+      {statusFilter !== 'waitlisted' && !loading && registrations.map(reg => (
         <div
           key={reg.id}
           style={{
@@ -293,7 +318,7 @@ export default function OrganizerRegistrationsPage() {
       ))}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {statusFilter !== 'waitlisted' && totalPages > 1 && (
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20 }}>
           <button
             disabled={offset === 0}
