@@ -25,8 +25,10 @@ def upgrade() -> None:
     dialect = op.get_context().dialect.name
 
     # Add 'offered' to the registrationstatus enum (PostgreSQL only)
+    # Must commit before using the new value in partial indexes
     if dialect == 'postgresql':
         op.execute("ALTER TYPE registrationstatus ADD VALUE IF NOT EXISTS 'offered'")
+        op.execute("COMMIT")
 
     # Add registration fields for waitlist support
     op.add_column('registrations', sa.Column('offered_at', sa.DateTime(timezone=True), nullable=True))
