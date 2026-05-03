@@ -126,23 +126,27 @@ export default function HomePage() {
     return (
       <div style={{ textAlign: 'center', padding: isMobile ? SPACE.xl : 80 }}>
         <div style={{ marginBottom: SPACE.lg }}>
-          <span style={{ fontSize: 56, fontWeight: 800, color: TEXT_WHITE, letterSpacing: '-0.02em' }}>Build. Create. </span>
-          <span style={{ fontSize: 56, fontWeight: 800, color: PRIMARY, letterSpacing: '-0.02em' }}>Innovate.</span>
+          <span style={{ fontSize: 56, fontWeight: 800, color: TEXT_WHITE, letterSpacing: '-0.02em' }}>Hack. Build. </span>
+          <span style={{ fontSize: 56, fontWeight: 800, color: PRIMARY, letterSpacing: '-0.02em' }}>Create.</span>
         </div>
         <p style={{ color: TEXT_SECONDARY, fontSize: 18, marginBottom: SPACE.lg, maxWidth: 520, margin: '0 auto ' + SPACE.lg + 'px', lineHeight: 1.6 }}>
-          Join 50 students for 36 hours of hacking, mentorship, and breakthrough projects at RowdyHacks — Bakersfield's intimate, community-focused hackathon.
+          Join 800+ hackers for 36 hours of innovation, mentorship, and breakthrough projects at Hack the Valley — Canada's largest student-run hackathon.
         </p>
         <Link to="/auth" style={{ display: 'inline-block', padding: '16px 40px', background: PRIMARY, borderRadius: RADIUS.md, color: '#0B1120', textDecoration: 'none', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>
-          Register Now
+          Apply Now
         </Link>
         <div style={{ display: 'flex', justifyContent: 'center', gap: SPACE.xl, marginTop: SPACE.xl }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 36, fontWeight: 800, color: PRIMARY, fontFamily: 'JetBrains Mono, monospace' }}>50</div>
-            <div style={{ fontSize: 12, color: TEXT_MUTED, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Students</div>
+            <div style={{ fontSize: 36, fontWeight: 800, color: PRIMARY, fontFamily: 'JetBrains Mono, monospace' }}>800+</div>
+            <div style={{ fontSize: 12, color: TEXT_MUTED, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Hackers</div>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 36, fontWeight: 800, color: PRIMARY, fontFamily: 'JetBrains Mono, monospace' }}>$500</div>
-            <div style={{ fontSize: 12, color: TEXT_MUTED, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Grand Prize</div>
+            <div style={{ fontSize: 36, fontWeight: 800, color: PRIMARY, fontFamily: 'JetBrains Mono, monospace' }}>36h</div>
+            <div style={{ fontSize: 12, color: TEXT_MUTED, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Of Hacking</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 36, fontWeight: 800, color: PRIMARY, fontFamily: 'JetBrains Mono, monospace' }}>$50k+</div>
+            <div style={{ fontSize: 12, color: TEXT_MUTED, textTransform: 'uppercase', letterSpacing: '0.1em' }}>In Prizes</div>
           </div>
         </div>
       </div>
@@ -155,10 +159,10 @@ export default function HomePage() {
     return (
       <div style={{ textAlign: 'center', padding: isMobile ? SPACE.xl : 80 }}>
         <div style={{ marginBottom: SPACE.lg }}>
-          <span style={{ fontSize: 40, fontWeight: 800, color: TEXT_WHITE, letterSpacing: '-0.02em' }}>Build. Create. </span>
-          <span style={{ fontSize: 40, fontWeight: 800, color: PRIMARY, letterSpacing: '-0.02em' }}>Innovate.</span>
+          <span style={{ fontSize: 40, fontWeight: 800, color: TEXT_WHITE, letterSpacing: '-0.02em' }}>Hack. Build. </span>
+          <span style={{ fontSize: 40, fontWeight: 800, color: PRIMARY, letterSpacing: '-0.02em' }}>Create.</span>
         </div>
-        <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: SPACE.sm, color: TEXT_PRIMARY }}>Welcome to RowdyHacks</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: SPACE.sm, color: TEXT_PRIMARY }}>Welcome to Hack the Valley</h1>
         <p style={{ color: TEXT_SECONDARY, fontSize: 16, marginBottom: SPACE.lg }}>
           {isOrganizer ? 'Set up your first hackathon event.' : 'No active events right now.'}
         </p>

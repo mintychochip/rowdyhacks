@@ -8,14 +8,14 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       pwaAssets: {
-        image: 'public/favicon.svg',
+        image: 'public/htv-logo.png',
       },
       manifest: {
-        name: 'HackVerify',
-        short_name: 'HackVerify',
-        description: 'Hackathon submission integrity checker',
-        theme_color: '#080c1a',
-        background_color: '#080c1a',
+        name: 'Hack the Valley',
+        short_name: 'HTV',
+        description: "Canada's largest student-run hackathon",
+        theme_color: '#0f172a',
+        background_color: '#0f172a',
         display: 'standalone',
         start_url: '/',
       },
