@@ -25,7 +25,9 @@ ignore = [
     "E402",   # module-level import not at top (deferred imports for perf)
     "B904",   # raise without from in except (existing pattern)
     "B007",   # unused loop variable (use _ prefix convention)
+    "B017",   # assert blind exception in tests (existing pattern)
     "F841",   # unused variable assignment (existing pattern)
+    "SIM117", # nested with statements (readability preference)
 ]
 
 [lint.per-file-ignores]
