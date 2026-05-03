@@ -129,6 +129,7 @@ class RegistrationStatus(str, enum.Enum):
     accepted = "accepted"
     rejected = "rejected"
     waitlisted = "waitlisted"
+    offered = "offered"  # NEW: Spot offered, waiting for response
     checked_in = "checked_in"
 
 
@@ -337,9 +338,20 @@ class Registration(Base):
     accepted_at = Column(DateTime(timezone=True), nullable=True)
     checked_in_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Waitlist fields
+    offered_at = Column(DateTime(timezone=True), nullable=True)
+    offer_expires_at = Column(DateTime(timezone=True), nullable=True)
+    declined_count = Column(Integer, default=0, nullable=True)
+
+    # Additional registration data fields
+    special_needs = Column(Text, nullable=True)
+    school_company = Column(Text, nullable=True)
+    graduation_year = Column(Integer, nullable=True)
+
     hackathon = relationship("Hackathon", back_populates="registrations")
     user = relationship("User", back_populates="registrations")
     scans = relationship("Scan", back_populates="registration", cascade="all, delete-orphan")
+    email_logs = relationship("EmailLog", back_populates="registration")
 
     def __repr__(self) -> str:
         return f"<Registration {self.id} status={self.status}>"
@@ -553,3 +565,22 @@ class SimilarityMatch(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     reviewed_by = Column(Guid, ForeignKey("users.id"), nullable=True)
+
+
+class EmailLog(Base):
+    """Track email sending for retry and auditing."""
+    __tablename__ = "email_logs"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    registration_id = Column(Guid, ForeignKey("registrations.id"), nullable=True)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=True)
+    email_type = Column(String(50), nullable=False)
+    recipient_email = Column(Text, nullable=False)
+    status = Column(String(20), nullable=False)  # pending, sent, failed
+    error_message = Column(Text, nullable=True)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    retry_count = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc))
+
+    registration = relationship("Registration", back_populates="email_logs")
