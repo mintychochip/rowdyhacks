@@ -4,10 +4,9 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
+from app.models import Hackathon, User, UserRole
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models import Hackathon, User, UserRole
 
 
 async def _create_user(db, email, name, password="password123", role=UserRole.participant):

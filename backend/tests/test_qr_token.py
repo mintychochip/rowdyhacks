@@ -2,7 +2,6 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from app.auth import create_qr_token, decode_qr_token
 
 

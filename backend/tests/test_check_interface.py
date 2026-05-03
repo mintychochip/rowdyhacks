@@ -1,5 +1,4 @@
 import pytest
-
 from app.checks.interface import CheckCategory, CheckResult, ScrapedData
 
 

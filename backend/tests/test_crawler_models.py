@@ -2,10 +2,9 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
+from app.models import CrawledHackathon, CrawledProject
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-
-from app.models import CrawledHackathon, CrawledProject
 
 
 @pytest.mark.asyncio

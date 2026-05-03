@@ -4,7 +4,6 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-
 from app.checks.interface import CheckContext, HackathonInfo, ScrapedData
 from app.checks.timeline import check_commits
 

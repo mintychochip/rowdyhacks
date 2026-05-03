@@ -1,8 +1,7 @@
 import pytest
-from httpx import AsyncClient
-
 from app.auth import hash_password
 from app.models import User, UserRole
+from httpx import AsyncClient
 
 
 @pytest.mark.asyncio

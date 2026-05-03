@@ -1,11 +1,12 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.12
+    rev: v0.15.12
     hooks:
       - id: ruff
-        args: [--fix]
+        args: [--fix, --config, backend/ruff.toml]
         files: ^backend/
       - id: ruff-format
+        args: [--config, backend/ruff.toml]
         files: ^backend/
 
   - repo: local

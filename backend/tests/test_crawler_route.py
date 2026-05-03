@@ -4,10 +4,9 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
 from app.main import app
 from app.routes.crawler import _require_organizer
+from httpx import ASGITransport, AsyncClient
 
 
 async def _override_organizer():

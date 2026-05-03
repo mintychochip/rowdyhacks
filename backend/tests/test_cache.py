@@ -1,7 +1,6 @@
 """Tests for the caching layer (in-memory fallback when Redis is unavailable)."""
 
 import pytest
-
 from app.cache import _MemoryCache, cache_delete, cache_get, cache_set
 
 

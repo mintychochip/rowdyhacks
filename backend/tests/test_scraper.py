@@ -1,5 +1,4 @@
 import pytest
-
 from app.scraper import ScraperError, is_devpost_url, is_github_url, scrape_devpost
 
 

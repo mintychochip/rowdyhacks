@@ -1,10 +1,9 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from app.models import CheckResultModel, CheckStatus, Hackathon, Submission, SubmissionStatus, User, UserRole, Verdict
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-
-from app.models import CheckResultModel, CheckStatus, Hackathon, Submission, SubmissionStatus, User, UserRole, Verdict
 
 
 @pytest.mark.asyncio

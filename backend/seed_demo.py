@@ -4,11 +4,10 @@ import asyncio
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select
-
 from app.auth import create_qr_token, hash_password
 from app.database import async_session
 from app.models import Hackathon, Registration, RegistrationStatus, User, UserRole
+from sqlalchemy import select
 
 
 async def seed():

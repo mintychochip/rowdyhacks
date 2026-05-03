@@ -4,10 +4,9 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy import select
-
 from app.crawler.discovery import discover_hackathons
 from app.models import CrawledHackathon
+from sqlalchemy import select
 
 
 def _make_mock_page(cards_data: list[dict]):

@@ -4,11 +4,10 @@ import uuid
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from sqlalchemy import select
-
 from app.auth import create_access_token, hash_password
 from app.models import OAuthAccount, User, UserRole
 from app.oauth import build_name_fallback, consume_state, create_state
+from sqlalchemy import select
 
 # ── State Store ──────────────────────────────────────────────
 

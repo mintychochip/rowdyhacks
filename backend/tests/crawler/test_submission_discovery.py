@@ -4,10 +4,9 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy import select
-
 from app.crawler.submission_discovery import discover_submissions
 from app.models import CrawledHackathon, CrawledProject
+from sqlalchemy import select
 
 
 def _make_mock_page(links_data: list[str]):

@@ -1,7 +1,6 @@
 import uuid
 
 import pytest
-
 from app.checks.interface import CheckContext, ScrapedData
 from app.checks.repeat_offender import check_repeat_offender
 

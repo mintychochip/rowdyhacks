@@ -3,7 +3,6 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-
 from app.checks.ai_detection import check_ai
 from app.checks.interface import CheckContext, ScrapedData
 

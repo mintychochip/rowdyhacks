@@ -3,7 +3,6 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-
 from app.checks.interface import CheckContext, ScrapedData
 from app.checks.submission_history import check_history
 

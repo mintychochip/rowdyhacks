@@ -3,7 +3,6 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-
 from app.checks.devpost_alignment import check_alignment
 from app.checks.interface import CheckContext, ScrapedData
 

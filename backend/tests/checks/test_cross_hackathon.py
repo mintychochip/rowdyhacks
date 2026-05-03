@@ -1,7 +1,6 @@
 import uuid
 
 import pytest
-
 from app.checks.cross_hackathon import check_cross_hackathon_duplicate
 from app.checks.interface import CheckContext, HackathonInfo, ScrapedData
 

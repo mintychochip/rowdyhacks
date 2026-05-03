@@ -4,10 +4,9 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-
 from app.crawler.project_scraper import scrape_projects
 from app.models import CrawledHackathon, CrawledProject
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 @pytest.mark.asyncio

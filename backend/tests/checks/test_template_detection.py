@@ -4,7 +4,6 @@ import json
 from uuid import uuid4
 
 import pytest
-
 from app.checks.interface import CheckContext, ScrapedData
 from app.checks.template_detection import check_template
 

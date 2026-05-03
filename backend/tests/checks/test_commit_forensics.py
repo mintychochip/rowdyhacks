@@ -5,7 +5,6 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
-
 from app.checks.commit_forensics import check_commit_forensics
 from app.checks.interface import CheckContext, ScrapedData
 

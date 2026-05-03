@@ -3,7 +3,6 @@
 from uuid import uuid4
 
 import pytest
-
 from app.checks.code_similarity import _compute_simhash, _get_shingles, _hamming_distance, check_code_similarity
 from app.checks.interface import CheckContext, ScrapedData
 

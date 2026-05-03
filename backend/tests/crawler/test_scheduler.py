@@ -3,9 +3,8 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.crawler.scheduler import run_crawl
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def _make_mock_session() -> AsyncMock:

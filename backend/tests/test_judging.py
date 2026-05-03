@@ -3,9 +3,6 @@
 from datetime import UTC
 
 import pytest
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.auth import hash_password
 from app.models import (
     Hackathon,
@@ -14,6 +11,8 @@ from app.models import (
     User,
     UserRole,
 )
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def _create_user(db: AsyncSession, email: str, name: str, role: UserRole) -> User:

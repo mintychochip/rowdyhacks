@@ -1,7 +1,6 @@
 from datetime import timedelta
 
 import pytest
-
 from app.auth import create_access_token, create_anonymous_token, decode_token, hash_password, verify_password
 
 

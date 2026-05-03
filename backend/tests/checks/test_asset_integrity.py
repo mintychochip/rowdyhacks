@@ -3,7 +3,6 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-
 from app.checks.asset_integrity import check_assets
 from app.checks.interface import CheckContext, ScrapedData
 
