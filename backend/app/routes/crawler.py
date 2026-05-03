@@ -9,7 +9,7 @@ from app.auth import decode_token
 from app.models import UserRole, CrawledHackathon, CrawledProject
 from app.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import func
+from sqlalchemy import func, select
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
