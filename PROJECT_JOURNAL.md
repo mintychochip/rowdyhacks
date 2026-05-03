@@ -223,3 +223,58 @@ None currently.
 - Organizers: Full access to all features above
 - Participants: Can view announcements for hackathons they're registered for
 - Judges: Can declare COI, view COI status for their assignments
+
+## Rebrand: Hack the Valley (2026-05-03)
+
+### Overview
+Full rebrand from "RowdyHacks" to "Hack the Valley" - Toronto's largest student-run hackathon.
+
+### Changes Made
+
+**Frontend Theme (`frontend/src/theme.ts`):**
+- Background: `#0f172a` (Deep Navy)
+- Primary: `#2563eb` (Electric Blue - the "Hack" energy)
+- Secondary: `#06b6d4` (Cyan for gradients)
+- Typography: Inter + JetBrains Mono
+
+**Branding Updates:**
+- Logo: `/htv-logo.png` (Hack the Valley logo)
+- Title: "Hack the Valley | Toronto's Hackathon"
+- Tagline: "Hack. Build. Create."
+- Hero: "Join 800+ hackers for 36 hours of innovation..."
+- Stats: 800+ Hackers / 36h / $50k+ in Prizes
+
+**Files Modified:**
+- `frontend/index.html` - New title, favicon, meta tags
+- `frontend/src/theme.ts` - Blue color palette
+- `frontend/src/components/Layout.tsx` - HTV sidebar branding
+- `frontend/src/pages/HomePage.tsx` - New hero content
+
+### SSL/HTTPS Fixes (2026-05-03)
+
+**Problem:** Login failing due to SSL certificate issues and nginx config
+
+**Solution:**
+1. Added `nginx/docker-entrypoint.sh` - Auto-generates self-signed SSL certs on startup
+2. Updated `nginx/nginx.conf` - SSL server block with cert paths
+3. Updated `docker-compose.yml` - Mounts SSL directory and uses entrypoint
+4. Modified `.github/workflows/deploy.yml` - Stops nginx container before deploy to free port 80/443
+
+**Deployment:**
+- Frontend: https://rowdyhackin.vercel.app
+- Backend API: https://rowdyhackin.duckdns.org/api
+
+### QA Testing Results (2026-05-03)
+
+**Accessibility:**
+- Images: All have alt text ✅
+- Color Contrast: All elements pass WCAG AA (ratios 3.96:1 to 17.19:1) ✅
+- Form Labels: 2 inputs need explicit labels (minor) ⚠️
+
+**Performance:**
+- DOM Content Loaded: ~65ms ✅
+- Build: Successful, PWA enabled ✅
+
+**Issues:**
+- Self-signed SSL cert causes browser warnings (needs real Let's Encrypt cert)
+- API calls show CERT_AUTHORITY_INVALID in console (functional but noisy)
