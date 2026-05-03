@@ -35,3 +35,4 @@ sentry-sdk==2.24.1
 
 # Database migrations
 alembic==1.18.4
+faker>=22.0.0
