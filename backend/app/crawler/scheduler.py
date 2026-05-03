@@ -48,23 +48,14 @@ async def run_crawl() -> dict:
         summary["new_hackathons"] = len(new_hackathon_ids)
         logger.info(f"Discovered {len(new_hackathon_ids)} new hackathons")
 
-        # 2. Find "active" hackathons for submission discovery
-        # Active = end_date in future OR ended within refresh window
-        refresh_cutoff = datetime.now(timezone.utc) - timedelta(
-            days=settings.crawler_refresh_window_days
-        )
-
+        # 2. Find ALL hackathons for submission discovery (not just "active" ones)
+        # We want to index projects from ALL hackathons, regardless of date
         async with async_session() as db:
-            result = await db.execute(
-                select(CrawledHackathon).where(
-                    (CrawledHackathon.end_date.is_(None))
-                    | (CrawledHackathon.end_date >= refresh_cutoff)
-                )
-            )
-            active_hackathons = result.scalars().all()
+            result = await db.execute(select(CrawledHackathon))
+            all_hackathons = result.scalars().all()
 
-        # 3. Discover submissions for each active hackathon
-        for hk in active_hackathons:
+        # 3. Discover submissions for ALL hackathons
+        for hk in all_hackathons:
             try:
                 logger.info(f"Discovering submissions for {hk.name}...")
                 new_sub_ids = await discover_submissions(hk.id, hk.devpost_url)
