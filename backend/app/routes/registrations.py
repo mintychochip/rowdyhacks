@@ -11,7 +11,9 @@ from app.database import get_db
 from app.discord_bot import post_application_to_discord
 from app.models import Registration, RegistrationStatus, Hackathon, User, UserRole, HackathonOrganizer
 from app.schemas import RegistrationCreate
-from app.auth import decode_token
+from app.auth import decode_token, create_qr_token
+from app.email_service import send_email
+from app.waitlist import promote_from_waitlist, auto_waitlist_if_full, get_waitlist_position
 
 router = APIRouter(prefix="/api", tags=["registrations"])
 
@@ -297,13 +299,14 @@ async def register_for_hackathon(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Already registered for this hackathon")
 
-    # Check capacity (only for non-waitlist)
-    initial_status = RegistrationStatus.pending
-    if hackathon.max_participants and hackathon.current_participants >= hackathon.max_participants:
-        if hackathon.waitlist_enabled:
-            initial_status = RegistrationStatus.waitlisted
-        else:
+    # Check if should auto-waitlist
+    should_waitlist = await auto_waitlist_if_full(hackathon_id, db)
+    if should_waitlist:
+        if not hackathon.waitlist_enabled:
             raise HTTPException(status_code=400, detail="Hackathon is at capacity")
+        initial_status = RegistrationStatus.waitlisted
+    else:
+        initial_status = RegistrationStatus.pending
 
     reg = Registration(
         hackathon_id=hackathon_id,
@@ -340,7 +343,14 @@ async def register_for_hackathon(
     # Discord notification via background task
     background_tasks.add_task(post_application_to_discord, str(reg.id))
 
-    return _registration_to_response(reg, user)
+    response = _registration_to_response(reg, user)
+
+    # If waitlisted, add position info
+    if reg.status == RegistrationStatus.waitlisted:
+        position = await get_waitlist_position(reg.id, hackathon_id, db)
+        response["waitlist_info"] = {"estimated_position": position}
+
+    return response
 
 
 @router.get("/registrations")
@@ -400,4 +410,129 @@ async def get_registration(
         raise HTTPException(status_code=404, detail="Registration not found")
 
     return _registration_to_response(reg, reg.user)
+
+
+@router.post("/{registration_id}/accept-offer")
+async def accept_offer(
+    registration_id: uuid.UUID,
+    authorization: str = Header(alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Participant accepts an offered spot from waitlist promotion."""
+    # Authenticate
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required")
+    token = authorization.removeprefix("Bearer ")
+    payload = decode_token(token)
+    user_id = payload.get("sub")
+
+    # Lock registration row to prevent race conditions
+    result = await db.execute(
+        select(Registration)
+        .where(Registration.id == registration_id)
+        .where(Registration.user_id == user_id)
+        .with_for_update()
+    )
+    reg = result.scalar_one_or_none()
+
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    if reg.status != RegistrationStatus.offered:
+        raise HTTPException(status_code=409, detail=f"Cannot accept a {reg.status.value} registration")
+    if reg.offer_expires_at and reg.offer_expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=410, detail="Offer has expired")
+
+    # Check capacity one more time
+    hackathon = await db.get(Hackathon, reg.hackathon_id)
+    accepted_count = await db.execute(
+        select(func.count(Registration.id))
+        .where(Registration.hackathon_id == reg.hackathon_id)
+        .where(Registration.status == RegistrationStatus.accepted)
+    )
+
+    if accepted_count.scalar() >= hackathon.max_participants:
+        # Someone else took the spot
+        reg.status = RegistrationStatus.waitlisted
+        reg.offer_expires_at = None
+        await db.commit()
+        raise HTTPException(status_code=409, detail="Spot no longer available")
+
+    # Accept the offer
+    reg.status = RegistrationStatus.accepted
+    reg.accepted_at = datetime.now(timezone.utc)
+    reg.offer_expires_at = None
+
+    # Generate QR token
+    reg.qr_token = create_qr_token(
+        registration_id=str(reg.id),
+        user_id=str(reg.user_id),
+        hackathon_id=str(reg.hackathon_id),
+        hackathon_end=hackathon.end_date,
+    )
+
+    await db.commit()
+
+    # Send confirmation email
+    user = await db.get(User, reg.user_id)
+    if user:
+        await send_email(
+            to_email=user.email,
+            email_type="status_accepted",
+            context={
+                "name": user.name,
+                "hackathon_name": hackathon.name,
+                "start_date": hackathon.start_date.strftime("%Y-%m-%d"),
+                "end_date": hackathon.end_date.strftime("%Y-%m-%d"),
+                "venue": hackathon.venue_address or "TBD",
+            },
+            registration_id=reg.id,
+            hackathon_id=hackathon.id,
+            db=db
+        )
+
+    return {
+        "id": str(reg.id),
+        "status": reg.status.value,
+        "qr_token": reg.qr_token,
+        "accepted_at": reg.accepted_at.isoformat()
+    }
+
+
+@router.post("/{registration_id}/decline-offer")
+async def decline_offer(
+    registration_id: uuid.UUID,
+    authorization: str = Header(alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Participant declines an offered spot. Returns to waitlist with lower priority."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required")
+    token = authorization.removeprefix("Bearer ")
+    payload = decode_token(token)
+    user_id = payload.get("sub")
+
+    result = await db.execute(
+        select(Registration)
+        .where(Registration.id == registration_id)
+        .where(Registration.user_id == user_id)
+    )
+    reg = result.scalar_one_or_none()
+
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    if reg.status != RegistrationStatus.offered:
+        raise HTTPException(status_code=409, detail=f"Cannot decline a {reg.status.value} registration")
+
+    # Decline - return to waitlist with incremented declined_count
+    reg.status = RegistrationStatus.waitlisted
+    reg.offer_expires_at = None
+    reg.declined_count = (reg.declined_count or 0) + 1
+
+    # Trigger promotion of next person
+    await db.flush()
+    await promote_from_waitlist(reg.hackathon_id, db)
+
+    await db.commit()
+
+    return {"id": str(reg.id), "status": reg.status.value, "declined_count": reg.declined_count}
 
