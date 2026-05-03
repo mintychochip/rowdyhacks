@@ -39,6 +39,11 @@ jobs:
             git checkout -f origin/master -- .
             git clean -fd
 
+            echo "==> Stopping nginx container to free port 80..."
+            docker compose -f docker-compose.yml stop nginx 2>/dev/null || true
+            docker compose -f docker-compose.yml rm -f nginx 2>/dev/null || true
+            sleep 2
+
             echo "==> Rebuilding and restarting containers..."
             docker compose -f docker-compose.yml up -d --build --remove-orphans
 
