@@ -66,6 +66,13 @@ export default function WizardReview({
         <Row label="T-shirt size" value={logistics.tshirtSize || undefined} />
         <Row label="Dietary" value={logistics.dietaryRestrictions || undefined} />
         <Row label="Emergency contact" value={[logistics.emergencyContactName, logistics.emergencyContactPhone].filter(Boolean).join(' — ') || undefined} />
+        {/* New fields */}
+        <Row label="T-Shirt Size (New)" value={logistics.t_shirt_size || undefined} />
+        <Row label="Dietary Restrictions" value={logistics.dietary_restrictions || undefined} />
+        <Row label="Special Needs" value={logistics.special_needs || undefined} />
+        <Row label="School/Company" value={logistics.school_company || undefined} />
+        <Row label="Graduation Year" value={logistics.graduation_year?.toString() || undefined} />
+        <Row label="Experience" value={logistics.experience_level || undefined} />
       </div>
 
       {/* Short Answers */}
