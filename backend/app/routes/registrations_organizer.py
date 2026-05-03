@@ -103,6 +103,7 @@ async def list_hackathon_registrations(
                 "checked_in_at": r.checked_in_at.isoformat() if r.checked_in_at else None,
                 "user_name": users[str(r.user_id)].name if str(r.user_id) in users else None,
                 "user_email": users[str(r.user_id)].email if str(r.user_id) in users else None,
+                "user_role": users[str(r.user_id)].role.value if str(r.user_id) in users else None,
             }
             for r in registrations
         ],

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import * as api from '../services/api';
-import { Primitives } from '../components/Primitives';
+import { Card } from '../components/Primitives';
+import { PAGE_BG, TEXT_PRIMARY, TEXT_MUTED, CARD_BG, BORDER, PRIMARY, RADIUS, TYPO } from '../theme';
 
 interface CrawledHackathon {
   id: string;
@@ -81,35 +82,50 @@ export default function CrawledDataPage() {
 
   if (user?.role !== 'organizer') {
     return (
-      <div className="max-w-4xl mx-auto py-8">
-        <Primitives.Card>
-          <p className="text-center text-slate-400">Organizer access required</p>
-        </Primitives.Card>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: 32 }}>
+        <Card>
+          <p style={{ textAlign: 'center', color: TEXT_MUTED }}>Organizer access required</p>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-6">Indexed Hackathons & Projects</h1>
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 16px' }}>
+      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 24, color: TEXT_PRIMARY }}>
+        Indexed Hackathons & Projects
+      </h1>
 
       {error && (
-        <Primitives.Alert variant="error" className="mb-4">
+        <div style={{
+          padding: '12px 16px',
+          background: 'rgba(239,68,68,0.1)',
+          border: '1px solid rgba(239,68,68,0.3)',
+          borderRadius: RADIUS.md,
+          color: '#ef4444',
+          marginBottom: 16,
+        }}>
           {error}
-        </Primitives.Alert>
+        </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24 }}>
         {/* Hackathons List */}
-        <div className="lg:col-span-1">
-          <Primitives.Card className="h-full">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">
+        <div>
+          <Card style={{ height: '100%', minHeight: 500 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY }}>
                 Hackathons ({hackathons.length})
               </h2>
               <button
                 onClick={loadHackathons}
-                className="text-sm text-blue-400 hover:text-blue-300"
+                style={{
+                  fontSize: 12,
+                  color: PRIMARY,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
               >
                 Refresh
               </button>
@@ -120,29 +136,46 @@ export default function CrawledDataPage() {
               placeholder="Search hackathons..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-3 py-2 mb-4 bg-slate-800 border border-slate-700 rounded-lg text-sm"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                marginBottom: 12,
+                background: PAGE_BG,
+                border: `1px solid ${BORDER}`,
+                borderRadius: RADIUS.md,
+                color: TEXT_PRIMARY,
+                fontSize: 13,
+              }}
             />
 
             {loading ? (
-              <p className="text-slate-400 text-center py-8">Loading...</p>
+              <p style={{ color: TEXT_MUTED, textAlign: 'center', padding: '40px 0' }}>Loading...</p>
             ) : (
-              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+              <div style={{ maxHeight: 600, overflowY: 'auto' }}>
                 {filteredHackathons.map((h) => (
                   <button
                     key={h.id}
                     onClick={() => setSelectedHackathon(h.id)}
-                    className={`w-full text-left p-3 rounded-lg transition-colors ${
-                      selectedHackathon === h.id
-                        ? 'bg-blue-600/20 border border-blue-500'
-                        : 'bg-slate-800/50 hover:bg-slate-800 border border-transparent'
-                    }`}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: 12,
+                      marginBottom: 8,
+                      borderRadius: RADIUS.md,
+                      background: selectedHackathon === h.id ? 'rgba(26,92,231,0.12)' : CARD_BG,
+                      border: `1px solid ${selectedHackathon === h.id ? PRIMARY : 'transparent'}`,
+                      color: TEXT_PRIMARY,
+                      cursor: 'pointer',
+                    }}
                   >
-                    <p className="font-medium text-sm truncate">{h.name}</p>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {h.name}
+                    </p>
+                    <p style={{ fontSize: 11, color: TEXT_MUTED }}>
                       {h.project_count} projects
                     </p>
                     {h.end_date && (
-                      <p className="text-xs text-slate-500">
+                      <p style={{ fontSize: 10, color: TEXT_MUTED, marginTop: 2 }}>
                         Ended: {new Date(h.end_date).toLocaleDateString()}
                       </p>
                     )}
@@ -150,20 +183,20 @@ export default function CrawledDataPage() {
                 ))}
               </div>
             )}
-          </Primitives.Card>
+          </Card>
         </div>
 
         {/* Projects List */}
-        <div className="lg:col-span-2">
-          <Primitives.Card className="h-full">
+        <div>
+          <Card style={{ height: '100%', minHeight: 500 }}>
             {selectedHackathonData ? (
               <>
-                <div className="flex items-center justify-between mb-4">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                   <div>
-                    <h2 className="text-xl font-semibold">
+                    <h2 style={{ fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY }}>
                       {selectedHackathonData.name}
                     </h2>
-                    <p className="text-sm text-slate-400">
+                    <p style={{ fontSize: 13, color: TEXT_MUTED, marginTop: 4 }}>
                       {projectTotal} projects indexed
                     </p>
                   </div>
@@ -171,7 +204,11 @@ export default function CrawledDataPage() {
                     href={selectedHackathonData.devpost_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-blue-400 hover:text-blue-300"
+                    style={{
+                      fontSize: 12,
+                      color: PRIMARY,
+                      textDecoration: 'none',
+                    }}
                   >
                     View on Devpost →
                   </a>
@@ -182,66 +219,75 @@ export default function CrawledDataPage() {
                   placeholder="Search projects..."
                   value={projectSearch}
                   onChange={(e) => setProjectSearch(e.target.value)}
-                  className="w-full px-3 py-2 mb-4 bg-slate-800 border border-slate-700 rounded-lg text-sm"
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    marginBottom: 12,
+                    background: PAGE_BG,
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: RADIUS.md,
+                    color: TEXT_PRIMARY,
+                    fontSize: 13,
+                  }}
                 />
 
                 {projectsLoading ? (
-                  <p className="text-slate-400 text-center py-8">Loading projects...</p>
+                  <p style={{ color: TEXT_MUTED, textAlign: 'center', padding: '40px 0' }}>Loading projects...</p>
                 ) : filteredProjects.length === 0 ? (
-                  <p className="text-slate-400 text-center py-8">
+                  <p style={{ color: TEXT_MUTED, textAlign: 'center', padding: '40px 0' }}>
                     {projectSearch ? 'No projects match your search' : 'No projects indexed yet'}
                   </p>
                 ) : (
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                  <div style={{ maxHeight: 600, overflowY: 'auto' }}>
                     {filteredProjects.map((p) => (
                       <div
                         key={p.id}
-                        className="p-4 bg-slate-800/50 rounded-lg border border-slate-700"
+                        style={{
+                          padding: 12,
+                          marginBottom: 8,
+                          background: PAGE_BG,
+                          borderRadius: RADIUS.md,
+                          border: `1px solid ${BORDER}`,
+                        }}
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-sm truncate">
-                              <a
-                                href={p.devpost_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-400 hover:text-blue-300"
-                              >
-                                {p.title}
-                              </a>
-                            </h3>
-                            {p.github_url && (
-                              <p className="text-xs text-slate-400 mt-1 truncate">
-                                <a
-                                  href={p.github_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="hover:text-slate-300"
-                                >
-                                  {p.github_url}
-                                </a>
-                              </p>
-                            )}
-                            {p.team_members && p.team_members.length > 0 && (
-                              <p className="text-xs text-slate-500 mt-1">
-                                Team: {p.team_members.join(', ')}
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
+                          <a
+                            href={p.devpost_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: PRIMARY, textDecoration: 'none' }}
+                          >
+                            {p.title}
+                          </a>
+                        </h3>
+                        {p.github_url && (
+                          <p style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 4 }}>
+                            <a
+                              href={p.github_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: TEXT_MUTED, textDecoration: 'none' }}
+                            >
+                              {p.github_url}
+                            </a>
+                          </p>
+                        )}
+                        {p.team_members && p.team_members.length > 0 && (
+                          <p style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 4 }}>
+                            Team: {p.team_members.join(', ')}
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
               </>
             ) : (
-              <div className="flex items-center justify-center h-full min-h-[300px]">
-                <p className="text-slate-400">
-                  Select a hackathon to view its projects
-                </p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300 }}>
+                <p style={{ color: TEXT_MUTED }}>Select a hackathon to view its projects</p>
               </div>
             )}
-          </Primitives.Card>
+          </Card>
         </div>
       </div>
     </div>

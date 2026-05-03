@@ -16,6 +16,7 @@ interface Participant {
   team_name?: string;
   status: string;
   checked_in_at?: string;
+  role?: string;
 }
 
 interface Hackathon {
@@ -209,6 +210,7 @@ export default function CheckInPage() {
         team_name: r.team_name,
         status: r.status,
         checked_in_at: r.checked_in_at,
+        role: r.user_role,
       }));
       setAllParticipants(participants);
       // Initially show all (sorted: pending/accepted first, checked_in last)
@@ -594,7 +596,22 @@ export default function CheckInPage() {
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 600, color: TEXT_PRIMARY }}>{p.name}</div>
+                      <div style={{ fontWeight: 600, color: TEXT_PRIMARY, display: 'flex', alignItems: 'center', gap: SPACE.xs }}>
+                        {p.name}
+                        {p.role && p.role !== 'participant' && (
+                          <span style={{
+                            padding: '2px 8px',
+                            background: p.role === 'judge' ? '#8b5cf6' : PRIMARY,
+                            borderRadius: RADIUS.sm,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: '#fff',
+                            textTransform: 'uppercase',
+                          }}>
+                            {p.role}
+                          </span>
+                        )}
+                      </div>
                       <div style={{ fontSize: 13, color: TEXT_MUTED }}>{p.email}</div>
                       {p.team_name && (
                         <div style={{ fontSize: 12, color: TEXT_SECONDARY, marginTop: 2 }}>
