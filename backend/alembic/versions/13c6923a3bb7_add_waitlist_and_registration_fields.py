@@ -19,14 +19,6 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-# Helper to handle dialect-specific differences
-def dialect_specific_type():
-    """Return the appropriate UUID type based on dialect."""
-    # For SQLite, use String(36) since it doesn't have native UUID
-    # For PostgreSQL, use UUID type
-    return sa.String(36)
-
-
 def upgrade() -> None:
     """Upgrade schema."""
     # Get the dialect name
@@ -98,7 +90,8 @@ def upgrade() -> None:
         sa.Column('error_message', sa.Text(), nullable=True),
         sa.Column('sent_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('retry_count', sa.Integer(), server_default='0'),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP') if dialect == 'sqlite' else sa.text('now()'))
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP') if dialect == 'sqlite' else sa.text('now()')),
+        sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True)
     )
 
     # Create indexes for email_logs
