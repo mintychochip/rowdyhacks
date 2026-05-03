@@ -511,11 +511,12 @@ async def submit_scores(
     # Check if all criteria scored → auto-complete
     if not is_late:
         scores_result = await db.execute(select(Score).where(Score.assignment_id == assignment.id))
-        all_scored = all(s.score is not None for s in scores_result.scalars().all())
+        scores_list = scores_result.scalars().all()
+        all_scored = all(s.score is not None for s in scores_list)
         if all_scored:
             assignment.submitted_at = now
             assignment.is_completed = 1
-            for s in scores_result.scalars().all():
+            for s in scores_list:
                 s.submitted_at = now
 
     await db.commit()

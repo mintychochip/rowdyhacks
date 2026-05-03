@@ -1,6 +1,8 @@
 """Clear the in-memory cache to refresh hackathon data."""
+
 import sys
-sys.path.insert(0, '.')
+
+sys.path.insert(0, ".")
 
 from app.cache import _memory_cache
 
@@ -11,6 +13,7 @@ print("In-memory cache cleared successfully!")
 # Also clear any hackathon-specific patterns
 try:
     import asyncio
+
     from app.cache import cache_delete_pattern
 
     async def clear_hackathon_cache():
