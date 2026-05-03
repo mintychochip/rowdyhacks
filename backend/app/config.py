@@ -85,7 +85,46 @@ class Settings(BaseSettings):
             raise ValueError(f"Invalid cron expression: {e}") from e
         return v
 
+    # Email configuration
+    email_provider: str = Field(
+        default="smtp",
+        description='Email provider: "sendgrid" or "smtp"'
+    )
+    sendgrid_api_key: str = Field(
+        default="",
+        description="SendGrid API key for email sending"
+    )
+    smtp_host: str = Field(
+        default="",
+        description="SMTP server hostname"
+    )
+    smtp_port: int = Field(
+        default=587,
+        description="SMTP server port"
+    )
+    smtp_user: str = Field(
+        default="",
+        description="SMTP username"
+    )
+    smtp_password: str = Field(
+        default="",
+        description="SMTP password"
+    )
+    email_from: str = Field(
+        default="noreply@rowdyhacks.io",
+        description="Default sender email address"
+    )
+
     model_config = {"env_prefix": "HACKVERIFY_", "env_file": ".env"}
 
 
 settings = Settings()
+
+# Email settings for backward compatibility with task spec
+EMAIL_PROVIDER = settings.email_provider
+SENDGRID_API_KEY = settings.sendgrid_api_key
+SMTP_HOST = settings.smtp_host
+SMTP_PORT = settings.smtp_port
+SMTP_USER = settings.smtp_user
+SMTP_PASSWORD = settings.smtp_password
+EMAIL_FROM = settings.email_from
