@@ -1,8 +1,9 @@
 """Discover hackathons from Devpost's hackathon listing using Playwright for JS rendering."""
+
 import asyncio
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from playwright.async_api import async_playwright
 from sqlalchemy import select
@@ -106,8 +107,8 @@ async def discover_hackathons() -> list[str]:
                             try:
                                 start_str = f"{date_match.group(1)}, {date_match.group(3)}"
                                 end_str = f"{date_match.group(2)}, {date_match.group(3)}"
-                                start_date = datetime.strptime(start_str, "%b %d, %Y").replace(tzinfo=timezone.utc)
-                                end_date = datetime.strptime(end_str, "%b %d, %Y").replace(tzinfo=timezone.utc)
+                                start_date = datetime.strptime(start_str, "%b %d, %Y").replace(tzinfo=UTC)
+                                end_date = datetime.strptime(end_str, "%b %d, %Y").replace(tzinfo=UTC)
                             except ValueError:
                                 pass
 

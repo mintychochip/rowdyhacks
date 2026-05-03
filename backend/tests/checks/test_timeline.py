@@ -1,10 +1,11 @@
-import pytest
 import subprocess
 import tempfile
 from pathlib import Path
-from app.checks.interface import CheckContext, ScrapedData, HackathonInfo
-from app.checks.timeline import check_commits
 from uuid import uuid4
+
+import pytest
+from app.checks.interface import CheckContext, HackathonInfo, ScrapedData
+from app.checks.timeline import check_commits
 
 
 @pytest.fixture
@@ -19,9 +20,7 @@ def git_repo():
             cwd=repo,
             capture_output=True,
         )
-        subprocess.run(
-            ["git", "config", "user.name", "Test"], cwd=repo, capture_output=True
-        )
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, capture_output=True)
         (repo / "file.txt").write_text("content")
         subprocess.run(["git", "add", "."], cwd=repo, capture_output=True)
         subprocess.run(
@@ -60,9 +59,7 @@ async def test_check_commits_clean(git_repo):
 
 @pytest.mark.asyncio
 async def test_check_commits_no_repo():
-    ctx = CheckContext(
-        repo_path=None, scraped=ScrapedData(), submission_id=uuid4()
-    )
+    ctx = CheckContext(repo_path=None, scraped=ScrapedData(), submission_id=uuid4())
     result = await check_commits(ctx)
     assert result.score == 30
     assert result.status == "warn"
@@ -79,9 +76,7 @@ async def test_check_commits_before_hackathon():
             cwd=repo,
             capture_output=True,
         )
-        subprocess.run(
-            ["git", "config", "user.name", "Test"], cwd=repo, capture_output=True
-        )
+        subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, capture_output=True)
         (repo / "f.txt").write_text("x")
         subprocess.run(["git", "add", "."], cwd=repo, capture_output=True)
         subprocess.run(

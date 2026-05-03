@@ -1,21 +1,22 @@
 """Detect forks, boilerplate ratio, and hardcoded credentials in the repo."""
+
 import re
 import subprocess
 from pathlib import Path
-from app.checks.interface import CheckContext, CheckResult
 
+from app.checks.interface import CheckContext, CheckResult
 
 # Patterns for hardcoded credentials
 SECRET_PATTERNS = [
     (r'(?:API|SECRET)_?KEY\s*[=:]\s*["\'][^\s]{20,}["\']', "API key"),
     (r'(?:password|passwd|pwd)\s*[=:]\s*["\'][^\s]{6,}["\']', "hardcoded password"),
     (r'(?:token|auth)\s*[=:]\s*["\'][^\s]{20,}["\']', "auth token"),
-    (r'-----BEGIN (?:RSA |EC )?PRIVATE KEY-----', "private key"),
+    (r"-----BEGIN (?:RSA |EC )?PRIVATE KEY-----", "private key"),
     (r'(?:mongodb|postgres|mysql|redis)://[^\s\'"]+', "database URL with credentials"),
-    (r'(?:sk-|pk-)[a-zA-Z0-9]{20,}', "Stripe/OpenAI key"),
-    (r'(?:ghp_|gho_|ghu_|ghs_|ghr_)[a-zA-Z0-9]{20,}', "GitHub token"),
-    (r'AIza[0-9A-Za-z\-_]{35}', "Google API key"),
-    (r'amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', "AWS key"),
+    (r"(?:sk-|pk-)[a-zA-Z0-9]{20,}", "Stripe/OpenAI key"),
+    (r"(?:ghp_|gho_|ghu_|ghs_|ghr_)[a-zA-Z0-9]{20,}", "GitHub token"),
+    (r"AIza[0-9A-Za-z\-_]{35}", "Google API key"),
+    (r"amzn\.mws\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "AWS key"),
 ]
 
 # Boilerplate fingerprints (unique file hashes or patterns)
@@ -36,8 +37,11 @@ async def check_repo_integrity(context: CheckContext) -> CheckResult:
     repos = context.repo_paths or ([context.repo_path] if context.repo_path else [])
     if not repos:
         return CheckResult(
-            check_name="repo-integrity", check_category="devpost_alignment",
-            score=20, status="pass", details={"reason": "No repo available"},
+            check_name="repo-integrity",
+            check_category="devpost_alignment",
+            score=20,
+            status="pass",
+            details={"reason": "No repo available"},
         )
 
     all_secrets = []
@@ -76,7 +80,9 @@ async def check_repo_integrity(context: CheckContext) -> CheckResult:
     unique_secrets = len(set(s[1] for s in all_secrets))
     if all_secrets:
         score += min(unique_secrets * 15, 40)
-        evidence.append(f"Found {len(all_secrets)} potential hardcoded secret(s): {', '.join(set(s[1] for s in all_secrets))}")
+        evidence.append(
+            f"Found {len(all_secrets)} potential hardcoded secret(s): {', '.join(set(s[1] for s in all_secrets))}"
+        )
 
     # Boilerplate scoring
     if boilerplate_hits:
@@ -97,8 +103,10 @@ async def check_repo_integrity(context: CheckContext) -> CheckResult:
     status = "pass" if score <= 30 else "warn" if score <= 60 else "fail"
 
     return CheckResult(
-        check_name="repo-integrity", check_category="devpost_alignment",
-        score=score, status=status,
+        check_name="repo-integrity",
+        check_category="devpost_alignment",
+        score=score,
+        status=status,
         details={
             "forks": all_forks,
             "secrets_found": len(all_secrets),
@@ -116,7 +124,9 @@ def _check_fork(repo: Path) -> dict | None:
         # Method 1: check if upstream remote exists
         result = subprocess.run(
             ["git", "-C", str(repo), "remote", "-v"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         remotes = result.stdout.strip()
         if "upstream" in remotes:
@@ -128,20 +138,28 @@ def _check_fork(repo: Path) -> dict | None:
         # Method 2: check git config for fork info
         result = subprocess.run(
             ["git", "-C", str(repo), "config", "--get", "remote.origin.url"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         origin_url = result.stdout.strip()
 
         # Method 3: check if there are merge commits from a different repo
         result = subprocess.run(
             ["git", "-C", str(repo), "log", "--oneline", "--merges", "-5"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.stdout.strip() and "Merge pull request" in result.stdout:
             merge_lines = result.stdout.strip().split("\n")
             for line in merge_lines:
                 if "from " in line.lower() and "/" in line:
-                    return {"upstream_url": origin_url, "detection": "merge commits from external repos", "merges": merge_lines[:3]}
+                    return {
+                        "upstream_url": origin_url,
+                        "detection": "merge commits from external repos",
+                        "merges": merge_lines[:3],
+                    }
     except Exception:
         pass
     return None
@@ -151,9 +169,32 @@ def _scan_files(repo: Path) -> tuple[list[tuple[str, str]], int]:
     """Scan source files for hardcoded secrets and count them."""
     skip_dirs = {".git", "node_modules", "__pycache__", ".venv", "venv", "dist", "build"}
     skip_exts = {".jpg", ".png", ".gif", ".mp4", ".zip", ".tar", ".gz", ".pth", ".pt", ".bin", ".exe"}
-    source_exts = {".py", ".js", ".ts", ".jsx", ".tsx", ".go", ".rs", ".java", ".rb", ".php",
-                   ".env", ".yml", ".yaml", ".json", ".toml", ".cfg", ".ini", ".sh", ".bash",
-                   ".html", ".css", ".md", ".txt", ".xml"}
+    source_exts = {
+        ".py",
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".go",
+        ".rs",
+        ".java",
+        ".rb",
+        ".php",
+        ".env",
+        ".yml",
+        ".yaml",
+        ".json",
+        ".toml",
+        ".cfg",
+        ".ini",
+        ".sh",
+        ".bash",
+        ".html",
+        ".css",
+        ".md",
+        ".txt",
+        ".xml",
+    }
 
     compiled = [(re.compile(p, re.IGNORECASE), label) for p, label in SECRET_PATTERNS]
     secrets = []

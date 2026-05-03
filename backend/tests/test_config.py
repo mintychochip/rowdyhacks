@@ -1,6 +1,6 @@
 import pytest
-from pydantic import ValidationError
 from app.config import Settings
+from pydantic import ValidationError
 
 
 def test_settings_defaults():
@@ -10,12 +10,10 @@ def test_settings_defaults():
         database_url="postgresql+asyncpg://localhost:5432/hackverify",
         secret_key="test-secret-key-min-32-chars!!!!",
         github_token="",
-        youtube_api_key="",
     )
     assert s.database_url == "postgresql+asyncpg://localhost:5432/hackverify"
     assert s.secret_key == "test-secret-key-min-32-chars!!!!"
     assert s.github_token == ""
-    assert s.youtube_api_key == ""
     assert s.database_url.startswith("postgresql+asyncpg")
 
 

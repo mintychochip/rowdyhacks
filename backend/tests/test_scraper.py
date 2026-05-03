@@ -1,6 +1,5 @@
 import pytest
-from app.scraper import is_devpost_url, is_github_url, scrape_devpost, ScraperError
-from app.checks.interface import ScrapedData
+from app.scraper import ScraperError, is_devpost_url, is_github_url, scrape_devpost
 
 
 class TestUrlDetection:
@@ -54,28 +53,32 @@ SAMPLE_DEVPOST_HTML = """<!DOCTYPE html>
 async def test_scrape_devpost_full_page(monkeypatch):
     """Scrape a sample Devpost page and verify all fields."""
     import app.scraper as scraper_module
-    
+
     class MockResponse:
         text = SAMPLE_DEVPOST_HTML
         status_code = 200
         headers = {}
+
         def raise_for_status(self):
             pass
 
     class MockStealthClient:
         def __init__(self, **kwargs):
             pass
+
         async def __aenter__(self):
             return self
+
         async def __aexit__(self, *args):
             pass
+
         async def get(self, url):
             return MockResponse()
-    
+
     # Mock StealthClient in the scraper module
     async def mock_delay(**kwargs):
         pass
-    
+
     monkeypatch.setattr(scraper_module, "StealthClient", MockStealthClient)
     monkeypatch.setattr(scraper_module, "human_like_delay", mock_delay)
 

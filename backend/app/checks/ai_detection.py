@@ -1,5 +1,5 @@
 """Detect AI-generated code patterns."""
-from pathlib import Path
+
 from app.checks.interface import CheckContext, CheckResult
 
 AI_PHRASES = [
@@ -33,16 +33,73 @@ async def check_ai(context: CheckContext) -> CheckResult:
     comment_lines = 0
     prev_style = None
 
-    _SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv",
-                   "dist", "build", ".next", "target", "vendor", "models",
-                   "weights", "checkpoints", "data", "datasets"}
-    _SKIP_EXTS = {".jpg", ".png", ".gif", ".bmp", ".ico", ".svg", ".mp4", ".mp3",
-                   ".zip", ".tar", ".gz", ".pth", ".pt", ".h5", ".pb", ".bin",
-                   ".exe", ".dll", ".so", ".pyc", ".class", ".o"}
-    _SOURCE_EXTS = {".py", ".js", ".ts", ".jsx", ".tsx", ".go", ".rs", ".java",
-                    ".c", ".cpp", ".h", ".rb", ".php", ".swift", ".kt",
-                    ".html", ".css", ".md", ".yml", ".yaml", ".json", ".sh", ".r",
-                    ".ipynb"}
+    _SKIP_DIRS = {
+        ".git",
+        "node_modules",
+        "__pycache__",
+        ".venv",
+        "venv",
+        "dist",
+        "build",
+        ".next",
+        "target",
+        "vendor",
+        "models",
+        "weights",
+        "checkpoints",
+        "data",
+        "datasets",
+    }
+    _SKIP_EXTS = {
+        ".jpg",
+        ".png",
+        ".gif",
+        ".bmp",
+        ".ico",
+        ".svg",
+        ".mp4",
+        ".mp3",
+        ".zip",
+        ".tar",
+        ".gz",
+        ".pth",
+        ".pt",
+        ".h5",
+        ".pb",
+        ".bin",
+        ".exe",
+        ".dll",
+        ".so",
+        ".pyc",
+        ".class",
+        ".o",
+    }
+    _SOURCE_EXTS = {
+        ".py",
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".go",
+        ".rs",
+        ".java",
+        ".c",
+        ".cpp",
+        ".h",
+        ".rb",
+        ".php",
+        ".swift",
+        ".kt",
+        ".html",
+        ".css",
+        ".md",
+        ".yml",
+        ".yaml",
+        ".json",
+        ".sh",
+        ".r",
+        ".ipynb",
+    }
     max_bytes = 500_000
     bytes_read = 0
 
@@ -67,10 +124,7 @@ async def check_ai(context: CheckContext) -> CheckResult:
             # Count comment lines
             for line in lines:
                 stripped = line.strip()
-                if (
-                    stripped.startswith(("#", "//", "/*", "*", "<!--"))
-                    or stripped == ""
-                ):
+                if stripped.startswith(("#", "//", "/*", "*", "<!--")) or stripped == "":
                     comment_lines += 1
 
             # AI phrases
@@ -82,9 +136,7 @@ async def check_ai(context: CheckContext) -> CheckResult:
 
             # Style shift detection (tab vs space mix in same file)
             tab_lines = sum(1 for l in lines if l.startswith("\t"))
-            space_lines = sum(
-                1 for l in lines if l.startswith("  ") or l.startswith("    ")
-            )
+            space_lines = sum(1 for l in lines if l.startswith("  ") or l.startswith("    "))
             if tab_lines > 3 and space_lines > 3:
                 details["style_shifts"] += 1
         except Exception:

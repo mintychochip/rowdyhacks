@@ -1,12 +1,24 @@
 import enum
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from sqlalchemy import (
-    Column, String, Text, Integer, BigInteger, Boolean, Enum as SAEnum,
-    DateTime, ForeignKey, Index, TypeDecorator, JSON,
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    TypeDecorator,
 )
-from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
+from sqlalchemy import (
+    Enum as SAEnum,
+)
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -16,9 +28,11 @@ class Base(DeclarativeBase):
 
 # --- Custom types for cross-dialect compatibility (PostgreSQL + SQLite) ---
 
+
 class Guid(TypeDecorator):
     """Platform-independent UUID type. Uses PostgreSQL UUID when available,
     falls back to String for SQLite."""
+
     impl = String(36)
     cache_ok = True
 
@@ -47,6 +61,7 @@ class Guid(TypeDecorator):
 class ArrayOfStrings(TypeDecorator):
     """Stores a list of strings. Uses PostgreSQL ARRAY(String) when available,
     falls back to JSON-encoded TEXT for SQLite."""
+
     impl = Text
     cache_ok = True
 
@@ -73,6 +88,7 @@ class ArrayOfStrings(TypeDecorator):
 class JsonType(TypeDecorator):
     """Stores JSON data. Uses PostgreSQL JSONB when available,
     falls back to JSON-encoded TEXT for SQLite."""
+
     impl = Text
     cache_ok = True
 
@@ -97,6 +113,7 @@ class JsonType(TypeDecorator):
 
 
 # --- Enums ---
+
 
 class UserRole(str, enum.Enum):
     organizer = "organizer"
@@ -141,6 +158,7 @@ class JudgingSessionStatus(str, enum.Enum):
 
 # --- Models ---
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -149,13 +167,18 @@ class User(Base):
     name = Column(String(200), nullable=False)
     role = Column(SAEnum(UserRole), nullable=False, default=UserRole.participant)
     password_hash = Column(String(128), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     hackathons = relationship("Hackathon", back_populates="organizer")
     submissions = relationship("Submission", back_populates="submitter")
     registrations = relationship("Registration", back_populates="user")
     oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
-    co_organized_hackathons = relationship("HackathonOrganizer", back_populates="user", foreign_keys="HackathonOrganizer.user_id", cascade="all, delete-orphan")
+    co_organized_hackathons = relationship(
+        "HackathonOrganizer",
+        back_populates="user",
+        foreign_keys="HackathonOrganizer.user_id",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email} role={self.role}>"
@@ -169,11 +192,9 @@ class OAuthAccount(Base):
     provider_user_id = Column(String(255), nullable=False)
     provider_email = Column(String(320), nullable=True)
     user_id = Column(Guid, ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
-    __table_args__ = (
-        Index("ix_oauth_accounts_provider_user", "provider", "provider_user_id", unique=True),
-    )
+    __table_args__ = (Index("ix_oauth_accounts_provider_user", "provider", "provider_user_id", unique=True),)
 
     user = relationship("User", back_populates="oauth_accounts")
 
@@ -203,7 +224,7 @@ class Hackathon(Base):
     discord_webhook_url = Column(Text, nullable=True)
     discord_application_channel_id = Column(BigInteger, nullable=True)
     devpost_url = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     organizer = relationship("User", back_populates="hackathons")
     submissions = relationship("Submission", back_populates="hackathon")
@@ -229,7 +250,7 @@ class Track(Base):
     track_type = Column(String(50), nullable=True)  # "prize", "themed", "sponsor", or null
     criteria = Column(JsonType, nullable=True)
     resources = Column(JsonType, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     hackathon = relationship("Hackathon", back_populates="tracks")
 
@@ -239,6 +260,7 @@ class Track(Base):
 
 class HackathonOrganizer(Base):
     """Many-to-many relationship for co-organizers (multi-organizer hackathons)."""
+
     __tablename__ = "hackathon_organizers"
     __table_args__ = (
         Index("ix_hackathon_organizers_hackathon", "hackathon_id"),
@@ -247,7 +269,7 @@ class HackathonOrganizer(Base):
 
     hackathon_id = Column(Guid, ForeignKey("hackathons.id", ondelete="CASCADE"), primary_key=True)
     user_id = Column(Guid, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    added_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    added_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     added_by = Column(Guid, ForeignKey("users.id"), nullable=True)
 
     hackathon = relationship("Hackathon", back_populates="co_organizers")
@@ -273,11 +295,13 @@ class Submission(Base):
     status = Column(SAEnum(SubmissionStatus), nullable=False, default=SubmissionStatus.pending, index=True)
     risk_score = Column(Integer, nullable=True)
     verdict = Column(SAEnum(Verdict), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     access_token = Column(String(36), nullable=True)
     stage = Column(String(50), nullable=True)  # progress stage: scraping, cloning, checking, scoring
-    check_progress = Column(JsonType, nullable=True)  # {completed: ["check1"], pending: ["check2", ...], current: "check name"}
+    check_progress = Column(
+        JsonType, nullable=True
+    )  # {completed: ["check1"], pending: ["check2", ...], current: "check name"}
 
     hackathon = relationship("Hackathon", back_populates="submissions")
     submitter = relationship("User", back_populates="submissions")
@@ -298,7 +322,7 @@ class CheckResultModel(Base):
     status = Column(SAEnum(CheckStatus), nullable=False)
     details = Column(JsonType, nullable=True)
     evidence = Column(ArrayOfStrings, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     submission = relationship("Submission", back_populates="check_results")
 
@@ -334,7 +358,7 @@ class Registration(Base):
     qr_token = Column(String(512), nullable=True)
     pass_serial_apple = Column(String(128), nullable=True)
     pass_id_google = Column(String(128), nullable=True)
-    registered_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    registered_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     accepted_at = Column(DateTime(timezone=True), nullable=True)
     checked_in_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -363,7 +387,7 @@ class Scan(Base):
     id = Column(Guid, primary_key=True, default=uuid.uuid4)
     registration_id = Column(Guid, ForeignKey("registrations.id"), nullable=False)
     scan_type = Column(String(50), nullable=False, default="checkin")
-    scanned_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    scanned_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     registration = relationship("Registration", back_populates="scans")
 
@@ -381,7 +405,7 @@ class CrawledHackathon(Base):
     end_date = Column(DateTime(timezone=True), nullable=True)
     submission_count = Column(Integer, nullable=True)
     last_crawled_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     projects = relationship("CrawledProject", back_populates="hackathon", cascade="all, delete-orphan")
 
@@ -409,7 +433,7 @@ class CrawledProject(Base):
     slides_url = Column(Text, nullable=True)
     retry_count = Column(Integer, nullable=False, default=0)
     last_crawled_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     hackathon = relationship("CrawledHackathon", back_populates="projects")
 
@@ -419,6 +443,7 @@ class CrawledProject(Base):
 
 class JudgingSession(Base):
     """Per-hackathon judging configuration: window times, per-project limit, linked rubric."""
+
     __tablename__ = "judging_sessions"
 
     id = Column(Guid, primary_key=True, default=uuid.uuid4)
@@ -428,7 +453,7 @@ class JudgingSession(Base):
     per_project_seconds = Column(Integer, nullable=False, default=300)
     leaderboard_public = Column(Boolean, nullable=False, default=False)
     status = Column(SAEnum(JudgingSessionStatus), nullable=False, default=JudgingSessionStatus.pending)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     rubric = relationship("Rubric", back_populates="session", uselist=False, cascade="all, delete-orphan")
     assignments = relationship("JudgeAssignment", back_populates="session", cascade="all, delete-orphan")
@@ -501,6 +526,7 @@ class JudgeRating(Base):
 
 class Announcement(Base):
     """Organizer announcements to hackathon participants."""
+
     __tablename__ = "announcements"
 
     id = Column(Guid, primary_key=True, default=uuid.uuid4)
@@ -509,11 +535,12 @@ class Announcement(Base):
     content = Column(Text, nullable=False)
     priority = Column(String(20), nullable=False, default="normal")  # low, normal, high, urgent
     sent_by = Column(Guid, ForeignKey("users.id"), nullable=False)
-    sent_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    sent_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
 
 class ConflictOfInterest(Base):
     """Judge conflict of interest declarations."""
+
     __tablename__ = "conflicts_of_interest"
 
     id = Column(Guid, primary_key=True, default=uuid.uuid4)
@@ -521,13 +548,15 @@ class ConflictOfInterest(Base):
     hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=False)
     submission_id = Column(Guid, ForeignKey("submissions.id"), nullable=False)
     reason = Column(Text, nullable=True)
-    declared_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    declared_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
 
 # --- Fingerprint Models for Cross-Submission Similarity ---
 
+
 class SubmissionFingerprint(Base):
     """Store SimHash fingerprints for cross-submission similarity detection."""
+
     __tablename__ = "submission_fingerprints"
     __table_args__ = (
         Index("idx_fingerprint_simhash", "simhash"),
@@ -541,11 +570,12 @@ class SubmissionFingerprint(Base):
     github_url = Column(Text, nullable=True)
     repo_size_bytes = Column(Integer, default=0)
     code_lines = Column(Integer, default=0)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
 class SimilarityMatch(Base):
     """Store detected similarities between submissions."""
+
     __tablename__ = "similarity_matches"
     __table_args__ = (
         Index("idx_similarity_pair", "submission_a_id", "submission_b_id"),
@@ -562,13 +592,14 @@ class SimilarityMatch(Base):
     hamming_distance = Column(Integer, nullable=False)
     matching_files = Column(Text, nullable=True)
     status = Column(String(20), default="pending")  # pending, confirmed, dismissed
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     reviewed_by = Column(Guid, ForeignKey("users.id"), nullable=True)
 
 
 class EmailLog(Base):
     """Track email sending for retry and auditing."""
+
     __tablename__ = "email_logs"
 
     id = Column(Guid, primary_key=True, default=uuid.uuid4)
@@ -580,7 +611,7 @@ class EmailLog(Base):
     error_message = Column(Text, nullable=True)
     sent_at = Column(DateTime(timezone=True), nullable=True)
     retry_count = Column(Integer, default=0)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(UTC))
 
     registration = relationship("Registration", back_populates="email_logs")

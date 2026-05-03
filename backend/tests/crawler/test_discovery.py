@@ -1,10 +1,12 @@
 """Tests for the hackathon discovery crawler (discovery.py)."""
+
 import uuid
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
-from sqlalchemy import select
-from app.models import CrawledHackathon
 from app.crawler.discovery import discover_hackathons
+from app.models import CrawledHackathon
+from sqlalchemy import select
 
 
 def _make_mock_page(cards_data: list[dict]):
@@ -58,11 +60,13 @@ async def test_discover_hackathons_inserts_new(db_session, engine):
     ]
 
     # Seed DB with known hackathon
-    db_session.add(CrawledHackathon(
-        id=uuid.uuid4(),
-        devpost_url="https://disco-known.devpost.com",
-        name="Known Discovery 2024",
-    ))
+    db_session.add(
+        CrawledHackathon(
+            id=uuid.uuid4(),
+            devpost_url="https://disco-known.devpost.com",
+            name="Known Discovery 2024",
+        )
+    )
     await db_session.commit()
 
     mock_page = _make_mock_page(cards_data)
@@ -81,9 +85,7 @@ async def test_discover_hackathons_inserts_new(db_session, engine):
 
     # Verify new hackathon inserted
     new_hack = await db_session.execute(
-        select(CrawledHackathon).where(
-            CrawledHackathon.devpost_url == "https://disco-new-fest.devpost.com"
-        )
+        select(CrawledHackathon).where(CrawledHackathon.devpost_url == "https://disco-new-fest.devpost.com")
     )
     new_row = new_hack.scalar_one_or_none()
     assert new_row is not None
@@ -91,9 +93,7 @@ async def test_discover_hackathons_inserts_new(db_session, engine):
 
     # Verify duplicate was not re-inserted
     known_query = await db_session.execute(
-        select(CrawledHackathon).where(
-            CrawledHackathon.devpost_url == "https://disco-known.devpost.com"
-        )
+        select(CrawledHackathon).where(CrawledHackathon.devpost_url == "https://disco-known.devpost.com")
     )
     assert len(known_query.scalars().all()) == 1
 

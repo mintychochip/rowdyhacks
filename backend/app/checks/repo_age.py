@@ -1,9 +1,11 @@
 """Check if the GitHub repo was created before the hackathon started."""
+
 import re
+from datetime import UTC, datetime
+
 import httpx
-from datetime import datetime, timezone
+
 from app.checks.interface import CheckContext, CheckResult
-from app.config import settings
 
 
 async def check_repo_age(context: CheckContext) -> CheckResult:
@@ -11,15 +13,21 @@ async def check_repo_age(context: CheckContext) -> CheckResult:
     gh_url = context.scraped.github_url
     if not gh_url:
         return CheckResult(
-            check_name="repo-age", check_category="timeline",
-            score=0, status="pass", details={"reason": "No GitHub URL available"},
+            check_name="repo-age",
+            check_category="timeline",
+            score=0,
+            status="pass",
+            details={"reason": "No GitHub URL available"},
         )
 
-    m = re.match(r'https?://(?:www\.)?github\.com/([\w.-]+)/([\w.-]+)', gh_url)
+    m = re.match(r"https?://(?:www\.)?github\.com/([\w.-]+)/([\w.-]+)", gh_url)
     if not m:
         return CheckResult(
-            check_name="repo-age", check_category="timeline",
-            score=0, status="pass", details={"reason": f"Could not parse GitHub URL"},
+            check_name="repo-age",
+            check_category="timeline",
+            score=0,
+            status="pass",
+            details={"reason": "Could not parse GitHub URL"},
         )
 
     owner, repo_name = m.group(1), m.group(2)
@@ -32,8 +40,11 @@ async def check_repo_age(context: CheckContext) -> CheckResult:
             )
             if resp.status_code != 200:
                 return CheckResult(
-                    check_name="repo-age", check_category="timeline",
-                    score=10, status="pass", details={"reason": f"GitHub API returned {resp.status_code}"},
+                    check_name="repo-age",
+                    check_category="timeline",
+                    score=10,
+                    status="pass",
+                    details={"reason": f"GitHub API returned {resp.status_code}"},
                 )
 
             data = resp.json()
@@ -46,7 +57,7 @@ async def check_repo_age(context: CheckContext) -> CheckResult:
             open_issues = data.get("open_issues_count", 0)
 
             created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             age_days = (now.replace(tzinfo=None) - created_at.replace(tzinfo=None)).days
 
             score = 0
@@ -108,13 +119,19 @@ async def check_repo_age(context: CheckContext) -> CheckResult:
             status = "pass" if score <= 30 else "warn" if score <= 60 else "fail"
 
             return CheckResult(
-                check_name="repo-age", check_category="timeline",
-                score=score, status=status, details=details, evidence=evidence,
+                check_name="repo-age",
+                check_category="timeline",
+                score=score,
+                status=status,
+                details=details,
+                evidence=evidence,
             )
 
     except Exception as e:
         return CheckResult(
-            check_name="repo-age", check_category="timeline",
-            score=10, status="pass",
+            check_name="repo-age",
+            check_category="timeline",
+            score=10,
+            status="pass",
             details={"reason": f"GitHub API error: {str(e)[:200]}"},
         )

@@ -1,8 +1,9 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from datetime import datetime, timezone, timedelta
+from app.models import CheckResultModel, CheckStatus, Hackathon, Submission, SubmissionStatus, User, UserRole, Verdict
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from app.models import User, Hackathon, Submission, CheckResultModel, UserRole, SubmissionStatus, CheckStatus, Verdict
 
 
 @pytest.mark.asyncio
@@ -39,7 +40,7 @@ async def test_create_hackathon(db_session):
     db_session.add(user)
     await db_session.flush()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     hackathon = Hackathon(
         name="TestHack 2026",
         start_date=now - timedelta(days=1),

@@ -1,10 +1,9 @@
 """Stealth crawling utilities for WAF bypass and human-like behavior."""
+
 import asyncio
 import random
-from typing import Optional
 
 import httpx
-
 
 # Rotate through realistic browser user agents
 USER_AGENTS = [
@@ -32,11 +31,11 @@ REFERRERS = [
 ]
 
 
-def get_stealth_headers(content_type: str = "text/html", referer: Optional[str] = None) -> dict:
+def get_stealth_headers(content_type: str = "text/html", referer: str | None = None) -> dict:
     """Generate stealth request headers that look like a real browser."""
     user_agent = random.choice(USER_AGENTS)
     accept = ACCEPT_HEADERS.get(content_type, ACCEPT_HEADERS["text/html"])
-    
+
     headers = {
         "User-Agent": user_agent,
         "Accept": accept,
@@ -50,22 +49,22 @@ def get_stealth_headers(content_type: str = "text/html", referer: Optional[str] 
         "Sec-Fetch-Site": "none" if not referer else "cross-site",
         "Cache-Control": random.choice(["max-age=0", "no-cache"]),
     }
-    
+
     if referer:
         headers["Referer"] = referer
     else:
         headers["Referer"] = random.choice(REFERRERS)
-    
+
     # Add random viewport hints (some browsers send this)
     if random.random() > 0.5:
         headers["Viewport-Width"] = str(random.choice([1280, 1366, 1440, 1920, 2560]))
-    
+
     return headers
 
 
 class StealthClient:
     """HTTP client with stealth features: rotation, delays, retry logic."""
-    
+
     def __init__(
         self,
         max_retries: int = 3,
@@ -77,64 +76,61 @@ class StealthClient:
         self.base_delay = base_delay
         self.max_delay = max_delay
         self.timeout = timeout
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
         self._request_count = 0
-    
+
     async def __aenter__(self):
         self._client = httpx.AsyncClient(
             timeout=self.timeout,
             follow_redirects=True,
         )
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self._client:
             await self._client.aclose()
-    
-    async def get(self, url: str, headers: Optional[dict] = None) -> httpx.Response:
+
+    async def get(self, url: str, headers: dict | None = None) -> httpx.Response:
         """Make a stealth GET request with retry logic."""
         last_error = None
-        
+
         for attempt in range(self.max_retries):
             try:
                 # Add jitter to delay (exponential backoff with randomization)
                 if attempt > 0:
-                    delay = min(
-                        self.base_delay * (2 ** (attempt - 1)) + random.uniform(0, 1),
-                        self.max_delay
-                    )
+                    delay = min(self.base_delay * (2 ** (attempt - 1)) + random.uniform(0, 1), self.max_delay)
                     await asyncio.sleep(delay)
-                
+
                 # Generate stealth headers
                 request_headers = headers or get_stealth_headers()
-                
+
                 # Add slight randomization to timeout
                 timeout = self.timeout + random.uniform(-2, 2)
-                
+
                 response = await self._client.get(
                     url,
                     headers=request_headers,
                     timeout=max(5, timeout),
                 )
-                
+
                 self._request_count += 1
-                
+
                 # Handle common WAF responses
                 if response.status_code == 403:
                     # Might be WAF block, retry with different headers
                     if attempt < self.max_retries - 1:
                         continue
-                
+
                 if response.status_code == 429:
                     # Rate limited, wait longer
                     retry_after = int(response.headers.get("Retry-After", 60))
                     if attempt < self.max_retries - 1:
                         await asyncio.sleep(retry_after + random.uniform(1, 5))
                         continue
-                
+
                 response.raise_for_status()
                 return response
-                
+
             except httpx.HTTPStatusError as e:
                 last_error = e
                 if e.response.status_code in (500, 502, 503, 504):
@@ -144,13 +140,13 @@ class StealthClient:
             except httpx.NetworkError as e:
                 last_error = e
                 continue
-        
+
         raise last_error or Exception(f"Max retries exceeded for {url}")
-    
-    async def post(self, url: str, data: Optional[dict] = None, headers: Optional[dict] = None) -> httpx.Response:
+
+    async def post(self, url: str, data: dict | None = None, headers: dict | None = None) -> httpx.Response:
         """Make a stealth POST request."""
         request_headers = headers or get_stealth_headers("json")
-        
+
         return await self._client.post(
             url,
             json=data,
@@ -161,12 +157,12 @@ class StealthClient:
 
 class ProxyRotator:
     """Simple proxy rotation (for future use with proxy providers)."""
-    
-    def __init__(self, proxies: Optional[list[str]] = None):
+
+    def __init__(self, proxies: list[str] | None = None):
         self.proxies = proxies or []
         self._current_index = 0
-    
-    def get_next_proxy(self) -> Optional[str]:
+
+    def get_next_proxy(self) -> str | None:
         """Get the next proxy in rotation."""
         if not self.proxies:
             return None
@@ -176,11 +172,7 @@ class ProxyRotator:
 
 
 # Human-like behavior delays
-async def human_like_delay(
-    min_seconds: float = 0.5,
-    max_seconds: float = 3.0,
-    action: str = "page_view"
-):
+async def human_like_delay(min_seconds: float = 0.5, max_seconds: float = 3.0, action: str = "page_view"):
     """Simulate human-like delays between actions."""
     base_delays = {
         "page_view": (1.0, 4.0),
@@ -188,7 +180,7 @@ async def human_like_delay(
         "click": (0.2, 0.8),
         "form_fill": (0.5, 2.0),
     }
-    
+
     min_sec, max_sec = base_delays.get(action, (min_seconds, max_seconds))
     delay = random.uniform(min_sec, max_sec)
     await asyncio.sleep(delay)

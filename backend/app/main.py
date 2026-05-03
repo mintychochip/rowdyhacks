@@ -1,34 +1,37 @@
 from contextlib import asynccontextmanager
 
+import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from sqlalchemy import text
-from app.database import engine
-from app.models import Base
-from app.routes.auth import router as auth_router
-from app.routes.checks import router as checks_router
-from app.routes.dashboard import router as dashboard_router
-from app.routes.hackathons import router as hackathons_router
-from app.routes.hacker_dashboard import router as hacker_dashboard_router
-from app.routes.registrations import router as registrations_router
-from app.routes.registrations_organizer import router as registrations_org_router
-from app.routes.checkin import router as checkin_router
-from app.routes.qr import router as qr_router
-from app.routes.crawler import router as crawler_router
-from app.routes.judging import router as judging_router
-from app.routes.oauth import router as oauth_router
-from app.routes.websocket import router as websocket_router
-from app.routes.monitoring import router as monitoring_router, track_request
-from app.routes.tracks import router as tracks_router
-from app.discord_bot import start_bot, bot as discord_bot
+
+from app.background_jobs import shutdown_scheduler, start_scheduler
+from app.cache import close_redis
+
 # from apscheduler.schedulers.asyncio import AsyncIOScheduler  # disabled — requires Playwright
 # from app.crawler.scheduler import run_crawl
 from app.config import settings
-from app.cache import close_redis
+from app.database import engine
+from app.discord_bot import bot as discord_bot
+from app.discord_bot import start_bot
 from app.logging_config import configure_logging
-from app.background_jobs import start_scheduler, shutdown_scheduler
-import sentry_sdk
+from app.models import Base
+from app.routes.auth import router as auth_router
+from app.routes.checkin import router as checkin_router
+from app.routes.checks import router as checks_router
+from app.routes.crawler import router as crawler_router
+from app.routes.dashboard import router as dashboard_router
+from app.routes.hackathons import router as hackathons_router
+from app.routes.hacker_dashboard import router as hacker_dashboard_router
+from app.routes.judging import router as judging_router
+from app.routes.monitoring import router as monitoring_router
+from app.routes.monitoring import track_request
+from app.routes.oauth import router as oauth_router
+from app.routes.qr import router as qr_router
+from app.routes.registrations import router as registrations_router
+from app.routes.registrations_organizer import router as registrations_org_router
+from app.routes.tracks import router as tracks_router
+from app.routes.websocket import router as websocket_router
 
 # Configure structured logging
 configure_logging(log_level=settings.log_level, json_logs=settings.json_logs)
@@ -49,22 +52,14 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
         # Add track_type column if missing (on existing DBs without this column)
         try:
-            await conn.execute(
-                text("ALTER TABLE tracks ADD COLUMN IF NOT EXISTS track_type VARCHAR(50)")
-            )
+            await conn.execute(text("ALTER TABLE tracks ADD COLUMN IF NOT EXISTS track_type VARCHAR(50)"))
             # Backfill existing tracks with correct track_type values
             await conn.execute(
-                text(
-                    "UPDATE tracks SET track_type = 'prize' "
-                    "WHERE track_type IS NULL AND name = ANY(:names)"
-                ),
+                text("UPDATE tracks SET track_type = 'prize' WHERE track_type IS NULL AND name = ANY(:names)"),
                 {"names": ("Deep Space Exploration", "Orbital Commerce", "Mission Control AI")},
             )
             await conn.execute(
-                text(
-                    "UPDATE tracks SET track_type = 'themed' "
-                    "WHERE track_type IS NULL AND name = ANY(:names)"
-                ),
+                text("UPDATE tracks SET track_type = 'themed' WHERE track_type IS NULL AND name = ANY(:names)"),
                 {"names": ("Cosmic Commons", "Nebula Arts", "Lunar Settlements")},
             )
         except Exception:
@@ -74,6 +69,7 @@ async def lifespan(app: FastAPI):
         await _seed_demo_data()
     except Exception:
         import traceback
+
         traceback.print_exc()
 
     # Crawler scheduler disabled — requires Playwright chromium (not installed)
@@ -115,10 +111,11 @@ async def lifespan(app: FastAPI):
 
 async def _seed_demo_data():
     """Create or update demo accounts on startup so they always work."""
+    from sqlalchemy import select
+
+    from app.auth import hash_password
     from app.database import async_session
     from app.models import User, UserRole
-    from app.auth import hash_password
-    from sqlalchemy import select
 
     async with async_session() as db:
         for email, name, role in [
@@ -170,6 +167,7 @@ app.include_router(oauth_router, prefix="/api/auth/oauth", tags=["oauth"])
 app.include_router(websocket_router)
 app.include_router(monitoring_router)
 
+
 # Add request tracking middleware
 @app.middleware("http")
 async def metrics_middleware(request, call_next):
@@ -185,6 +183,7 @@ async def health():
 async def discord_invite_url():
     """Get the Discord bot invite URL."""
     from app.discord_bot import get_bot_invite_url
+
     url = get_bot_invite_url()
     if not url:
         return {"error": "discord_client_id not configured"}
@@ -195,6 +194,7 @@ async def discord_invite_url():
 async def bot_status():
     """Check Discord bot connection state."""
     from app.discord_bot import bot
+
     return {
         "ready": bot.is_ready(),
         "user": str(bot.user) if bot.user else None,

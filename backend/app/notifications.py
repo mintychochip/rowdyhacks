@@ -1,4 +1,5 @@
 """Discord webhook notifications for hackathon events."""
+
 import httpx
 
 
@@ -8,10 +9,13 @@ async def send_discord_webhook(webhook_url: str, content: str, username: str = "
         return False
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(webhook_url, json={
-                "content": content,
-                "username": username,
-            })
+            resp = await client.post(
+                webhook_url,
+                json={
+                    "content": content,
+                    "username": username,
+                },
+            )
             return resp.status_code == 204
     except Exception:
         return False
@@ -28,7 +32,9 @@ def format_application_notification(name: str, email: str, team_name: str | None
     )
 
 
-def format_submission_notification(project_title: str, team_name: str | None, name: str, verdict: str, risk: int) -> str:
+def format_submission_notification(
+    project_title: str, team_name: str | None, name: str, verdict: str, risk: int
+) -> str:
     """Format a Discord message for a completed project submission."""
     display = team_name or name
     emoji = {"clean": "✅", "review": "⚠️", "flagged": "🚩"}.get(verdict, "❓")

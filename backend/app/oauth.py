@@ -3,15 +3,16 @@
 import secrets
 import time
 from typing import Any
+from urllib.parse import urlencode
 
 import httpx
-from urllib.parse import urlencode
 
 from app.config import settings
 
 # ── State Store (CSRF protection) ──────────────────────────────
 
 _state_store: dict[str, tuple[float, dict[str, Any]]] = {}
+
 
 def _cleanup_expired() -> None:
     """Lazily remove expired state entries."""
@@ -77,6 +78,7 @@ VALID_PROVIDERS = list(PROVIDER_CONFIGS.keys())
 
 
 # ── Helpers ────────────────────────────────────────────────────
+
 
 def build_authorize_url(provider: str, redirect_uri: str, state: str) -> str:
     """Build the provider's OAuth authorization URL."""

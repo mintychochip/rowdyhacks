@@ -1,9 +1,10 @@
+import uuid
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, timezone
+from app.models import CrawledHackathon, CrawledProject
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from app.models import CrawledHackathon, CrawledProject
-import uuid
 
 
 @pytest.mark.asyncio
@@ -13,8 +14,8 @@ async def test_crawled_hackathon_creation(db_session):
         id=uuid.uuid4(),
         devpost_url="https://devpost.com/hackathons/test-fest-2025",
         name="Test Fest 2025",
-        start_date=datetime(2025, 6, 1, tzinfo=timezone.utc),
-        end_date=datetime(2025, 6, 3, tzinfo=timezone.utc),
+        start_date=datetime(2025, 6, 1, tzinfo=UTC),
+        end_date=datetime(2025, 6, 3, tzinfo=UTC),
         submission_count=120,
     )
     db_session.add(h)

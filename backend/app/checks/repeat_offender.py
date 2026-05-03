@@ -1,8 +1,9 @@
 """Check if team members appear in previously flagged submissions."""
+
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from sqlalchemy import select, or_
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.checks.interface import CheckContext, CheckResult
@@ -76,27 +77,27 @@ async def check_repeat_offender(
     async with _resolve_session(db) as session:
         # Find flagged submissions
         flagged_result = await session.execute(
-            select(Submission).where(
+            select(Submission)
+            .where(
                 or_(
                     Submission.verdict == Verdict.flagged,
                     Submission.verdict == Verdict.review,
                 )
-            ).limit(500)
+            )
+            .limit(500)
         )
         flagged_subs = flagged_result.scalars().all()
 
-        flagged_github_urls: set[str] = {
-            sub.github_url.strip().lower()
-            for sub in flagged_subs
-            if sub.github_url
-        }
+        flagged_github_urls: set[str] = {sub.github_url.strip().lower() for sub in flagged_subs if sub.github_url}
 
         flagged_count = 0
         for username in github_usernames:
             all_proj_result = await session.execute(
-                select(CrawledProject).where(
+                select(CrawledProject)
+                .where(
                     CrawledProject.github_url.isnot(None),
-                ).limit(1000)
+                )
+                .limit(1000)
             )
             all_projects = all_proj_result.scalars().all()
 
@@ -116,15 +117,15 @@ async def check_repeat_offender(
                     if member_username == username:
                         if proj.github_url and proj.github_url.strip().lower() in flagged_github_urls:
                             flagged_count += 1
-                            details["prior_flags"].append({
-                                "github_username": username,
-                                "devpost_url": proj.devpost_url,
-                                "title": proj.title,
-                                "github_url": proj.github_url,
-                            })
-                            evidence.append(
-                                f"Team member '{username}' appears in flagged project: {proj.devpost_url}"
+                            details["prior_flags"].append(
+                                {
+                                    "github_username": username,
+                                    "devpost_url": proj.devpost_url,
+                                    "title": proj.title,
+                                    "github_url": proj.github_url,
+                                }
                             )
+                            evidence.append(f"Team member '{username}' appears in flagged project: {proj.devpost_url}")
                             break
 
         # Score: 30 per flagged prior, capped at 60
@@ -141,13 +142,13 @@ async def check_repeat_offender(
         for dp_profile, gh_set in devpost_to_githubs.items():
             if len(gh_set) > 1:
                 score = max(score, 20)
-                details["suspicious_patterns"].append({
-                    "devpost_profile": dp_profile,
-                    "github_accounts": list(gh_set),
-                })
-                evidence.append(
-                    f"Devpost profile {dp_profile} linked to multiple GitHub accounts: {gh_set}"
+                details["suspicious_patterns"].append(
+                    {
+                        "devpost_profile": dp_profile,
+                        "github_accounts": list(gh_set),
+                    }
                 )
+                evidence.append(f"Devpost profile {dp_profile} linked to multiple GitHub accounts: {gh_set}")
 
     score = min(100, score)
     if score <= 30:

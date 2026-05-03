@@ -1,4 +1,5 @@
 """Discover all submission URLs for a given hackathon using Playwright for JS rendering."""
+
 import asyncio
 import logging
 import uuid
@@ -17,7 +18,7 @@ MAX_SCROLLS = 200  # Max scrolls for infinite-load galleries
 _EXTRACT_SUBMISSIONS_JS = (
     "() => {"
     "  const results = [];"
-    "  document.querySelectorAll('a[href*=\"/software/\"], a[href*=\"/projects/\"]').forEach(link => {"
+    '  document.querySelectorAll(\'a[href*="/software/"], a[href*="/projects/"]\').forEach(link => {'
     "    const href = link.getAttribute('href');"
     "    if (!href) return;"
     "    if (href.includes('/software/') || href.includes('/projects/')) {"
@@ -65,9 +66,7 @@ async def discover_submissions(hackathon_id: uuid.UUID, hackathon_url: str) -> l
                 viewport={"width": 1920, "height": 1080},
             )
             page = await context.new_page()
-            await page.add_init_script(
-                "Object.defineProperty(navigator, 'webdriver', { get: () => false });"
-            )
+            await page.add_init_script("Object.defineProperty(navigator, 'webdriver', { get: () => false });")
             await page.goto(gallery_url, wait_until="domcontentloaded", timeout=60000)
 
             # Wait for submission links or a "not published" message

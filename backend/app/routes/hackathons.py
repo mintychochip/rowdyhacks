@@ -1,31 +1,44 @@
 """Hackathon management routes."""
-import uuid
+
+import asyncio
 import csv
 import io
-import asyncio
 import re
-from datetime import datetime, timezone
-from urllib.parse import urljoin, urlparse
+import uuid
+from datetime import UTC, datetime
 
 import httpx
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, Depends, HTTPException, Header, Query
+from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select, func, and_, desc
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.auth import decode_token
+from app.cache import cache_delete_pattern, cached
+from app.checks.similarity import run_similarity
 from app.database import get_db
 from app.models import (
-    Hackathon, Submission, SubmissionStatus, Verdict, Registration, RegistrationStatus,
-    Announcement, ConflictOfInterest, User, UserRole, HackathonOrganizer, Track
+    Announcement,
+    ConflictOfInterest,
+    Hackathon,
+    HackathonOrganizer,
+    Registration,
+    RegistrationStatus,
+    Submission,
+    SubmissionStatus,
+    User,
+    UserRole,
+    Verdict,
 )
 from app.routes.tracks import seed_tracks
 from app.schemas import (
-    HackathonCreate, AnnouncementCreate, AnnouncementResponse,
-    ConflictOfInterestCreate, ConflictOfInterestResponse
+    AnnouncementCreate,
+    AnnouncementResponse,
+    ConflictOfInterestCreate,
+    ConflictOfInterestResponse,
+    HackathonCreate,
 )
-from app.checks.similarity import run_similarity
-from app.auth import decode_token
-from app.cache import cached, cache_delete, cache_delete_pattern
 
 router = APIRouter(prefix="/api/hackathons", tags=["hackathons"])
 
@@ -59,7 +72,7 @@ async def _ensure_organizer(user: User, hackathon: Hackathon, db: AsyncSession):
     # Primary organizer check
     if user.role == UserRole.organizer and hackathon.organizer_id == user.id:
         return
-    
+
     # Co-organizer check
     result = await db.execute(
         select(HackathonOrganizer).where(
@@ -68,15 +81,13 @@ async def _ensure_organizer(user: User, hackathon: Hackathon, db: AsyncSession):
     )
     if result.scalar_one_or_none():
         return
-    
+
     raise HTTPException(status_code=403, detail="Only the hackathon organizer can perform this action")
 
 
 @router.post("", status_code=201)
 async def create_hackathon(
-    body: HackathonCreate,
-    authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    body: HackathonCreate, authorization: str = Header(alias="Authorization"), db: AsyncSession = Depends(get_db)
 ):
     """Create a new hackathon."""
     user = await _get_current_user(db, authorization)
@@ -133,16 +144,19 @@ async def list_hackathons(db: AsyncSession = Depends(get_db)):
     """List all hackathons."""
     result = await db.execute(select(Hackathon).order_by(Hackathon.created_at.desc()))
     hackathons = result.scalars().all()
-    return [{
-        "id": str(h.id),
-        "name": h.name,
-        "start_date": h.start_date.isoformat(),
-        "end_date": h.end_date.isoformat(),
-        "application_deadline": h.application_deadline.isoformat() if h.application_deadline else None,
-        "max_participants": h.max_participants,
-        "current_participants": h.current_participants,
-        "waitlist_enabled": h.waitlist_enabled,
-    } for h in hackathons]
+    return [
+        {
+            "id": str(h.id),
+            "name": h.name,
+            "start_date": h.start_date.isoformat(),
+            "end_date": h.end_date.isoformat(),
+            "application_deadline": h.application_deadline.isoformat() if h.application_deadline else None,
+            "max_participants": h.max_participants,
+            "current_participants": h.current_participants,
+            "waitlist_enabled": h.waitlist_enabled,
+        }
+        for h in hackathons
+    ]
 
 
 @router.get("/{hackathon_id}")
@@ -200,7 +214,7 @@ async def get_hackathon_stats(hackathon_id: uuid.UUID, db: AsyncSession = Depend
     # Check-in stats
     checked_in = reg_stats.get(RegistrationStatus.checked_in.value, 0)
     accepted = reg_stats.get(RegistrationStatus.accepted.value, 0)
-    
+
     return {
         "total_submissions": total,
         "completed": len(completed),
@@ -219,9 +233,7 @@ async def get_hackathon_stats(hackathon_id: uuid.UUID, db: AsyncSession = Depend
 
 @router.get("/{hackathon_id}/swag-counts")
 async def get_swag_counts(
-    hackathon_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    hackathon_id: uuid.UUID, authorization: str = Header(alias="Authorization"), db: AsyncSession = Depends(get_db)
 ):
     """Get meal and swag planning counts (organizer only)."""
     user = await _get_current_user(db, authorization)
@@ -229,25 +241,25 @@ async def get_swag_counts(
     hackathon = result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    
+
     await _ensure_organizer(user, hackathon, db)
-    
+
     # Get all accepted/checked_in registrations
     reg_result = await db.execute(
         select(Registration).where(
             and_(
                 Registration.hackathon_id == hackathon_id,
-                Registration.status.in_([RegistrationStatus.accepted, RegistrationStatus.checked_in])
+                Registration.status.in_([RegistrationStatus.accepted, RegistrationStatus.checked_in]),
             )
         )
     )
     regs = reg_result.scalars().all()
-    
+
     # T-shirt sizes
     tshirt_counts = {}
     dietary_counts = {}
     experience_counts = {}
-    
+
     for reg in regs:
         if reg.t_shirt_size:
             tshirt_counts[reg.t_shirt_size] = tshirt_counts.get(reg.t_shirt_size, 0) + 1
@@ -255,7 +267,7 @@ async def get_swag_counts(
             dietary_counts[reg.dietary_restrictions] = dietary_counts.get(reg.dietary_restrictions, 0) + 1
         if reg.experience_level:
             experience_counts[reg.experience_level] = experience_counts.get(reg.experience_level, 0) + 1
-    
+
     return {
         "total_accepted": len(regs),
         "t_shirt_sizes": tshirt_counts,
@@ -267,9 +279,7 @@ async def get_swag_counts(
 @router.get("/{hackathon_id}/submissions")
 async def get_hackathon_submissions(hackathon_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     """List submissions for a hackathon."""
-    result = await db.execute(
-        select(Submission).where(Submission.hackathon_id == hackathon_id)
-    )
+    result = await db.execute(select(Submission).where(Submission.hackathon_id == hackathon_id))
     subs = result.scalars().all()
     return [
         {
@@ -290,7 +300,7 @@ async def update_hackathon(
     hackathon_id: uuid.UUID,
     body: dict,
     authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Update hackathon settings (schedule, wifi, discord, webhook, deadline, capacity)."""
     user = await _get_current_user(db, authorization)
@@ -298,15 +308,23 @@ async def update_hackathon(
     hackathon = result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    
+
     await _ensure_organizer(user, hackathon, db)
 
     updated = []
     allowed_fields = (
-        "description", "schedule", "venue_address", "parking_info",
-        "wifi_ssid", "wifi_password", "discord_invite_url", "discord_webhook_url",
-        "discord_application_channel_id", "application_deadline", "max_participants",
-        "waitlist_enabled"
+        "description",
+        "schedule",
+        "venue_address",
+        "parking_info",
+        "wifi_ssid",
+        "wifi_password",
+        "discord_invite_url",
+        "discord_webhook_url",
+        "discord_application_channel_id",
+        "application_deadline",
+        "max_participants",
+        "waitlist_enabled",
     )
     for key in allowed_fields:
         if key in body and body[key] is not None:
@@ -341,12 +359,13 @@ async def run_hackathon_similarity(hackathon_id: uuid.UUID, db: AsyncSession = D
 
 # --- Bulk Operations ---
 
+
 @router.post("/{hackathon_id}/registrations/bulk-accept", status_code=200)
 async def bulk_accept_registrations(
     hackathon_id: uuid.UUID,
     registration_ids: list[uuid.UUID],
     authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Bulk accept pending registrations."""
     user = await _get_current_user(db, authorization)
@@ -354,22 +373,20 @@ async def bulk_accept_registrations(
     hackathon = result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    
+
     await _ensure_organizer(user, hackathon, db)
-    
+
     accepted_count = 0
     waitlisted_count = 0
-    
+
     for reg_id in registration_ids:
         reg_result = await db.execute(
-            select(Registration).where(
-                and_(Registration.id == reg_id, Registration.hackathon_id == hackathon_id)
-            )
+            select(Registration).where(and_(Registration.id == reg_id, Registration.hackathon_id == hackathon_id))
         )
         reg = reg_result.scalar_one_or_none()
         if not reg or reg.status != RegistrationStatus.pending:
             continue
-        
+
         # Check capacity
         if hackathon.max_participants and hackathon.current_participants >= hackathon.max_participants:
             if hackathon.waitlist_enabled:
@@ -379,10 +396,10 @@ async def bulk_accept_registrations(
                 continue
         else:
             reg.status = RegistrationStatus.accepted
-            reg.accepted_at = datetime.now(timezone.utc)
+            reg.accepted_at = datetime.now(UTC)
             hackathon.current_participants += 1
             accepted_count += 1
-    
+
     await db.commit()
     return {"accepted": accepted_count, "waitlisted": waitlisted_count}
 
@@ -392,7 +409,7 @@ async def bulk_reject_registrations(
     hackathon_id: uuid.UUID,
     registration_ids: list[uuid.UUID],
     authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Bulk reject pending/waitlisted registrations."""
     user = await _get_current_user(db, authorization)
@@ -400,28 +417,26 @@ async def bulk_reject_registrations(
     hackathon = result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    
+
     await _ensure_organizer(user, hackathon, db)
-    
+
     rejected_count = 0
-    
+
     for reg_id in registration_ids:
         reg_result = await db.execute(
-            select(Registration).where(
-                and_(Registration.id == reg_id, Registration.hackathon_id == hackathon_id)
-            )
+            select(Registration).where(and_(Registration.id == reg_id, Registration.hackathon_id == hackathon_id))
         )
         reg = reg_result.scalar_one_or_none()
         if not reg or reg.status not in (RegistrationStatus.pending, RegistrationStatus.waitlisted):
             continue
-        
+
         # If was accepted/waitlisted, decrement counter
         if reg.status == RegistrationStatus.waitlisted:
             pass  # wasn't counted in current_participants
-        
+
         reg.status = RegistrationStatus.rejected
         rejected_count += 1
-    
+
     await db.commit()
     return {"rejected": rejected_count}
 
@@ -431,7 +446,7 @@ async def bulk_waitlist_registrations(
     hackathon_id: uuid.UUID,
     registration_ids: list[uuid.UUID],
     authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Bulk waitlist pending registrations."""
     user = await _get_current_user(db, authorization)
@@ -439,36 +454,32 @@ async def bulk_waitlist_registrations(
     hackathon = result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    
+
     await _ensure_organizer(user, hackathon, db)
-    
+
     if not hackathon.waitlist_enabled:
         raise HTTPException(status_code=400, detail="Waitlist is not enabled for this hackathon")
-    
+
     waitlisted_count = 0
-    
+
     for reg_id in registration_ids:
         reg_result = await db.execute(
-            select(Registration).where(
-                and_(Registration.id == reg_id, Registration.hackathon_id == hackathon_id)
-            )
+            select(Registration).where(and_(Registration.id == reg_id, Registration.hackathon_id == hackathon_id))
         )
         reg = reg_result.scalar_one_or_none()
         if not reg or reg.status != RegistrationStatus.pending:
             continue
-        
+
         reg.status = RegistrationStatus.waitlisted
         waitlisted_count += 1
-    
+
     await db.commit()
     return {"waitlisted": waitlisted_count}
 
 
 @router.get("/{hackathon_id}/registrations/export")
 async def export_registrations_csv(
-    hackathon_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    hackathon_id: uuid.UUID, authorization: str = Header(alias="Authorization"), db: AsyncSession = Depends(get_db)
 ):
     """Export all registrations to CSV (organizer only)."""
     user = await _get_current_user(db, authorization)
@@ -476,9 +487,9 @@ async def export_registrations_csv(
     hackathon = result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    
+
     await _ensure_organizer(user, hackathon, db)
-    
+
     # Get all registrations with user info
     reg_result = await db.execute(
         select(Registration, User)
@@ -487,69 +498,92 @@ async def export_registrations_csv(
         .order_by(Registration.registered_at.desc())
     )
     rows = reg_result.all()
-    
+
     # Create CSV
     output = io.StringIO()
     writer = csv.writer(output)
-    
+
     # Header
-    writer.writerow([
-        "ID", "Status", "Registered At", "Accepted At", "Checked In At",
-        "Name", "Email", "Team Name", "Team Members",
-        "School", "Major", "Age", "Pronouns", "Experience Level",
-        "Skills", "T-Shirt Size", "Dietary Restrictions",
-        "Phone", "Emergency Contact Name", "Emergency Contact Phone",
-        "LinkedIn", "GitHub", "Resume URL",
-        "What They Will Build", "Why Participate"
-    ])
-    
+    writer.writerow(
+        [
+            "ID",
+            "Status",
+            "Registered At",
+            "Accepted At",
+            "Checked In At",
+            "Name",
+            "Email",
+            "Team Name",
+            "Team Members",
+            "School",
+            "Major",
+            "Age",
+            "Pronouns",
+            "Experience Level",
+            "Skills",
+            "T-Shirt Size",
+            "Dietary Restrictions",
+            "Phone",
+            "Emergency Contact Name",
+            "Emergency Contact Phone",
+            "LinkedIn",
+            "GitHub",
+            "Resume URL",
+            "What They Will Build",
+            "Why Participate",
+        ]
+    )
+
     # Data
     for reg, user in rows:
-        writer.writerow([
-            str(reg.id),
-            reg.status.value,
-            reg.registered_at.isoformat(),
-            reg.accepted_at.isoformat() if reg.accepted_at else "",
-            reg.checked_in_at.isoformat() if reg.checked_in_at else "",
-            user.name,
-            user.email,
-            reg.team_name or "",
-            ", ".join(reg.team_members) if reg.team_members else "",
-            reg.school or "",
-            reg.major or "",
-            reg.age or "",
-            reg.pronouns or "",
-            reg.experience_level or "",
-            ", ".join(reg.skills) if reg.skills else "",
-            reg.t_shirt_size or "",
-            reg.dietary_restrictions or "",
-            reg.phone or "",
-            reg.emergency_contact_name or "",
-            reg.emergency_contact_phone or "",
-            reg.linkedin_url or "",
-            reg.github_url or "",
-            reg.resume_url or "",
-            (reg.what_build or "")[:200],
-            (reg.why_participate or "")[:200],
-        ])
-    
+        writer.writerow(
+            [
+                str(reg.id),
+                reg.status.value,
+                reg.registered_at.isoformat(),
+                reg.accepted_at.isoformat() if reg.accepted_at else "",
+                reg.checked_in_at.isoformat() if reg.checked_in_at else "",
+                user.name,
+                user.email,
+                reg.team_name or "",
+                ", ".join(reg.team_members) if reg.team_members else "",
+                reg.school or "",
+                reg.major or "",
+                reg.age or "",
+                reg.pronouns or "",
+                reg.experience_level or "",
+                ", ".join(reg.skills) if reg.skills else "",
+                reg.t_shirt_size or "",
+                reg.dietary_restrictions or "",
+                reg.phone or "",
+                reg.emergency_contact_name or "",
+                reg.emergency_contact_phone or "",
+                reg.linkedin_url or "",
+                reg.github_url or "",
+                reg.resume_url or "",
+                (reg.what_build or "")[:200],
+                (reg.why_participate or "")[:200],
+            ]
+        )
+
     output.seek(0)
-    
+
     return StreamingResponse(
         io.BytesIO(output.getvalue().encode()),
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=registrations-{hackathon_id}.csv"}
+        headers={"Content-Disposition": f"attachment; filename=registrations-{hackathon_id}.csv"},
     )
 
 
 # --- Announcements ---
+
 
 @router.post("/{hackathon_id}/announcements", status_code=201)
 async def create_announcement(
     hackathon_id: uuid.UUID,
     body: AnnouncementCreate,
     authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Create and send an announcement to all hackathon participants (organizer only)."""
     user = await _get_current_user(db, authorization)
@@ -557,9 +591,9 @@ async def create_announcement(
     hackathon = result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    
+
     await _ensure_organizer(user, hackathon, db)
-    
+
     announcement = Announcement(
         hackathon_id=hackathon_id,
         title=body.title,
@@ -570,92 +604,86 @@ async def create_announcement(
     db.add(announcement)
     await db.commit()
     await db.refresh(announcement)
-    
+
     # TODO: Send to Discord webhook if configured
-    
+
     return AnnouncementResponse.model_validate(announcement)
 
 
 @router.get("/{hackathon_id}/announcements")
 async def list_announcements(
-    hackathon_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    hackathon_id: uuid.UUID, authorization: str = Header(alias="Authorization"), db: AsyncSession = Depends(get_db)
 ):
     """List announcements for a hackathon. Organizers see all, participants see accepted ones."""
     user = await _get_current_user(db, authorization)
-    
+
     # Check if user has access to this hackathon
     reg_result = await db.execute(
-        select(Registration).where(
-            and_(Registration.hackathon_id == hackathon_id, Registration.user_id == user.id)
-        )
+        select(Registration).where(and_(Registration.hackathon_id == hackathon_id, Registration.user_id == user.id))
     )
     registration = reg_result.scalar_one_or_none()
-    
+
     # Organizer can see all
     hack_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hack_result.scalar_one_or_none()
-    
+
     is_organizer = hackathon and hackathon.organizer_id == user.id and user.role == UserRole.organizer
-    
+
     if not is_organizer and not registration:
         raise HTTPException(status_code=403, detail="Not authorized to view announcements for this hackathon")
-    
+
     # Build query
     query = select(Announcement).where(Announcement.hackathon_id == hackathon_id)
-    
+
     # Non-organizers only see non-draft announcements
     if not is_organizer:
         query = query.where(Announcement.priority != "draft")
-    
+
     query = query.order_by(desc(Announcement.sent_at))
-    
+
     result = await db.execute(query)
     announcements = result.scalars().all()
-    
+
     return [AnnouncementResponse.model_validate(a) for a in announcements]
 
 
 # --- Conflict of Interest (Judge) ---
+
 
 @router.post("/{hackathon_id}/conflicts-of-interest", status_code=201)
 async def declare_conflict_of_interest(
     hackathon_id: uuid.UUID,
     body: ConflictOfInterestCreate,
     authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Declare a conflict of interest for a submission (judge only)."""
     user = await _get_current_user(db, authorization)
-    
+
     if user.role != UserRole.judge:
         raise HTTPException(status_code=403, detail="Only judges can declare conflicts of interest")
-    
+
     # Verify hackathon exists
     hack_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hack_result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    
+
     # Verify submission exists
     sub_result = await db.execute(select(Submission).where(Submission.id == body.submission_id))
     submission = sub_result.scalar_one_or_none()
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
-    
+
     # Check if already declared
     existing = await db.execute(
         select(ConflictOfInterest).where(
-            and_(
-                ConflictOfInterest.judge_id == user.id,
-                ConflictOfInterest.submission_id == body.submission_id
-            )
+            and_(ConflictOfInterest.judge_id == user.id, ConflictOfInterest.submission_id == body.submission_id)
         )
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Conflict of interest already declared for this submission")
-    
+
     coi = ConflictOfInterest(
         judge_id=user.id,
         hackathon_id=hackathon_id,
@@ -665,31 +693,27 @@ async def declare_conflict_of_interest(
     db.add(coi)
     await db.commit()
     await db.refresh(coi)
-    
+
     return ConflictOfInterestResponse.model_validate(coi)
 
 
 @router.get("/{hackathon_id}/conflicts-of-interest")
 async def list_conflicts_of_interest(
-    hackathon_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    hackathon_id: uuid.UUID, authorization: str = Header(alias="Authorization"), db: AsyncSession = Depends(get_db)
 ):
     """List all conflicts of interest for a hackathon (organizer only)."""
     user = await _get_current_user(db, authorization)
-    
+
     hack_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hack_result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    
+
     await _ensure_organizer(user, hackathon, db)
-    
-    result = await db.execute(
-        select(ConflictOfInterest).where(ConflictOfInterest.hackathon_id == hackathon_id)
-    )
+
+    result = await db.execute(select(ConflictOfInterest).where(ConflictOfInterest.hackathon_id == hackathon_id))
     cois = result.scalars().all()
-    
+
     return [ConflictOfInterestResponse.model_validate(c) for c in cois]
 
 
@@ -698,11 +722,11 @@ async def remove_conflict_of_interest(
     hackathon_id: uuid.UUID,
     coi_id: uuid.UUID,
     authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Remove a conflict of interest declaration (organizer or the judge who created it)."""
     user = await _get_current_user(db, authorization)
-    
+
     coi_result = await db.execute(
         select(ConflictOfInterest).where(
             and_(ConflictOfInterest.id == coi_id, ConflictOfInterest.hackathon_id == hackathon_id)
@@ -711,52 +735,53 @@ async def remove_conflict_of_interest(
     coi = coi_result.scalar_one_or_none()
     if not coi:
         raise HTTPException(status_code=404, detail="Conflict of interest not found")
-    
+
     # Can delete if organizer or the judge who created it
     hack_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hack_result.scalar_one_or_none()
     is_organizer = hackathon and hackathon.organizer_id == user.id and user.role == UserRole.organizer
-    
+
     if not is_organizer and coi.judge_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized to remove this conflict of interest")
-    
+
     await db.delete(coi)
     await db.commit()
-    
+
     return {"deleted": True}
 
 
 # --- Co-Organizer Management ---
 
+
 @router.get("/{hackathon_id}/organizers")
 async def list_organizers(
-    hackathon_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    hackathon_id: uuid.UUID, authorization: str = Header(alias="Authorization"), db: AsyncSession = Depends(get_db)
 ):
     """List all organizers for a hackathon (primary + co-organizers)."""
     user = await _get_current_user(db, authorization)
-    
+
     hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hackathon_result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    
+
     # Only organizers can view the organizer list
     await _ensure_organizer(user, hackathon, db)
-    
+
     # Get primary organizer
     primary_result = await db.execute(select(User).where(User.id == hackathon.organizer_id))
     primary = primary_result.scalar_one()
-    
-    organizers = [{
-        "user_id": str(primary.id),
-        "email": primary.email,
-        "name": primary.name,
-        "role": "primary",
-        "added_at": hackathon.created_at.isoformat(),
-    }]
-    
+
+    organizers = [
+        {
+            "user_id": str(primary.id),
+            "email": primary.email,
+            "name": primary.name,
+            "role": "primary",
+            "added_at": hackathon.created_at.isoformat(),
+        }
+    ]
+
     # Get co-organizers
     co_result = await db.execute(
         select(HackathonOrganizer, User)
@@ -764,15 +789,17 @@ async def list_organizers(
         .where(HackathonOrganizer.hackathon_id == hackathon_id)
     )
     for co_org, co_user in co_result.all():
-        organizers.append({
-            "user_id": str(co_user.id),
-            "email": co_user.email,
-            "name": co_user.name,
-            "role": "co-organizer",
-            "added_at": co_org.added_at.isoformat(),
-            "added_by": str(co_org.added_by) if co_org.added_by else None,
-        })
-    
+        organizers.append(
+            {
+                "user_id": str(co_user.id),
+                "email": co_user.email,
+                "name": co_user.name,
+                "role": "co-organizer",
+                "added_at": co_org.added_at.isoformat(),
+                "added_by": str(co_org.added_by) if co_org.added_by else None,
+            }
+        )
+
     return {"organizers": organizers}
 
 
@@ -781,38 +808,38 @@ async def add_organizer(
     hackathon_id: uuid.UUID,
     body: dict,
     authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Add a co-organizer to the hackathon (primary organizer only)."""
     user = await _get_current_user(db, authorization)
-    
+
     hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hackathon_result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    
+
     # Only the primary organizer can add co-organizers
     if hackathon.organizer_id != user.id:
         raise HTTPException(status_code=403, detail="Only the primary organizer can add co-organizers")
-    
+
     email = body.get("email")
     if not email:
         raise HTTPException(status_code=422, detail="email is required")
-    
+
     # Find user by email
     user_result = await db.execute(select(User).where(User.email == email))
     target_user = user_result.scalar_one_or_none()
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Can't add yourself
     if target_user.id == user.id:
         raise HTTPException(status_code=400, detail="You are already the primary organizer")
-    
+
     # Check if already an organizer
     if target_user.id == hackathon.organizer_id:
         raise HTTPException(status_code=409, detail="User is already the primary organizer")
-    
+
     existing = await db.execute(
         select(HackathonOrganizer).where(
             and_(HackathonOrganizer.hackathon_id == hackathon_id, HackathonOrganizer.user_id == target_user.id)
@@ -820,7 +847,7 @@ async def add_organizer(
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="User is already a co-organizer")
-    
+
     # Add co-organizer
     co_org = HackathonOrganizer(
         hackathon_id=hackathon_id,
@@ -829,13 +856,13 @@ async def add_organizer(
     )
     db.add(co_org)
     await db.commit()
-    
+
     return {
         "user_id": str(target_user.id),
         "email": target_user.email,
         "name": target_user.name,
         "role": "co-organizer",
-        "added_at": datetime.now(timezone.utc).isoformat(),
+        "added_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -844,24 +871,24 @@ async def remove_organizer(
     hackathon_id: uuid.UUID,
     user_id: uuid.UUID,
     authorization: str = Header(alias="Authorization"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Remove a co-organizer (primary organizer only)."""
     current_user = await _get_current_user(db, authorization)
-    
+
     hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hackathon_result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    
+
     # Only the primary organizer can remove co-organizers
     if hackathon.organizer_id != current_user.id:
         raise HTTPException(status_code=403, detail="Only the primary organizer can remove co-organizers")
-    
+
     # Can't remove yourself
     if user_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot remove the primary organizer")
-    
+
     # Find and delete the co-organizer record
     result = await db.execute(
         select(HackathonOrganizer).where(
@@ -871,7 +898,7 @@ async def remove_organizer(
     co_org = result.scalar_one_or_none()
     if not co_org:
         raise HTTPException(status_code=404, detail="Co-organizer not found")
-    
+
     await db.delete(co_org)
     await db.commit()
 
@@ -952,12 +979,15 @@ async def import_devpost_submissions(
                 break
 
     if not found_urls:
-        raise HTTPException(status_code=404, detail="No project URLs found on the gallery. Make sure the Devpost URL is a valid hackathon page.")
+        raise HTTPException(
+            status_code=404,
+            detail="No project URLs found on the gallery. Make sure the Devpost URL is a valid hackathon page.",
+        )
 
     # Create submissions for new URLs
-    from app.models import Submission, SubmissionStatus
     from app.analyzer import analyze_submission
     from app.auth import create_anonymous_token
+    from app.models import Submission, SubmissionStatus
 
     imported = 0
     skipped = 0
@@ -999,6 +1029,7 @@ async def import_devpost_submissions(
 
 # ── Cache helpers ───────────────────────────────────────────
 
+
 async def _bust_hackathon_list_cache():
     await cache_delete_pattern(f"{HK_CACHE_PFX}:list_hackathons:*")
 
@@ -1006,4 +1037,4 @@ async def _bust_hackathon_list_cache():
 async def _bust_hackathon_cache(hackathon_id: str):
     await cache_delete_pattern(f"{HK_CACHE_PFX}:get_hackathon:*")
     await cache_delete_pattern(f"{HK_CACHE_PFX}:list_hackathons:*")
-    await cache_delete_pattern(f"tracks:list_tracks:*")
+    await cache_delete_pattern("tracks:list_tracks:*")

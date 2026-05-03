@@ -1,19 +1,16 @@
 """Waitlist management logic."""
-import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Optional
 
-from sqlalchemy import select, func
+import uuid
+from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Registration, RegistrationStatus, Hackathon, User
 from app.email_service import send_email
+from app.models import Hackathon, Registration, RegistrationStatus, User
 
 
-async def promote_from_waitlist(
-    hackathon_id: uuid.UUID,
-    db: AsyncSession
-) -> Optional[Registration]:
+async def promote_from_waitlist(hackathon_id: uuid.UUID, db: AsyncSession) -> Registration | None:
     """
     Promote the top waitlisted registration to 'offered' status.
     Orders by: declined_count ASC (fewer declines = higher priority), then registered_at ASC (FIFO).
@@ -31,11 +28,7 @@ async def promote_from_waitlist(
         return None
 
     # Check capacity with row lock
-    hackathon_result = await db.execute(
-        select(Hackathon)
-        .where(Hackathon.id == hackathon_id)
-        .with_for_update()
-    )
+    hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id).with_for_update())
     hackathon = hackathon_result.scalar_one()
 
     accepted_count = await db.execute(
@@ -47,7 +40,7 @@ async def promote_from_waitlist(
         return None  # No spot available
 
     # Promote to offered
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     reg.status = RegistrationStatus.offered
     reg.offered_at = now
     reg.offer_expires_at = now + timedelta(hours=24)
@@ -63,22 +56,18 @@ async def promote_from_waitlist(
                 "name": user.name,
                 "hackathon_name": hackathon.name,
                 "deadline": reg.offer_expires_at.strftime("%Y-%m-%d %H:%M UTC"),
-                "accept_url": f"/dashboard?accept_offer={reg.id}"  # Frontend route
+                "accept_url": f"/dashboard?accept_offer={reg.id}",  # Frontend route
             },
             registration_id=reg.id,
             hackathon_id=hackathon_id,
-            db=db
+            db=db,
         )
 
     await db.commit()
     return reg
 
 
-async def get_waitlist_position(
-    registration_id: uuid.UUID,
-    hackathon_id: uuid.UUID,
-    db: AsyncSession
-) -> Optional[int]:
+async def get_waitlist_position(registration_id: uuid.UUID, hackathon_id: uuid.UUID, db: AsyncSession) -> int | None:
     """Get 1-indexed position of a registration in the waitlist."""
     # Get all waitlisted registrations ordered by priority
     result = await db.execute(
@@ -95,10 +84,7 @@ async def get_waitlist_position(
     return None
 
 
-async def auto_waitlist_if_full(
-    hackathon_id: uuid.UUID,
-    db: AsyncSession
-) -> bool:
+async def auto_waitlist_if_full(hackathon_id: uuid.UUID, db: AsyncSession) -> bool:
     """Check if hackathon is full. Returns True if waitlist should be used."""
     hackathon = await db.get(Hackathon, hackathon_id)
     if not hackathon or not hackathon.max_participants:

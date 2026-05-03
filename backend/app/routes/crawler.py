@@ -1,15 +1,18 @@
 """Crawler trigger endpoint (organizer-only)."""
+
 import asyncio
 import logging
-from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Header
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
-from app.crawler.scheduler import is_crawling, run_crawl
-from app.auth import decode_token
-from app.models import UserRole, CrawledHackathon, CrawledProject
-from app.database import get_db
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.auth import decode_token
+from app.crawler.scheduler import is_crawling, run_crawl
+from app.database import get_db
+from app.models import CrawledHackathon, CrawledProject, UserRole
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -47,10 +50,7 @@ async def trigger_crawl(user: dict = Depends(_require_organizer)):
 
     # Fire-and-forget: start crawl in background with exception logging
     task = asyncio.create_task(run_crawl())
-    task.add_done_callback(
-        lambda t: logger.error("Crawl failed", exc_info=t.exception())
-        if t.exception() else None
-    )
+    task.add_done_callback(lambda t: logger.error("Crawl failed", exc_info=t.exception()) if t.exception() else None)
 
     return {"status": "started"}
 
@@ -63,8 +63,8 @@ async def create_crawled_hackathon(
 ):
     """Manually add a crawled hackathon (admin/debug use)."""
     try:
-        start = datetime.fromisoformat(req.start_date.replace('Z', '+00:00'))
-        end = datetime.fromisoformat(req.end_date.replace('Z', '+00:00')) if req.end_date else None
+        start = datetime.fromisoformat(req.start_date.replace("Z", "+00:00"))
+        end = datetime.fromisoformat(req.end_date.replace("Z", "+00:00")) if req.end_date else None
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {e}")
 
@@ -73,7 +73,7 @@ async def create_crawled_hackathon(
         name=req.name,
         start_date=start,
         end_date=end,
-        last_crawled_at=datetime.now(timezone.utc),
+        last_crawled_at=datetime.now(UTC),
     )
     db.add(hackathon)
     await db.commit()
@@ -87,7 +87,6 @@ async def list_crawled_hackathons(
 ):
     """List all crawled hackathons with project counts."""
     from sqlalchemy import func, select
-    from app.models import CrawledProject
 
     query = (
         select(
@@ -131,7 +130,6 @@ async def list_crawled_projects(
 ):
     """List projects for a specific crawled hackathon."""
     from uuid import UUID
-    from app.models import CrawledProject
 
     try:
         hk_id = UUID(hackathon_id)
@@ -139,9 +137,7 @@ async def list_crawled_projects(
         raise HTTPException(status_code=400, detail="Invalid hackathon ID")
 
     # Verify hackathon exists
-    hk_result = await db.execute(
-        select(CrawledHackathon).where(CrawledHackathon.id == hk_id)
-    )
+    hk_result = await db.execute(select(CrawledHackathon).where(CrawledHackathon.id == hk_id))
     hackathon = hk_result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
@@ -158,9 +154,7 @@ async def list_crawled_projects(
     projects = result.scalars().all()
 
     # Get total count
-    count_result = await db.execute(
-        select(func.count()).where(CrawledProject.hackathon_id == hk_id)
-    )
+    count_result = await db.execute(select(func.count()).where(CrawledProject.hackathon_id == hk_id))
     total = count_result.scalar()
 
     return {
@@ -195,7 +189,6 @@ async def search_crawled_projects(
     db: AsyncSession = Depends(get_db),
 ):
     """Search crawled projects by title."""
-    from app.models import CrawledProject
 
     query = select(CrawledProject)
     if q:

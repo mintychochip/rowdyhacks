@@ -1,15 +1,16 @@
 """Tests for OAuth state store, name fallbacks, and routes."""
+
 import uuid
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock
+from app.auth import create_access_token, hash_password
+from app.models import OAuthAccount, User, UserRole
+from app.oauth import build_name_fallback, consume_state, create_state
 from sqlalchemy import select
 
-from app.models import User, OAuthAccount, UserRole
-from app.auth import hash_password, create_access_token
-from app.oauth import create_state, consume_state, build_name_fallback
-
-
 # ── State Store ──────────────────────────────────────────────
+
 
 def test_create_and_consume_state():
     state = create_state("google")
@@ -35,6 +36,7 @@ def test_consume_state_twice_fails():
 
 # ── Name Fallbacks ──────────────────────────────────────────
 
+
 def test_build_name_fallback_uses_name():
     assert build_name_fallback("google", {"name": "Alice"}) == "Alice"
 
@@ -49,11 +51,10 @@ def test_build_name_fallback_returns_hacker():
 
 # ── Route Tests ─────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_unknown_provider_returns_400(client):
-    response = await client.get(
-        "/api/auth/oauth/unknown_provider/authorize", follow_redirects=False
-    )
+    response = await client.get("/api/auth/oauth/unknown_provider/authorize", follow_redirects=False)
     assert response.status_code == 400
 
 
@@ -70,8 +71,11 @@ async def test_callback_with_expired_state(client):
 @pytest.mark.asyncio
 async def test_list_linked_providers(db_session, client):
     user = User(
-        id=uuid.uuid4(), email="linktest@test.com", name="LinkTest",
-        password_hash=hash_password("pw"), role=UserRole.participant,
+        id=uuid.uuid4(),
+        email="linktest@test.com",
+        name="LinkTest",
+        password_hash=hash_password("pw"),
+        role=UserRole.participant,
     )
     db_session.add(user)
     await db_session.commit()
@@ -88,14 +92,20 @@ async def test_list_linked_providers(db_session, client):
 @pytest.mark.asyncio
 async def test_unlink_last_auth_method_fails(db_session, client):
     user = User(
-        id=uuid.uuid4(), email="oauthonly@test.com", name="OAuthUser",
-        password_hash=None, role=UserRole.participant,
+        id=uuid.uuid4(),
+        email="oauthonly@test.com",
+        name="OAuthUser",
+        password_hash=None,
+        role=UserRole.participant,
     )
     db_session.add(user)
     await db_session.flush()
     oa = OAuthAccount(
-        id=uuid.uuid4(), provider="google", provider_user_id="g123",
-        provider_email="oauthonly@test.com", user_id=user.id,
+        id=uuid.uuid4(),
+        provider="google",
+        provider_user_id="g123",
+        provider_email="oauthonly@test.com",
+        user_id=user.id,
     )
     db_session.add(oa)
     await db_session.commit()
@@ -112,14 +122,20 @@ async def test_unlink_last_auth_method_fails(db_session, client):
 @pytest.mark.asyncio
 async def test_unlink_succeeds_when_has_password(db_session, client):
     user = User(
-        id=uuid.uuid4(), email="both@test.com", name="BothAuth",
-        password_hash=hash_password("pw"), role=UserRole.participant,
+        id=uuid.uuid4(),
+        email="both@test.com",
+        name="BothAuth",
+        password_hash=hash_password("pw"),
+        role=UserRole.participant,
     )
     db_session.add(user)
     await db_session.flush()
     oa = OAuthAccount(
-        id=uuid.uuid4(), provider="google", provider_user_id="g456",
-        provider_email="both@test.com", user_id=user.id,
+        id=uuid.uuid4(),
+        provider="google",
+        provider_user_id="g456",
+        provider_email="both@test.com",
+        user_id=user.id,
     )
     db_session.add(oa)
     await db_session.commit()
@@ -132,13 +148,12 @@ async def test_unlink_succeeds_when_has_password(db_session, client):
     assert response.status_code == 200
     assert response.json() == {"ok": True}
 
-    result = await db_session.execute(
-        select(OAuthAccount).where(OAuthAccount.user_id == user.id)
-    )
+    result = await db_session.execute(select(OAuthAccount).where(OAuthAccount.user_id == user.id))
     assert len(result.scalars().all()) == 0
 
 
 # ── Callback integration tests (httpx mocked) ──────────────
+
 
 @pytest.mark.asyncio
 async def test_callback_creates_new_user(client, db_session):
@@ -172,16 +187,12 @@ async def test_callback_creates_new_user(client, db_session):
     assert "token=" in location and "error=" not in location
 
     # Verify user and OAuthAccount were created
-    result = await db_session.execute(
-        select(User).where(User.email == "newuser@gmail.com")
-    )
+    result = await db_session.execute(select(User).where(User.email == "newuser@gmail.com"))
     user = result.scalar_one()
     assert user.name == "New User"
     assert user.password_hash is None
 
-    result = await db_session.execute(
-        select(OAuthAccount).where(OAuthAccount.provider_user_id == "g-user-999")
-    )
+    result = await db_session.execute(select(OAuthAccount).where(OAuthAccount.provider_user_id == "g-user-999"))
     oa = result.scalar_one()
     assert oa.provider == "google"
     assert oa.user_id == user.id
@@ -233,9 +244,7 @@ async def test_callback_logs_in_existing_oauth_account(client, db_session):
 
     assert response.status_code == 307
     assert "token=" in response.headers["location"]
-    result = await db_session.execute(
-        select(OAuthAccount).where(OAuthAccount.user_id == user.id)
-    )
+    result = await db_session.execute(select(OAuthAccount).where(OAuthAccount.user_id == user.id))
     assert len(result.scalars().all()) == 1
 
 
@@ -276,9 +285,7 @@ async def test_callback_auto_links_by_email(client, db_session):
 
     assert response.status_code == 307
     assert "token=" in response.headers["location"]
-    result = await db_session.execute(
-        select(OAuthAccount).where(OAuthAccount.provider_user_id == "g-new-link")
-    )
+    result = await db_session.execute(select(OAuthAccount).where(OAuthAccount.provider_user_id == "g-new-link"))
     oa = result.scalar_one()
     assert oa.user_id == user.id
 
@@ -310,9 +317,7 @@ async def test_callback_apple_no_name_fallback(client, db_session):
 
     assert response.status_code == 307
     assert "token=" in response.headers["location"]
-    result = await db_session.execute(
-        select(User).where(User.email == "justin@example.com")
-    )
+    result = await db_session.execute(select(User).where(User.email == "justin@example.com"))
     user = result.scalar_one()
     assert user.name == "justin"
     assert user.password_hash is None
@@ -413,9 +418,7 @@ async def test_link_endpoint_without_client_id_returns_503(client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_link_callback_existing_oauth_logs_in_as_original_user(
-    client, db_session
-):
+async def test_link_callback_existing_oauth_logs_in_as_original_user(client, db_session):
     """When an OAuth account is already linked, the callback logs in as that user (not the link requester)."""
     user_a = User(
         id=uuid.uuid4(),
@@ -471,9 +474,7 @@ async def test_link_callback_existing_oauth_logs_in_as_original_user(
     assert "token=" in response.headers["location"]
 
     # Verify user_b did NOT get the OAuthAccount linked
-    result = await db_session.execute(
-        select(OAuthAccount).where(OAuthAccount.provider_user_id == "g-shared")
-    )
+    result = await db_session.execute(select(OAuthAccount).where(OAuthAccount.provider_user_id == "g-shared"))
     accounts = result.scalars().all()
     assert len(accounts) == 1
     assert accounts[0].user_id == user_a.id

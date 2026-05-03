@@ -1,15 +1,16 @@
 """Organizer registration management routes."""
-import uuid
-from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Query
-from sqlalchemy import select, func, and_
+import uuid
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth import create_qr_token, decode_token
 from app.database import get_db
-from app.models import Registration, RegistrationStatus, Hackathon, User, HackathonOrganizer
-from app.auth import decode_token, create_qr_token
-from app.waitlist import promote_from_waitlist, get_waitlist_position
+from app.models import Hackathon, HackathonOrganizer, Registration, RegistrationStatus, User
+from app.waitlist import promote_from_waitlist
 
 router = APIRouter(prefix="/api/hackathons", tags=["organizer-registrations"])
 
@@ -36,14 +37,12 @@ async def _get_organizer(authorization: str | None, db: AsyncSession) -> User:
 async def _verify_organizer_owns_hackathon(user: User, hackathon_id: uuid.UUID, db: AsyncSession) -> Hackathon:
     """Verify the organizer owns the hackathon or is a co-organizer."""
     # Primary organizer check
-    query = select(Hackathon).where(
-        and_(Hackathon.id == hackathon_id, Hackathon.organizer_id == user.id)
-    )
+    query = select(Hackathon).where(and_(Hackathon.id == hackathon_id, Hackathon.organizer_id == user.id))
     result = await db.execute(query)
     hackathon = result.scalar_one_or_none()
     if hackathon:
         return hackathon
-    
+
     # Co-organizer check
     co_query = select(HackathonOrganizer).where(
         and_(HackathonOrganizer.hackathon_id == hackathon_id, HackathonOrganizer.user_id == user.id)
@@ -55,7 +54,7 @@ async def _verify_organizer_owns_hackathon(user: User, hackathon_id: uuid.UUID, 
         hackathon = hackathon_result.scalar_one_or_none()
         if hackathon:
             return hackathon
-    
+
     raise HTTPException(status_code=404, detail="Hackathon not found")
 
 
@@ -143,11 +142,16 @@ async def accept_registration(
     )
     reg.qr_token = qr_token
     reg.status = RegistrationStatus.accepted
-    reg.accepted_at = datetime.now(timezone.utc)
+    reg.accepted_at = datetime.now(UTC)
 
     await db.commit()
 
-    return {"id": str(reg.id), "status": reg.status.value, "qr_token": qr_token, "accepted_at": reg.accepted_at.isoformat()}
+    return {
+        "id": str(reg.id),
+        "status": reg.status.value,
+        "qr_token": qr_token,
+        "accepted_at": reg.accepted_at.isoformat(),
+    }
 
 
 @router.post("/{hackathon_id}/registrations/{registration_id}/reject")
@@ -207,7 +211,7 @@ async def checkin_registration(
         raise HTTPException(status_code=409, detail=f"Cannot check in a {reg.status.value} registration")
 
     reg.status = RegistrationStatus.checked_in
-    reg.checked_in_at = datetime.now(timezone.utc)
+    reg.checked_in_at = datetime.now(UTC)
     await db.commit()
 
     return {"id": str(reg.id), "status": reg.status.value, "checked_in_at": reg.checked_in_at.isoformat()}
@@ -285,7 +289,7 @@ async def manual_promote_waitlist(
     return {
         "id": str(promoted.id),
         "status": promoted.status.value,
-        "offer_expires_at": promoted.offer_expires_at.isoformat()
+        "offer_expires_at": promoted.offer_expires_at.isoformat(),
     }
 
 
@@ -307,7 +311,8 @@ async def list_waitlist(
         .where(Registration.hackathon_id == hackathon_id)
         .where(Registration.status == RegistrationStatus.waitlisted)
         .order_by(Registration.declined_count.asc(), Registration.registered_at.asc())
-        .offset(offset).limit(limit)
+        .offset(offset)
+        .limit(limit)
     )
     registrations = result.scalars().all()
 

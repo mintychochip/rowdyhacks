@@ -1,9 +1,9 @@
 """Check function contract for HackVerify analysis checks."""
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Awaitable, Callable
 from uuid import UUID
 
 
@@ -21,6 +21,7 @@ class CheckCategory(str, Enum):
 @dataclass
 class ScrapedData:
     """Parsed Devpost submission metadata."""
+
     title: str | None = None
     description: str | None = None
     claimed_tech: list[str] = field(default_factory=list)
@@ -30,21 +31,23 @@ class ScrapedData:
     video_url: str | None = None
     slides_url: str | None = None
     hackathon_name: str | None = None  # Name of hackathon on Devpost
-    hackathon_url: str | None = None   # Devpost URL of the hackathon
+    hackathon_url: str | None = None  # Devpost URL of the hackathon
 
 
 @dataclass
 class HackathonInfo:
     """Hackathon context for timeline-aware checks."""
+
     id: UUID
     name: str
     start_date: str  # ISO 8601
-    end_date: str    # ISO 8601
+    end_date: str  # ISO 8601
 
 
 @dataclass
 class CheckContext:
     """Input to a single check function."""
+
     repo_path: Path | None
     scraped: ScrapedData
     submission_id: UUID
@@ -54,6 +57,7 @@ class CheckContext:
 @dataclass
 class CheckResult:
     """Output from a single check function."""
+
     check_name: str
     check_category: str
     score: int  # 0-100

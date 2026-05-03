@@ -1,9 +1,10 @@
 """Tests for the crawl scheduler (scheduler.py)."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
+from app.crawler.scheduler import run_crawl
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.crawler.scheduler import run_crawl, is_crawling
 
 
 def _make_mock_session() -> AsyncMock:
@@ -40,4 +41,5 @@ async def test_run_crawl_sets_and_clears_flag():
                     await run_crawl()
 
                     from app.crawler.scheduler import _crawler_running
+
                     assert _crawler_running is False

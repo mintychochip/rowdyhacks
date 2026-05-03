@@ -1,13 +1,15 @@
 """Cross-team similarity check (batch operation)."""
-import uuid
+
 import asyncio
 import logging
 import re
+import uuid
+
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.checks.interface import CheckResult
-from app.models import Submission, SubmissionStatus
 from app.database import async_session
+from app.models import Submission, SubmissionStatus
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +27,11 @@ def _parse_repo_name(github_url: str | None) -> str | None:
         return None
     github_url = github_url.strip()
     # Try HTTPS format: https://github.com/owner/repo[.git]
-    m = re.match(r'https?://github\.com/([^/]+/[^/]+?)(?:\.git)?/?$', github_url)
+    m = re.match(r"https?://github\.com/([^/]+/[^/]+?)(?:\.git)?/?$", github_url)
     if m:
         return m.group(1).lower()
     # Try SSH format: git@github.com:owner/repo.git
-    m = re.match(r'git@github\.com:([^/]+/[^/]+?)(?:\.git)?$', github_url)
+    m = re.match(r"git@github\.com:([^/]+/[^/]+?)(?:\.git)?$", github_url)
     if m:
         return m.group(1).lower()
     return None
@@ -43,7 +45,9 @@ async def _get_head_commit(github_url: str) -> str | None:
     """
     try:
         proc = await asyncio.create_subprocess_exec(
-            "git", "ls-remote", github_url,
+            "git",
+            "ls-remote",
+            github_url,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
         )
@@ -77,13 +81,15 @@ async def run_similarity(hackathon_id: uuid.UUID) -> list[CheckResult]:
             if sub.github_url:
                 url = sub.github_url.strip().lower()
                 if url in seen_urls:
-                    results.append(CheckResult(
-                        check_name="duplicate-github-url",
-                        check_category="cross_team_similarity",
-                        score=80,
-                        status="fail",
-                        details={"duplicate_url": url, "other_submission": str(seen_urls[url])},
-                    ))
+                    results.append(
+                        CheckResult(
+                            check_name="duplicate-github-url",
+                            check_category="cross_team_similarity",
+                            score=80,
+                            status="fail",
+                            details={"duplicate_url": url, "other_submission": str(seen_urls[url])},
+                        )
+                    )
                 else:
                     seen_urls[url] = sub.id
 

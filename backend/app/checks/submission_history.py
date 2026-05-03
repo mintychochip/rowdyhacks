@@ -1,6 +1,5 @@
 """Check for prior submissions by team members."""
-import re
-from pathlib import Path
+
 from app.checks.interface import CheckContext, CheckResult
 
 
@@ -12,9 +11,7 @@ async def check_history(context: CheckContext) -> CheckResult:
 
     # Check if repo has README referencing another hackathon
     if context.repo_path:
-        readme_paths = list(context.repo_path.glob("README*")) + list(
-            context.repo_path.glob("readme*")
-        )
+        readme_paths = list(context.repo_path.glob("README*")) + list(context.repo_path.glob("readme*"))
         hackathon_names = [
             "hackmit",
             "pennapps",

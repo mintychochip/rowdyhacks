@@ -1,20 +1,21 @@
 """Orchestrate the analysis pipeline: scrape -> clone -> checks -> score."""
+
 import asyncio
 import os
 import shutil
 import tempfile
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy import select
 
 from app.checks import CHECKS, WEIGHTS
-from app.checks.interface import CheckContext, ScrapedData, HackathonInfo
+from app.checks.interface import CheckContext, HackathonInfo, ScrapedData
 from app.database import async_session
-from app.models import Submission, SubmissionStatus, CheckResultModel, Verdict, CheckStatus
-from app.scraper import scrape_devpost, ScraperError, is_github_url
+from app.models import CheckResultModel, CheckStatus, Submission, SubmissionStatus, Verdict
+from app.scraper import ScraperError, is_github_url, scrape_devpost
 
 
 async def analyze_submission(submission_id: uuid.UUID) -> None:
@@ -61,7 +62,13 @@ async def analyze_submission(submission_id: uuid.UUID) -> None:
                 tmp_dir = tempfile.mkdtemp(prefix="hackverify_")
                 try:
                     proc = await asyncio.create_subprocess_exec(
-                        "git", "clone", "--depth", "1", "--single-branch", github_url, tmp_dir,
+                        "git",
+                        "clone",
+                        "--depth",
+                        "1",
+                        "--single-branch",
+                        github_url,
+                        tmp_dir,
                         stdout=asyncio.subprocess.PIPE,
                         stderr=asyncio.subprocess.PIPE,
                         env={**os.environ, "GIT_CLONE_PROTECTION_ACTIVE": "false"},
@@ -69,7 +76,7 @@ async def analyze_submission(submission_id: uuid.UUID) -> None:
                     await asyncio.wait_for(proc.communicate(), timeout=120)
                     if proc.returncode == 0:
                         repo_path = Path(tmp_dir)
-                except (asyncio.TimeoutError, FileNotFoundError, OSError):
+                except (TimeoutError, FileNotFoundError, OSError):
                     pass
             timings["clone"] = round(time.monotonic() - t2, 2)
 
@@ -81,22 +88,18 @@ async def analyze_submission(submission_id: uuid.UUID) -> None:
             # Try crawled_hackathons first (has real Devpost dates)
             if hk_url or hk_name:
                 from app.models import CrawledHackathon
+
                 chk = None
                 if hk_url:
-                    r = await db.execute(
-                        select(CrawledHackathon).where(CrawledHackathon.devpost_url == hk_url)
-                    )
+                    r = await db.execute(select(CrawledHackathon).where(CrawledHackathon.devpost_url == hk_url))
                     chk = r.scalar_one_or_none()
                 if not chk and hk_name:
-                    r = await db.execute(
-                        select(CrawledHackathon).where(
-                            CrawledHackathon.name.ilike(f"%{hk_name}%")
-                        )
-                    )
+                    r = await db.execute(select(CrawledHackathon).where(CrawledHackathon.name.ilike(f"%{hk_name}%")))
                     chk = r.scalar_one_or_none()
                 if chk and chk.start_date:
                     hackathon_info = HackathonInfo(
-                        id=chk.id, name=chk.name,
+                        id=chk.id,
+                        name=chk.name,
                         start_date=chk.start_date.isoformat(),
                         end_date=(chk.end_date or chk.start_date).isoformat(),
                     )
@@ -104,13 +107,12 @@ async def analyze_submission(submission_id: uuid.UUID) -> None:
             # Fall back to the submission's linked hackathon
             if not hackathon_info and sub.hackathon_id:
                 from app.models import Hackathon
+
                 hk_result = await db.execute(select(Hackathon).where(Hackathon.id == sub.hackathon_id))
                 hk = hk_result.scalar_one_or_none()
                 if hk:
                     hackathon_info = HackathonInfo(
-                        id=hk.id, name=hk.name,
-                        start_date=hk.start_date.isoformat(),
-                        end_date=hk.end_date.isoformat()
+                        id=hk.id, name=hk.name, start_date=hk.start_date.isoformat(), end_date=hk.end_date.isoformat()
                     )
 
             ctx = CheckContext(
@@ -151,6 +153,7 @@ async def analyze_submission(submission_id: uuid.UUID) -> None:
             # 5. Clear old results, store new ones, and compute score
             sub.stage = "scoring"
             from sqlalchemy import delete as sqla_delete
+
             await db.execute(sqla_delete(CheckResultModel).where(CheckResultModel.submission_id == submission_id))
             await db.commit()
             # Store results and compute weighted score by category
@@ -158,20 +161,23 @@ async def analyze_submission(submission_id: uuid.UUID) -> None:
             for check_result in results:
                 if isinstance(check_result, Exception):
                     import traceback
+
                     print(f"[CHECK ERROR] {type(check_result).__name__}: {check_result}")
                     traceback.print_exc()
                     continue
 
                 # Store this check result in the DB
-                db.add(CheckResultModel(
-                    submission_id=submission_id,
-                    check_category=check_result.check_category,
-                    check_name=check_result.check_name,
-                    score=check_result.score,
-                    status=CheckStatus(check_result.status),
-                    details=check_result.details,
-                    evidence=check_result.evidence,
-                ))
+                db.add(
+                    CheckResultModel(
+                        submission_id=submission_id,
+                        check_category=check_result.check_category,
+                        check_name=check_result.check_name,
+                        score=check_result.score,
+                        status=CheckStatus(check_result.status),
+                        details=check_result.details,
+                        evidence=check_result.evidence,
+                    )
+                )
 
                 # Group for weighted scoring
                 cat = check_result.check_category
@@ -202,7 +208,7 @@ async def analyze_submission(submission_id: uuid.UUID) -> None:
 
             sub.status = SubmissionStatus.completed
             sub.stage = None
-            sub.completed_at = datetime.now(timezone.utc)
+            sub.completed_at = datetime.now(UTC)
             timings["total"] = round(time.monotonic() - t0, 2)
             print(f"\n[PROFILE] Submission {submission_id}: {timings}\n")
             await db.commit()

@@ -1,6 +1,7 @@
 """Check commit timeline against hackathon window."""
+
 import asyncio
-from pathlib import Path
+
 from app.checks.interface import CheckContext, CheckResult
 
 
@@ -17,7 +18,11 @@ async def check_commits(context: CheckContext) -> CheckResult:
 
     try:
         proc = await asyncio.create_subprocess_exec(
-            "git", "-C", str(context.repo_path), "log", "--format=%H|%aI|%s",
+            "git",
+            "-C",
+            str(context.repo_path),
+            "log",
+            "--format=%H|%aI|%s",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -30,7 +35,7 @@ async def check_commits(context: CheckContext) -> CheckResult:
                 status="warn",
                 details={"reason": "Git log failed"},
             )
-    except (asyncio.TimeoutError, FileNotFoundError, OSError):
+    except (TimeoutError, FileNotFoundError, OSError):
         return CheckResult(
             check_name="commit-timestamps",
             check_category="timeline",
@@ -102,9 +107,7 @@ async def check_commits(context: CheckContext) -> CheckResult:
             "changes",
             "stuff",
         ]
-        sus_count = sum(
-            1 for c in commits if c["message"].lower().strip() in suspicious
-        )
+        sus_count = sum(1 for c in commits if c["message"].lower().strip() in suspicious)
         if sus_count > len(commits) * 0.5 and len(commits) > 3:
             score += 20
             details["suspicious_messages"] = sus_count

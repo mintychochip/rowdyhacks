@@ -1,7 +1,6 @@
-import pytest
 import uuid
-from unittest.mock import patch, AsyncMock
-from app.analyzer import analyze_submission
+
+import pytest
 
 
 @pytest.mark.asyncio

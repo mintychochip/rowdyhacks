@@ -1,12 +1,12 @@
 """Tests for the per-project scraper (project_scraper.py)."""
 
 import uuid
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
-from app.models import CrawledHackathon, CrawledProject
 from app.crawler.project_scraper import scrape_projects
+from app.models import CrawledHackathon, CrawledProject
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 @pytest.mark.asyncio
@@ -112,7 +112,15 @@ async def test_scrape_projects_skips_max_retries(db_session, engine):
     def side_effect(*args, **kwargs):
         nonlocal call_count
         call_count += 1
-        return MagicMock(title="X", description="", claimed_tech=[], team_members=[], github_url=None, video_url=None, slides_url=None)
+        return MagicMock(
+            title="X",
+            description="",
+            claimed_tech=[],
+            team_members=[],
+            github_url=None,
+            video_url=None,
+            slides_url=None,
+        )
 
     test_async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     with (

@@ -1,21 +1,29 @@
 """Judging routes: session config, rubric management, judge assignment, scoring, ELO results."""
-import uuid
-import math
-from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Header
+import math
+import uuid
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select, update
-from app.auth import decode_token
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.auth import decode_token
 from app.database import get_db
 from app.models import (
-    Hackathon, Submission, SubmissionStatus,
-    JudgingSession, JudgingSessionStatus,
-    Rubric, RubricCriterion,
-    JudgeAssignment, Score, JudgeRating,
-    User, UserRole,
+    Hackathon,
+    JudgeAssignment,
+    JudgeRating,
+    JudgingSession,
+    JudgingSessionStatus,
+    Rubric,
+    RubricCriterion,
+    Score,
+    Submission,
+    SubmissionStatus,
+    User,
+    UserRole,
 )
 from app.schemas import JudgingSessionCreate, SubmitScoreRequest
 
@@ -23,6 +31,7 @@ router = APIRouter(prefix="/api", tags=["judging"])
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
+
 
 async def _get_judging_session(hackathon_id: uuid.UUID, db: AsyncSession) -> JudgingSession:
     result = await db.execute(
@@ -38,9 +47,9 @@ async def _get_judging_session(hackathon_id: uuid.UUID, db: AsyncSession) -> Jud
 
 def _enforce_time_window(session: JudgingSession):
     """Raise if judging window is not active."""
-    now = datetime.now(timezone.utc)
-    start = session.start_time.replace(tzinfo=timezone.utc) if session.start_time.tzinfo is None else session.start_time
-    end = session.end_time.replace(tzinfo=timezone.utc) if session.end_time.tzinfo is None else session.end_time
+    now = datetime.now(UTC)
+    start = session.start_time.replace(tzinfo=UTC) if session.start_time.tzinfo is None else session.start_time
+    end = session.end_time.replace(tzinfo=UTC) if session.end_time.tzinfo is None else session.end_time
     if session.status == JudgingSessionStatus.pending and now < start:
         raise HTTPException(status_code=403, detail="Judging has not opened yet")
     if session.status == JudgingSessionStatus.closed or now > end:
@@ -58,6 +67,7 @@ def _compute_raw_score(scores: list[Score], criteria_map: dict) -> float:
 
 
 # ── session configuration ────────────────────────────────────────────────────
+
 
 @router.post("/hackathons/{hackathon_id}/judging/session", status_code=201)
 async def create_judging_session(
@@ -92,9 +102,7 @@ async def create_judging_session(
         )
 
     # Delete existing session if any (cascade handles rubric/criteria/assignments)
-    existing = await db.execute(
-        select(JudgingSession).where(JudgingSession.hackathon_id == hackathon_id)
-    )
+    existing = await db.execute(select(JudgingSession).where(JudgingSession.hackathon_id == hackathon_id))
     old = existing.scalar_one_or_none()
     if old:
         await db.delete(old)
@@ -170,7 +178,9 @@ def _session_detail_from_parts(session: JudgingSession, rubric: Rubric | None, c
             "id": str(rubric.id) if rubric else None,
             "name": rubric.name if rubric else None,
             "criteria": _build_criteria_list(criteria),
-        } if rubric else None,
+        }
+        if rubric
+        else None,
     }
 
 
@@ -199,11 +209,14 @@ def _session_detail(session: JudgingSession, rubric: Rubric | None) -> dict:
             "id": str(rubric.id) if rubric else None,
             "name": rubric.name if rubric else None,
             "criteria": criteria_list,
-        } if rubric else None,
+        }
+        if rubric
+        else None,
     }
 
 
 # ── judge assignment ─────────────────────────────────────────────────────────
+
 
 @router.post("/hackathons/{hackathon_id}/judging/assign", status_code=201)
 async def assign_judges(
@@ -256,11 +269,13 @@ async def assign_judges(
             db.add(JudgeRating(judge_id=judge_id, hackathon_id=hackathon_id))
 
         for submission_id in submission_ids:
-            db.add(JudgeAssignment(
-                session_id=session.id,
-                judge_id=judge_id,
-                submission_id=submission_id,
-            ))
+            db.add(
+                JudgeAssignment(
+                    session_id=session.id,
+                    judge_id=judge_id,
+                    submission_id=submission_id,
+                )
+            )
             created += 1
 
     await db.commit()
@@ -292,9 +307,7 @@ async def list_judge_assignments(
     sub_ids = [a.submission_id for a in assignments]
     submissions = {}
     if sub_ids:
-        sub_result = await db.execute(
-            select(Submission).where(Submission.id.in_(sub_ids))
-        )
+        sub_result = await db.execute(select(Submission).where(Submission.id.in_(sub_ids)))
         for s in sub_result.scalars().all():
             submissions[str(s.id)] = s
 
@@ -306,9 +319,15 @@ async def list_judge_assignments(
             "opened_at": a.opened_at.isoformat() if a.opened_at else None,
             "submitted_at": a.submitted_at.isoformat() if a.submitted_at else None,
             "is_completed": bool(a.is_completed),
-            "project_title": submissions.get(str(a.submission_id)).project_title if submissions.get(str(a.submission_id)) else None,
-            "devpost_url": submissions.get(str(a.submission_id)).devpost_url if submissions.get(str(a.submission_id)) else None,
-            "github_url": submissions.get(str(a.submission_id)).github_url if submissions.get(str(a.submission_id)) else None,
+            "project_title": submissions.get(str(a.submission_id)).project_title
+            if submissions.get(str(a.submission_id))
+            else None,
+            "devpost_url": submissions.get(str(a.submission_id)).devpost_url
+            if submissions.get(str(a.submission_id))
+            else None,
+            "github_url": submissions.get(str(a.submission_id)).github_url
+            if submissions.get(str(a.submission_id))
+            else None,
         }
         for a in assignments
     ]
@@ -324,9 +343,7 @@ async def get_assignment_detail(
         select(JudgeAssignment)
         .where(JudgeAssignment.id == assignment_id)
         .options(
-            selectinload(JudgeAssignment.session)
-            .selectinload(JudgingSession.rubric)
-            .selectinload(Rubric.criteria),
+            selectinload(JudgeAssignment.session).selectinload(JudgingSession.rubric).selectinload(Rubric.criteria),
         )
     )
     assignment = result.scalar_one_or_none()
@@ -340,9 +357,7 @@ async def get_assignment_detail(
     sub = await db.get(Submission, assignment.submission_id)
 
     # Load existing scores for this assignment
-    scores_result = await db.execute(
-        select(Score).where(Score.assignment_id == assignment.id)
-    )
+    scores_result = await db.execute(select(Score).where(Score.assignment_id == assignment.id))
     existing_scores = {s.criterion_id: s for s in scores_result.scalars().all()}
 
     rubric = session.rubric
@@ -350,14 +365,16 @@ async def get_assignment_detail(
     if rubric:
         for c in sorted(rubric.criteria, key=lambda x: x.sort_order):
             s = existing_scores.get(c.id)
-            criteria.append({
-                "id": str(c.id),
-                "name": c.name,
-                "description": c.description,
-                "max_score": c.max_score,
-                "weight": c.weight,
-                "score": s.score if s else None,
-            })
+            criteria.append(
+                {
+                    "id": str(c.id),
+                    "name": c.name,
+                    "description": c.description,
+                    "max_score": c.max_score,
+                    "weight": c.weight,
+                    "score": s.score if s else None,
+                }
+            )
 
     return {
         "id": str(assignment.id),
@@ -372,7 +389,9 @@ async def get_assignment_detail(
             "github_url": sub.github_url,
             "claimed_tech": sub.claimed_tech,
             "team_members": sub.team_members,
-        } if sub else None,
+        }
+        if sub
+        else None,
         "criteria": criteria,
     }
 
@@ -391,20 +410,14 @@ async def open_assignment(
     _enforce_time_window(session)
 
     if assignment.opened_at is None:
-        assignment.opened_at = datetime.now(timezone.utc)
+        assignment.opened_at = datetime.now(UTC)
 
     # Create blank scores for each criterion if not already present
-    rubric = await db.execute(
-        select(Rubric).where(Rubric.session_id == session.id)
-    )
+    rubric = await db.execute(select(Rubric).where(Rubric.session_id == session.id))
     rubric_obj = rubric.scalar_one_or_none()
     if rubric_obj:
-        criteria_result = await db.execute(
-            select(RubricCriterion).where(RubricCriterion.rubric_id == rubric_obj.id)
-        )
-        existing_scores = await db.execute(
-            select(Score.criterion_id).where(Score.assignment_id == assignment.id)
-        )
+        criteria_result = await db.execute(select(RubricCriterion).where(RubricCriterion.rubric_id == rubric_obj.id))
+        existing_scores = await db.execute(select(Score.criterion_id).where(Score.assignment_id == assignment.id))
         existing_criteria_ids = {row[0] for row in existing_scores.all()}
         for criterion in criteria_result.scalars().all():
             if criterion.id not in existing_criteria_ids:
@@ -434,25 +447,23 @@ async def submit_scores(
     session = await db.get(JudgingSession, assignment.session_id)
     _enforce_time_window(session)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     is_late = False
     if assignment.opened_at:
-        opened = assignment.opened_at.replace(tzinfo=timezone.utc) if assignment.opened_at.tzinfo is None else assignment.opened_at
+        opened = (
+            assignment.opened_at.replace(tzinfo=UTC) if assignment.opened_at.tzinfo is None else assignment.opened_at
+        )
         elapsed = (now - opened).total_seconds()
         if elapsed > session.per_project_seconds:
             is_late = True
 
     # Load rubric to get criteria
-    rubric_result = await db.execute(
-        select(Rubric).where(Rubric.session_id == session.id)
-    )
+    rubric_result = await db.execute(select(Rubric).where(Rubric.session_id == session.id))
     rubric = rubric_result.scalar_one_or_none()
     if not rubric:
         raise HTTPException(status_code=404, detail="No rubric found for this session")
 
-    criteria_result = await db.execute(
-        select(RubricCriterion).where(RubricCriterion.rubric_id == rubric.id)
-    )
+    criteria_result = await db.execute(select(RubricCriterion).where(RubricCriterion.rubric_id == rubric.id))
     criteria = {c.id: c for c in criteria_result.scalars().all()}
 
     for item in body.scores:
@@ -477,20 +488,20 @@ async def submit_scores(
         if score_row:
             score_row.score = score_val
         else:
-            db.add(Score(
-                assignment_id=assignment.id,
-                criterion_id=cid,
-                score=score_val,
-            ))
+            db.add(
+                Score(
+                    assignment_id=assignment.id,
+                    criterion_id=cid,
+                    score=score_val,
+                )
+            )
 
     if is_late:
         # Auto-submit
         assignment.submitted_at = now
         assignment.is_completed = 1
         # Mark all null scores as 0
-        all_scores = await db.execute(
-            select(Score).where(Score.assignment_id == assignment.id)
-        )
+        all_scores = await db.execute(select(Score).where(Score.assignment_id == assignment.id))
         for s in all_scores.scalars().all():
             if s.score is None:
                 s.score = 0
@@ -499,14 +510,13 @@ async def submit_scores(
 
     # Check if all criteria scored → auto-complete
     if not is_late:
-        scores_result = await db.execute(
-            select(Score).where(Score.assignment_id == assignment.id)
-        )
-        all_scored = all(s.score is not None for s in scores_result.scalars().all())
+        scores_result = await db.execute(select(Score).where(Score.assignment_id == assignment.id))
+        scores_list = scores_result.scalars().all()
+        all_scored = all(s.score is not None for s in scores_list)
         if all_scored:
             assignment.submitted_at = now
             assignment.is_completed = 1
-            for s in scores_result.scalars().all():
+            for s in scores_list:
                 s.submitted_at = now
 
     await db.commit()
@@ -661,7 +671,7 @@ async def get_judging_results(
 
     # Build rankings
     # Load submission titles
-    sub_ids_list = [uuid.UUID(sid) for sid in elo.keys()]
+    sub_ids_list = [uuid.UUID(sid) for sid in elo]
     subs_result = await db.execute(
         select(Submission.id, Submission.project_title).where(Submission.id.in_(sub_ids_list))
     )
@@ -673,8 +683,11 @@ async def get_judging_results(
                 "submission_id": sid,
                 "project_title": sub_titles.get(sid, "Unknown"),
                 "elo": round(e, 1),
-                "raw_avg": round(sum(raw_scores.get(jid, {}).get(sid, 0) for jid in raw_scores)
-                                 / max(1, sum(1 for jid in raw_scores if sid in raw_scores.get(jid, {}))), 1),
+                "raw_avg": round(
+                    sum(raw_scores.get(jid, {}).get(sid, 0) for jid in raw_scores)
+                    / max(1, sum(1 for jid in raw_scores if sid in raw_scores.get(jid, {}))),
+                    1,
+                ),
                 "judges": sum(1 for jid in raw_scores if sid in raw_scores.get(jid, {})),
             }
             for sid, e in elo.items()
@@ -689,9 +702,7 @@ async def get_judging_results(
 
     # Load judge names for stats
     judge_ids = [uuid.UUID(jid) for jid in judge_stats]
-    users_result = await db.execute(
-        select(User.id, User.name).where(User.id.in_(judge_ids))
-    )
+    users_result = await db.execute(select(User.id, User.name).where(User.id.in_(judge_ids)))
     user_names = {str(row[0]): row[1] for row in users_result.all()}
 
     judge_stats_detail = [
@@ -711,6 +722,7 @@ async def get_judging_results(
 
 
 # ── ELO re-judging queue ─────────────────────────────────────────────────────
+
 
 @router.get("/hackathons/{hackathon_id}/judging/queue")
 async def get_judging_queue(
@@ -771,32 +783,31 @@ async def get_judging_queue(
             JudgeAssignment.is_completed == 0,
         )
     )
-    pending_assignment_map = {
-        str(a.submission_id): str(a.id)
-        for a in pending_assignments_result.scalars().all()
-    }
+    pending_assignment_map = {str(a.submission_id): str(a.id) for a in pending_assignments_result.scalars().all()}
 
     # If no completed assignments, all projects have zero coverage
     if not assignments:
         # Return all submissions the judge hasn't scored, ordered by submission time
         queue = []
         for sid, sub in all_submissions.items():
-            queue.append({
-                "assignment_id": pending_assignment_map.get(sid),
-                "submission_id": sid,
-                "project_title": sub.project_title,
-                "devpost_url": sub.devpost_url,
-                "github_url": sub.github_url,
-                "elo": 1500.0,
-                "uncertainty": {
-                    "total": 100.0,
-                    "variance": 0.0,
-                    "proximity": 0.0,
-                    "coverage": 100.0,
-                },
-                "judge_count": 0,
-                "reasons": ["needs_coverage"],
-            })
+            queue.append(
+                {
+                    "assignment_id": pending_assignment_map.get(sid),
+                    "submission_id": sid,
+                    "project_title": sub.project_title,
+                    "devpost_url": sub.devpost_url,
+                    "github_url": sub.github_url,
+                    "elo": 1500.0,
+                    "uncertainty": {
+                        "total": 100.0,
+                        "variance": 0.0,
+                        "proximity": 0.0,
+                        "coverage": 100.0,
+                    },
+                    "judge_count": 0,
+                    "reasons": ["needs_coverage"],
+                }
+            )
         return {"queue": queue, "min_judges": min_judges, "total_submissions": len(queue), "scored_by_you": 0}
 
     # Step 1: raw weighted scores per (judge, submission)
@@ -882,7 +893,7 @@ async def get_judging_queue(
 
     # Count judges per submission (coverage)
     judge_counts: dict[str, int] = {}
-    for (jid, sid) in norm_scores:
+    for jid, sid in norm_scores:
         judge_counts[sid] = judge_counts.get(sid, 0) + 1
 
     # For submissions with no scores yet but exist in hackathon, they need coverage
@@ -922,7 +933,7 @@ async def get_judging_queue(
         coverage_score = max(0.0, 1.0 - judge_count / min_judges)
 
         # Total uncertainty (weighted, 0-100 scale)
-        total = (variance_score * 35.0 + proximity_score * 30.0 + coverage_score * 35.0)
+        total = variance_score * 35.0 + proximity_score * 30.0 + coverage_score * 35.0
 
         reasons = []
         if variance_raw > 0.3:
@@ -934,22 +945,24 @@ async def get_judging_queue(
         if not reasons:
             reasons.append("low_priority")
 
-        queue_items.append({
-            "assignment_id": pending_assignment_map.get(sid),
-            "submission_id": sid,
-            "project_title": sub.project_title,
-            "devpost_url": sub.devpost_url,
-            "github_url": sub.github_url,
-            "elo": round(elo.get(sid, BASE_ELO), 1),
-            "uncertainty": {
-                "total": round(total, 1),
-                "variance": round(variance_score * 100, 1),
-                "proximity": round(proximity_score * 100, 1),
-                "coverage": round(coverage_score * 100, 1),
-            },
-            "judge_count": judge_count,
-            "reasons": reasons,
-        })
+        queue_items.append(
+            {
+                "assignment_id": pending_assignment_map.get(sid),
+                "submission_id": sid,
+                "project_title": sub.project_title,
+                "devpost_url": sub.devpost_url,
+                "github_url": sub.github_url,
+                "elo": round(elo.get(sid, BASE_ELO), 1),
+                "uncertainty": {
+                    "total": round(total, 1),
+                    "variance": round(variance_score * 100, 1),
+                    "proximity": round(proximity_score * 100, 1),
+                    "coverage": round(coverage_score * 100, 1),
+                },
+                "judge_count": judge_count,
+                "reasons": reasons,
+            }
+        )
 
     # Sort by uncertainty total descending (most uncertain first)
     queue_items.sort(key=lambda x: x["uncertainty"]["total"], reverse=True)
@@ -976,9 +989,7 @@ async def rerun_judging(
     session = await _get_judging_session(hackathon_id, db)
 
     # Get all judges
-    judges_result = await db.execute(
-        select(User.id).where(User.role == UserRole.judge)
-    )
+    judges_result = await db.execute(select(User.id).where(User.role == UserRole.judge))
     all_judge_ids = [row[0] for row in judges_result.all()]
 
     if not all_judge_ids:
@@ -1058,11 +1069,13 @@ async def rerun_judging(
         judges_who_scored = scored_by.get(submission_id, set())
         for judge_id in all_judge_ids:
             if judge_id not in judges_who_scored and (judge_id, submission_id) not in existing_pairs:
-                db.add(JudgeAssignment(
-                    session_id=session.id,
-                    judge_id=judge_id,
-                    submission_id=submission_id,
-                ))
+                db.add(
+                    JudgeAssignment(
+                        session_id=session.id,
+                        judge_id=judge_id,
+                        submission_id=submission_id,
+                    )
+                )
                 existing_pairs.add((judge_id, submission_id))
                 created += 1
 
@@ -1071,14 +1084,12 @@ async def rerun_judging(
     return {
         "created": created,
         "flagged_submissions": len(flagged_submissions),
-        "details": [
-            {"submission_id": str(sid), "current_judges": count}
-            for sid, count in flagged_submissions
-        ],
+        "details": [{"submission_id": str(sid), "current_judges": count} for sid, count in flagged_submissions],
     }
 
 
 # ── session lifecycle ────────────────────────────────────────────────────────
+
 
 @router.post("/hackathons/{hackathon_id}/judging/activate")
 async def activate_judging(
@@ -1091,9 +1102,7 @@ async def activate_judging(
     await db.flush()
 
     # Auto-assign: find all judges and all completed submissions
-    judges_result = await db.execute(
-        select(User.id).where(User.role == UserRole.judge)
-    )
+    judges_result = await db.execute(select(User.id).where(User.role == UserRole.judge))
     judge_ids = [row[0] for row in judges_result.all()]
 
     subs_result = await db.execute(
@@ -1128,11 +1137,13 @@ async def activate_judging(
 
             for submission_id in submission_ids:
                 if (judge_id, submission_id) not in existing_pairs:
-                    db.add(JudgeAssignment(
-                        session_id=session.id,
-                        judge_id=judge_id,
-                        submission_id=submission_id,
-                    ))
+                    db.add(
+                        JudgeAssignment(
+                            session_id=session.id,
+                            judge_id=judge_id,
+                            submission_id=submission_id,
+                        )
+                    )
                     created += 1
 
     await db.commit()

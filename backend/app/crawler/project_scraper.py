@@ -1,12 +1,15 @@
 """Fill in metadata for uncrawled project rows using the Devpost scraper."""
+
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from sqlalchemy import select, update
+
+from app.checks.similarity import _get_head_commit
 from app.database import async_session
 from app.models import CrawledProject
 from app.scraper import scrape_devpost
-from app.checks.similarity import _get_head_commit
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +62,7 @@ async def scrape_projects(batch_size: int = 50, concurrency: int = 5) -> int:
                             commit_hash=commit_hash,
                             video_url=data.video_url,
                             slides_url=data.slides_url,
-                            last_crawled_at=datetime.now(timezone.utc),
+                            last_crawled_at=datetime.now(UTC),
                         )
                     )
                     await db.commit()

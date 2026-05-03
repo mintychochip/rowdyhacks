@@ -1,7 +1,9 @@
 """RAG-powered Devpost alignment check — hybrid TF-IDF + Jina embeddings retrieval."""
+
 import json
 import re
 from pathlib import Path
+
 import httpx
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -62,14 +64,20 @@ async def check_alignment_ai(context: CheckContext) -> CheckResult:
     repos = [context.repo_path] if context.repo_path else []
     if not repos:
         return CheckResult(
-            check_name="claimed-vs-actual-tech", check_category="devpost_alignment",
-            score=30, status="warn", details={"reason": "No repo available"},
+            check_name="claimed-vs-actual-tech",
+            check_category="devpost_alignment",
+            score=30,
+            status="warn",
+            details={"reason": "No repo available"},
         )
 
     if not settings.poolside_api_key:
         return CheckResult(
-            check_name="claimed-vs-actual-tech", check_category="devpost_alignment",
-            score=0, status="pass", details={"reason": "LLM not configured"},
+            check_name="claimed-vs-actual-tech",
+            check_category="devpost_alignment",
+            score=0,
+            status="pass",
+            details={"reason": "LLM not configured"},
         )
 
     repo = context.repo_path
@@ -82,8 +90,11 @@ async def check_alignment_ai(context: CheckContext) -> CheckResult:
 
     if not claims:
         return CheckResult(
-            check_name="claimed-vs-actual-tech", check_category="devpost_alignment",
-            score=0, status="pass", details={"reason": "No claims to verify"},
+            check_name="claimed-vs-actual-tech",
+            check_category="devpost_alignment",
+            score=0,
+            status="pass",
+            details={"reason": "No claims to verify"},
         )
 
     # Phase 1: Chunk ALL repos
@@ -93,8 +104,11 @@ async def check_alignment_ai(context: CheckContext) -> CheckResult:
 
     if not chunks:
         return CheckResult(
-            check_name="claimed-vs-actual-tech", check_category="devpost_alignment",
-            score=30, status="warn", details={"reason": "No source files to analyze"},
+            check_name="claimed-vs-actual-tech",
+            check_category="devpost_alignment",
+            score=30,
+            status="warn",
+            details={"reason": "No source files to analyze"},
         )
 
     # Phase 2: Hybrid retrieval — TF-IDF (exact) + Jina embeddings (semantic)
@@ -102,10 +116,7 @@ async def check_alignment_ai(context: CheckContext) -> CheckResult:
 
     # Phase 3: LLM verification with retrieved chunks only
     claims_text = "\n".join(f"- {c}" for c in claims)
-    chunks_text = "\n\n".join(
-        f"[{c['file']}:{c['start_line']}-{c['end_line']}]\n{c['content']}"
-        for c in retrieved
-    )
+    chunks_text = "\n\n".join(f"[{c['file']}:{c['start_line']}-{c['end_line']}]\n{c['content']}" for c in retrieved)
 
     prompt = RETRIEVAL_PROMPT.format(
         claims_text=claims_text,
@@ -140,15 +151,20 @@ async def check_alignment_ai(context: CheckContext) -> CheckResult:
             content = data["choices"][0]["message"]["content"]
     except Exception as e:
         return CheckResult(
-            check_name="claimed-vs-actual-tech", check_category="devpost_alignment",
-            score=30, status="warn", details={"reason": f"LLM API error: {e}"},
+            check_name="claimed-vs-actual-tech",
+            check_category="devpost_alignment",
+            score=30,
+            status="warn",
+            details={"reason": f"LLM API error: {e}"},
         )
 
     analysis = _parse_json(content)
     if analysis is None:
         return CheckResult(
-            check_name="claimed-vs-actual-tech", check_category="devpost_alignment",
-            score=50, status="warn",
+            check_name="claimed-vs-actual-tech",
+            check_category="devpost_alignment",
+            score=50,
+            status="warn",
             details={"reason": "Failed to parse LLM response", "raw": content[:500]},
         )
 
@@ -165,7 +181,7 @@ async def check_alignment_ai(context: CheckContext) -> CheckResult:
     def _make_links(claims_list: list) -> list:
         for c in claims_list:
             linked = []
-            for e in (c.get("evidence") or []):
+            for e in c.get("evidence") or []:
                 linked.append(_linkify_evidence(e, blob_base))
             c["evidence"] = linked
         return claims_list
@@ -180,34 +196,127 @@ async def check_alignment_ai(context: CheckContext) -> CheckResult:
             evidence.append(e)
 
     return CheckResult(
-        check_name="claimed-vs-actual-tech", check_category="devpost_alignment",
-        score=score, status=status,
+        check_name="claimed-vs-actual-tech",
+        check_category="devpost_alignment",
+        score=score,
+        status=status,
         details={
             "overall_assessment": analysis.get("overall_assessment", ""),
-            "verified_count": len(verified), "missing_count": len(missing),
+            "verified_count": len(verified),
+            "missing_count": len(missing),
             "unclear_count": len(unclear),
-            "verified": verified, "missing": missing, "unclear": unclear,
+            "verified": verified,
+            "missing": missing,
+            "unclear": unclear,
             "suspicious_patterns": analysis.get("suspicious_patterns", []),
-            "chunks_retrieved": len(retrieved), "total_chunks": len(chunks),
+            "chunks_retrieved": len(retrieved),
+            "total_chunks": len(chunks),
         },
         evidence=evidence,
     )
 
 
-_SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv",
-              "dist", "build", ".next", "target", "vendor", ".idea", ".vscode",
-              "models", "weights", "checkpoints", "data", "datasets",
-              "__MACOSX", ".DS_Store", "egg-info", ".eggs"}
-_SKIP_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".ico", ".svg",
-              ".mp4", ".mp3", ".wav", ".ogg", ".zip", ".tar", ".gz", ".7z",
-              ".pth", ".pt", ".onnx", ".h5", ".pb", ".bin", ".exe", ".dll",
-              ".so", ".dylib", ".ttf", ".otf", ".woff", ".woff2", ".eot",
-              ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
-              ".lock", ".pyc", ".pyo", ".class", ".o", ".a"}
-_SOURCE_EXTS = {".py", ".js", ".ts", ".jsx", ".tsx", ".go", ".rs", ".java",
-                ".c", ".cpp", ".h", ".hpp", ".rb", ".php", ".swift", ".kt",
-                ".ipynb", ".html", ".css", ".md", ".yml", ".yaml", ".toml",
-                ".cfg", ".json", ".xml", ".r", ".R", ".sh", ".bash", ".ps1"}
+_SKIP_DIRS = {
+    ".git",
+    "node_modules",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "dist",
+    "build",
+    ".next",
+    "target",
+    "vendor",
+    ".idea",
+    ".vscode",
+    "models",
+    "weights",
+    "checkpoints",
+    "data",
+    "datasets",
+    "__MACOSX",
+    ".DS_Store",
+    "egg-info",
+    ".eggs",
+}
+_SKIP_EXTS = {
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".bmp",
+    ".ico",
+    ".svg",
+    ".mp4",
+    ".mp3",
+    ".wav",
+    ".ogg",
+    ".zip",
+    ".tar",
+    ".gz",
+    ".7z",
+    ".pth",
+    ".pt",
+    ".onnx",
+    ".h5",
+    ".pb",
+    ".bin",
+    ".exe",
+    ".dll",
+    ".so",
+    ".dylib",
+    ".ttf",
+    ".otf",
+    ".woff",
+    ".woff2",
+    ".eot",
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".ppt",
+    ".pptx",
+    ".xls",
+    ".xlsx",
+    ".lock",
+    ".pyc",
+    ".pyo",
+    ".class",
+    ".o",
+    ".a",
+}
+_SOURCE_EXTS = {
+    ".py",
+    ".js",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".go",
+    ".rs",
+    ".java",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".rb",
+    ".php",
+    ".swift",
+    ".kt",
+    ".ipynb",
+    ".html",
+    ".css",
+    ".md",
+    ".yml",
+    ".yaml",
+    ".toml",
+    ".cfg",
+    ".json",
+    ".xml",
+    ".r",
+    ".R",
+    ".sh",
+    ".bash",
+    ".ps1",
+}
 
 MAX_CHUNKS = 10000
 MAX_FILE_BYTES = 100_000  # skip files larger than 100KB
@@ -257,15 +366,17 @@ def _chunk_repo(repo: Path) -> list[dict]:
         lines = content.split("\n")
         line_offset = 0
         while line_offset < len(lines) and len(chunks) < MAX_CHUNKS:
-            chunk_lines = lines[line_offset:line_offset + 30]
+            chunk_lines = lines[line_offset : line_offset + 30]
             chunk_text = "\n".join(chunk_lines)
             if len(chunk_text.strip()) >= 20:
-                chunks.append({
-                    "file": rel,
-                    "start_line": line_offset + 1,
-                    "end_line": min(line_offset + 30, len(lines)),
-                    "content": chunk_text,
-                })
+                chunks.append(
+                    {
+                        "file": rel,
+                        "start_line": line_offset + 1,
+                        "end_line": min(line_offset + 30, len(lines)),
+                        "content": chunk_text,
+                    }
+                )
             line_offset += 15  # 50% overlap
 
     return chunks
@@ -273,13 +384,16 @@ def _chunk_repo(repo: Path) -> list[dict]:
 
 _embed_model = None
 
+
 def _get_embed_model():
     """Lazy-load E5-small model — 130MB, 14x faster than large models, strong retrieval."""
     global _embed_model
     if _embed_model is None:
         from sentence_transformers import SentenceTransformer
+
         _embed_model = SentenceTransformer("intfloat/e5-small-v2")
     return _embed_model
+
 
 def _embed_chunks_bge(chunks: list[dict]) -> np.ndarray | None:
     """Embed chunks using local E5-small model. Returns (n_chunks, dim) array or None."""
@@ -290,6 +404,7 @@ def _embed_chunks_bge(chunks: list[dict]) -> np.ndarray | None:
         return model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
     except Exception:
         return None
+
 
 def _embed_chunks_bge_static(texts: list[str], _existing_matrix: np.ndarray | None = None) -> np.ndarray | None:
     """Embed text claims using already-loaded E5-small model."""
@@ -313,13 +428,15 @@ def _retrieve_chunks(claims: list[str], chunks: list[dict]) -> list[dict]:
 
     # --- TF-IDF retrieval (exact term matching) ---
     vectorizer = TfidfVectorizer(
-        max_features=5000, stop_words="english",
-        ngram_range=(1, 2), lowercase=True,
+        max_features=5000,
+        stop_words="english",
+        ngram_range=(1, 2),
+        lowercase=True,
         token_pattern=r"(?u)\b\w+\b",
     )
     tfidf_matrix = vectorizer.fit_transform(chunk_texts + claims)
-    chunk_vecs = tfidf_matrix[:len(chunks)]
-    claim_vecs = tfidf_matrix[len(chunks):]
+    chunk_vecs = tfidf_matrix[: len(chunks)]
+    claim_vecs = tfidf_matrix[len(chunks) :]
     sim = cosine_similarity(claim_vecs, chunk_vecs)
     for ci in range(len(claims)):
         top = np.argsort(sim[ci])[-TOP_K_TFIDF:][::-1]
@@ -334,6 +451,7 @@ def _retrieve_chunks(claims: list[str], chunks: list[dict]) -> list[dict]:
 async def _retrieve_chunks_async(claims: list[str], chunks: list[dict]) -> list[dict]:
     """Async wrapper that adds BGE-M3 embedding retrieval on top of TF-IDF."""
     import asyncio
+
     tfidf_results = _retrieve_chunks(claims, chunks)
     tfidf_indices = {chunks.index(c) for c in tfidf_results if c in chunks}
 
@@ -373,9 +491,24 @@ def _extract_feature_claims(description: str) -> list[str]:
     for s in sentences:
         s = s.strip()
         # Look for sentences describing features (action verbs, tech mentions)
-        if any(kw in s.lower() for kw in ["using", "powered by", "built with",
-                "implemented", "features", "detects", "tracks", "uses", "enables",
-                "real-time", "ai ", "ml ", "machine learning"]):
+        if any(
+            kw in s.lower()
+            for kw in [
+                "using",
+                "powered by",
+                "built with",
+                "implemented",
+                "features",
+                "detects",
+                "tracks",
+                "uses",
+                "enables",
+                "real-time",
+                "ai ",
+                "ml ",
+                "machine learning",
+            ]
+        ):
             if len(s) > 15 and len(s) < 200:
                 claims.append(s)
     return claims[:5]  # cap to avoid noise
@@ -384,6 +517,7 @@ def _extract_feature_claims(description: str) -> list[str]:
 def _linkify_evidence(text: str, blob_base: str) -> str:
     """Convert bare file paths with line numbers to full GitHub URLs."""
     import re
+
     # If already a full URL, return as-is
     if text.startswith("https://github.com/"):
         return text
@@ -397,7 +531,7 @@ def _linkify_evidence(text: str, blob_base: str) -> str:
         start = m.group(2)
         end = m.group(3)
         line_ref = f"#L{start}" if not end else f"#L{start}-L{end}"
-        suffix = text[text.index(m.group(0)) + len(m.group(0)):] if m.group(0) in text else ""
+        suffix = text[text.index(m.group(0)) + len(m.group(0)) :] if m.group(0) in text else ""
         return f"{blob_base}/{path}{line_ref} —{suffix}"
     # Match patterns with file path and context like "app/app.py:1-30 — description"
     m = re.match(r"([\w./-]+\.[\w]+):(\d+)(?:-(\d+))?\s*[—–-]\s*(.+)", text.strip())
@@ -430,7 +564,7 @@ def _parse_json(content: str) -> dict | None:
     in_string = False
     clean = []
     for ch in repaired:
-        if ch == '"' and (not clean or clean[-1] != '\\'):
+        if ch == '"' and (not clean or clean[-1] != "\\"):
             in_string = not in_string
         clean.append(ch)
     # If we're inside a string, close it

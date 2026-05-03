@@ -1,22 +1,22 @@
 """Generate realistic demo registration data."""
-import asyncio
-import uuid
-import random
+
 import argparse
-from datetime import datetime, timezone, timedelta
-from faker import Faker
-from sqlalchemy import select
+import asyncio
+import random
 
 # Add parent to path
 import sys
+import uuid
+from datetime import UTC, datetime, timedelta
+
+from faker import Faker
+from sqlalchemy import select
+
 sys.path.insert(0, "C:/Users/justi/dev/rowdyhacks/backend")
 
-from app.database import async_session
-from app.models import (
-    User, Hackathon, Registration, RegistrationStatus, UserRole,
-    Track
-)
 from app.auth import hash_password
+from app.database import async_session
+from app.models import Hackathon, Registration, RegistrationStatus, User, UserRole
 
 fake = Faker()
 
@@ -25,10 +25,21 @@ DIETARY_OPTIONS = [None, "vegetarian", "vegan", "gluten-free", "halal", "kosher"
 SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"]
 EXPERIENCE_LEVELS = ["beginner", "intermediate", "advanced"]
 TEAM_NAMES = [
-    "Code Wizards", "Binary Builders", "Stack Overflowers", "Git Pushers",
-    "Null Pointers", "Runtime Errors", "Syntax Squad", "Debuggers",
-    "Bit Shifters", "Algorithm Aces", "Data Driven", "Cloud Ninjas",
-    "API Architects", "Frontend Fanatics", "Backend Bandits"
+    "Code Wizards",
+    "Binary Builders",
+    "Stack Overflowers",
+    "Git Pushers",
+    "Null Pointers",
+    "Runtime Errors",
+    "Syntax Squad",
+    "Debuggers",
+    "Bit Shifters",
+    "Algorithm Aces",
+    "Data Driven",
+    "Cloud Ninjas",
+    "API Architects",
+    "Frontend Fanatics",
+    "Backend Bandits",
 ]
 
 
@@ -38,7 +49,7 @@ async def create_demo_users(db, count: int) -> list[User]:
     for i in range(count):
         user = User(
             id=uuid.uuid4(),
-            email=f"demo{i+1}@example.com",
+            email=f"demo{i + 1}@example.com",
             name=fake.name(),
             password_hash=hash_password("demo12345"),
             role=UserRole.participant,
@@ -50,10 +61,7 @@ async def create_demo_users(db, count: int) -> list[User]:
 
 
 async def create_registrations(
-    db,
-    hackathon_id: uuid.UUID,
-    users: list[User],
-    target_count: int = 50
+    db, hackathon_id: uuid.UUID, users: list[User], target_count: int = 50
 ) -> list[Registration]:
     """Create registrations with varied statuses."""
     registrations = []
@@ -70,14 +78,11 @@ async def create_registrations(
 
     for i, user in enumerate(users[:target_count]):
         # Weighted random status
-        status = random.choices(
-            [s for s, _ in status_weights],
-            weights=[w for _, w in status_weights]
-        )[0]
+        status = random.choices([s for s, _ in status_weights], weights=[w for _, w in status_weights])[0]
 
         # Registration time within last 30 days
         days_ago = random.randint(0, 30)
-        registered_at = datetime.now(timezone.utc) - timedelta(days=days_ago)
+        registered_at = datetime.now(UTC) - timedelta(days=days_ago)
 
         # Build registration
         reg = Registration(
@@ -102,11 +107,11 @@ async def create_registrations(
             reg.accepted_at = registered_at + timedelta(days=random.randint(1, 5))
 
         if status == RegistrationStatus.offered:
-            reg.offered_at = datetime.now(timezone.utc) - timedelta(hours=random.randint(1, 20))
+            reg.offered_at = datetime.now(UTC) - timedelta(hours=random.randint(1, 20))
             reg.offer_expires_at = reg.offered_at + timedelta(hours=24)
 
         if status == RegistrationStatus.checked_in:
-            reg.checked_in_at = datetime.now(timezone.utc) - timedelta(days=random.randint(0, 2))
+            reg.checked_in_at = datetime.now(UTC) - timedelta(days=random.randint(0, 2))
 
         if status == RegistrationStatus.waitlisted and random.random() > 0.7:
             reg.declined_count = random.randint(1, 2)  # Some have declined before
@@ -130,9 +135,7 @@ async def seed_hackathon(hackathon_id: str, count: int = 50):
             return
 
         # Check if already seeded
-        result = await db.execute(
-            select(Registration).where(Registration.hackathon_id == hackathon_uuid)
-        )
+        result = await db.execute(select(Registration).where(Registration.hackathon_id == hackathon_uuid))
         existing = result.scalars().all()
         if existing:
             print(f"Hackathon already has {len(existing)} registrations. Skipping.")
