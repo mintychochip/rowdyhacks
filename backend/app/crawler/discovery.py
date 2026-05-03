@@ -16,39 +16,37 @@ DEVPOST_HACKATHONS_URL = "https://devpost.com/hackathons"
 MAX_SCROLLS = 200  # Max "load more" scrolls (each shows ~10-12 hackathons)
 
 # JavaScript to extract hackathon cards — defined separately to avoid Python escape issues
-_EXTRACT_CARDS_JS = (
-    "() => {"
-    "  const results = [];"
-    "  document.querySelectorAll('a[href*=\".devpost.com/\"]').forEach(card => {"
-    "    const href = card.getAttribute('href');"
-    "    if (!href) return;"
-    "    const urlMatch = href.match(/^https:\\/\\/([^.]+)\\.devpost\\.com\\//);"
-    "    if (!urlMatch) return;"
-    "    const name = card.querySelector('h3')?.textContent?.trim() || '';"
-    "    if (!name) return;"
-    "    const fullText = card.textContent || '';"
-    "    const dateMatch = fullText.match(/([A-Z][a-z]{2} \\d{2})\\s*[-\\u2013]\\s*([A-Z][a-z]{2} \\d{2}),?\\s*(\\d{4})/);"
-    "    let dates = '';"
-    "    if (dateMatch) {"
-    "      dates = dateMatch[1] + ' - ' + dateMatch[2] + ', ' + dateMatch[3];"
-    "    }"
-    "    const partMatch = fullText.match(/(\\d[\\d,]*)\\s*participants/);"
-    "    const participants = partMatch ? parseInt(partMatch[1].replace(/,/g, '')) : null;"
-    "    results.push({"
-    "      url: href.split('?')[0].replace(/\\/$/, ''),"
-    "      name: name,"
-    "      dates: dates,"
-    "      participants: participants,"
-    "    });"
-    "  });"
-    "  const seen = new Set();"
-    "  return results.filter(r => {"
-    "    if (seen.has(r.url)) return false;"
-    "    seen.add(r.url);"
-    "    return true;"
-    "  });"
-    "}"
-)
+_EXTRACT_CARDS_JS = r"""() => {
+  const results = [];
+  document.querySelectorAll('a[href*=".devpost.com/"]').forEach(card => {
+    const href = card.getAttribute('href');
+    if (!href) return;
+    const urlMatch = href.match(/^https:\/\/([^.]+)\.devpost\.com\//);
+    if (!urlMatch) return;
+    const name = card.querySelector('h3')?.textContent?.trim() || '';
+    if (!name) return;
+    const fullText = card.textContent || '';
+    const dateMatch = fullText.match(/([A-Z][a-z]{2} \d{2})\s*[-\u2013]\s*([A-Z][a-z]{2} \d{2}),?\s*(\d{4})/);
+    let dates = '';
+    if (dateMatch) {
+      dates = dateMatch[1] + ' - ' + dateMatch[2] + ', ' + dateMatch[3];
+    }
+    const partMatch = fullText.match(/(\d[\d,]*)\s*participants/);
+    const participants = partMatch ? parseInt(partMatch[1].replace(/,/g, '')) : null;
+    results.push({
+      url: href.split('?')[0].replace(/\/$/, ''),
+      name: name,
+      dates: dates,
+      participants: participants,
+    });
+  });
+  const seen = new Set();
+  return results.filter(r => {
+    if (seen.has(r.url)) return false;
+    seen.add(r.url);
+    return true;
+  });
+}"""
 
 
 async def discover_hackathons() -> list[str]:
