@@ -178,6 +178,56 @@ export const bulkRejectRegistrations = (hackathonId: string, registrationIds: st
 export const bulkWaitlistRegistrations = (hackathonId: string, registrationIds: string[]) =>
   request(`/hackathons/${hackathonId}/registrations/bulk-waitlist`, { method: 'POST', body: JSON.stringify(registrationIds) });
 
+// Waitlist endpoints (organizer)
+export const getWaitlist = (
+  hackathonId: string,
+  offset: number = 0,
+  limit: number = 50
+) => {
+  const searchParams = new URLSearchParams();
+  searchParams.set('offset', String(offset));
+  searchParams.set('limit', String(limit));
+  return request(`/hackathons/${hackathonId}/waitlist?${searchParams.toString()}`);
+};
+
+export const moveToWaitlist = (
+  hackathonId: string,
+  registrationId: string
+) =>
+  request(`/hackathons/${hackathonId}/registrations/${registrationId}/waitlist`, {
+    method: 'POST'
+  });
+
+export const removeFromWaitlist = (
+  hackathonId: string,
+  registrationId: string
+) =>
+  request(`/hackathons/${hackathonId}/registrations/${registrationId}/unwaitlist`, {
+    method: 'POST'
+  });
+
+export const promoteFromWaitlist = (
+  hackathonId: string
+) =>
+  request(`/hackathons/${hackathonId}/waitlist/promote`, {
+    method: 'POST'
+  });
+
+// Participant offer endpoints
+export const acceptOffer = (
+  registrationId: string
+) =>
+  request(`/registrations/${registrationId}/accept-offer`, {
+    method: 'POST'
+  });
+
+export const declineOffer = (
+  registrationId: string
+) =>
+  request(`/registrations/${registrationId}/decline-offer`, {
+    method: 'POST'
+  });
+
 export const exportRegistrationsCSV = (hackathonId: string) =>
   `${BASE}/hackathons/${hackathonId}/registrations/export`;
 
