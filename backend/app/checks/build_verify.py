@@ -1,9 +1,10 @@
 """Smart build verification — detect project type, try to build, report results."""
+
 import subprocess
 import time
 from pathlib import Path
-from app.checks.interface import CheckContext, CheckResult
 
+from app.checks.interface import CheckContext, CheckResult
 
 BUILD_DETECTORS = [
     {
@@ -105,8 +106,11 @@ async def check_build(context: CheckContext) -> CheckResult:
     repos = context.repo_paths or ([context.repo_path] if context.repo_path else [])
     if not repos:
         return CheckResult(
-            check_name="build-verify", check_category="asset_integrity",
-            score=20, status="pass", details={"reason": "No repo available"},
+            check_name="build-verify",
+            check_category="asset_integrity",
+            score=20,
+            status="pass",
+            details={"reason": "No repo available"},
         )
 
     all_results = []
@@ -141,8 +145,10 @@ async def check_build(context: CheckContext) -> CheckResult:
             evidence.append(f"Detected {r['name']} project in {r['repo']}")
 
     return CheckResult(
-        check_name="build-verify", check_category="asset_integrity",
-        score=score, status=status,
+        check_name="build-verify",
+        check_category="asset_integrity",
+        score=score,
+        status=status,
         details={"results": all_results},
         evidence=evidence,
     )
@@ -179,8 +185,10 @@ def _try_build(repo: Path) -> dict:
             try:
                 t0 = time.monotonic()
                 proc = subprocess.run(
-                    detector["install"], cwd=repo,
-                    capture_output=True, text=True,
+                    detector["install"],
+                    cwd=repo,
+                    capture_output=True,
+                    text=True,
                     timeout=detector["timeout"],
                 )
                 result["install_time"] = round(time.monotonic() - t0, 1)
@@ -200,8 +208,10 @@ def _try_build(repo: Path) -> dict:
             try:
                 t0 = time.monotonic()
                 proc = subprocess.run(
-                    detector["build"], cwd=repo,
-                    capture_output=True, text=True,
+                    detector["build"],
+                    cwd=repo,
+                    capture_output=True,
+                    text=True,
                     timeout=detector["timeout"],
                 )
                 result["build_time"] = round(time.monotonic() - t0, 1)

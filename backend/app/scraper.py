@@ -1,4 +1,5 @@
 """Scrape Devpost submission pages for metadata."""
+
 import re
 from urllib.parse import urlparse
 
@@ -108,7 +109,7 @@ async def scrape_devpost(url: str) -> "ScrapedData":
     # Strategy 3: scan all text for github.com/owner/repo patterns
     if not data.github_url:
         body_text = soup.get_text()
-        gh_match = re.search(r'github\.com/[\w.-]+/[\w.-]+', body_text)
+        gh_match = re.search(r"github\.com/[\w.-]+/[\w.-]+", body_text)
         if gh_match:
             data.github_url = f"https://{gh_match.group(0)}"
 

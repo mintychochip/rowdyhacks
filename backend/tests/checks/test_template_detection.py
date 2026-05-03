@@ -1,11 +1,12 @@
 """Tests for template detection check."""
-import pytest
-import subprocess
+
 import json
-from pathlib import Path
 from uuid import uuid4
-from app.checks.template_detection import check_template
+
+import pytest
+
 from app.checks.interface import CheckContext, ScrapedData
+from app.checks.template_detection import check_template
 
 
 @pytest.mark.asyncio
@@ -19,14 +20,7 @@ async def test_template_no_repo(tmp_path):
 @pytest.mark.asyncio
 async def test_template_react_app_detected(tmp_path):
     # Simulate Create React App structure
-    package = {
-        "name": "my-app",
-        "dependencies": {
-            "react": "^18.0.0",
-            "react-dom": "^18.0.0",
-            "react-scripts": "5.0.1"
-        }
-    }
+    package = {"name": "my-app", "dependencies": {"react": "^18.0.0", "react-dom": "^18.0.0", "react-scripts": "5.0.1"}}
     (tmp_path / "package.json").write_text(json.dumps(package))
 
     # Create src/App.js with CRA marker

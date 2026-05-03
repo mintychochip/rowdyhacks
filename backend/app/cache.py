@@ -1,8 +1,10 @@
 """Caching layer for HackVerify (Redis + in-memory fallback)."""
+
 import json
 import time
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, TypeVar, ParamSpec
+from typing import Any, ParamSpec, TypeVar
 
 from app.config import settings
 
@@ -15,6 +17,7 @@ _redis = None
 
 
 # ── In-memory fallback cache ────────────────────────────────
+
 
 class _MemoryCache:
     """Simple TTL cache that works without Redis."""
@@ -54,6 +57,7 @@ _memory_cache = _MemoryCache()
 
 # ── Redis helpers ───────────────────────────────────────────
 
+
 async def get_redis():
     """Get or create Redis client (returns None if redis not installed)."""
     global _redis_client, _redis
@@ -81,6 +85,7 @@ async def close_redis():
 
 
 # ── Unified cache API ───────────────────────────────────────
+
 
 async def cache_get(key: str) -> Any | None:
     """Get value from cache (tries Redis first, falls back to memory)."""
@@ -139,6 +144,7 @@ async def cache_delete_pattern(pattern: str):
 def cached(ttl_seconds: int = 300, key_prefix: str = ""):
     """Decorator to cache function results (auto-fallback to memory).
     Default TTL is 5 minutes (300s) for read-heavy endpoints."""
+
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
@@ -157,7 +163,9 @@ def cached(ttl_seconds: int = 300, key_prefix: str = ""):
             await cache_set(cache_key, result, ttl_seconds)
 
             return result
+
         return wrapper
+
     return decorator
 
 

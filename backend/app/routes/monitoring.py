@@ -1,15 +1,14 @@
 """Monitoring and health check endpoints."""
-import time
-from datetime import datetime, timezone
-from typing import Optional
 
-from fastapi import APIRouter, Depends, Request
+import time
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from app.database import async_session
 from app.cache import get_redis
-from app.config import settings
+from app.database import async_session
 
 router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
 
@@ -45,7 +44,7 @@ _metrics = {
 async def health_check():
     """Comprehensive health check including database and Redis."""
     checks = {}
-    
+
     # Database check
     try:
         async with async_session() as db:
@@ -53,7 +52,7 @@ async def health_check():
             checks["database"] = "healthy"
     except Exception as e:
         checks["database"] = f"unhealthy: {str(e)}"
-    
+
     # Redis check (optional)
     try:
         redis = await get_redis()
@@ -64,24 +63,22 @@ async def health_check():
             checks["redis"] = "not_configured"
     except Exception as e:
         checks["redis"] = f"unhealthy: {str(e)}"
-    
+
     # Disk space check (basic)
     try:
         import shutil
+
         stat = shutil.disk_usage("/tmp")
         free_percent = (stat.free / stat.total) * 100
         checks["disk"] = f"healthy ({free_percent:.1f}% free)"
     except Exception as e:
         checks["disk"] = f"unknown: {str(e)}"
-    
-    overall = "healthy" if all(
-        c == "healthy" or c == "not_configured"
-        for c in checks.values()
-    ) else "degraded"
-    
+
+    overall = "healthy" if all(c == "healthy" or c == "not_configured" for c in checks.values()) else "degraded"
+
     return HealthStatus(
         status=overall,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         checks=checks,
     )
 
@@ -107,22 +104,18 @@ async def liveness_check():
 async def get_metrics():
     """Application metrics (Prometheus-compatible format)."""
     uptime = time.monotonic() - _metrics["start_time"]
-    
+
     # Calculate requests per minute
     requests_per_minute = (_metrics["requests_total"] / uptime) * 60 if uptime > 0 else 0
-    
+
     # Calculate average response time
     avg_response_time = (
-        sum(_metrics["response_times"]) / len(_metrics["response_times"])
-        if _metrics["response_times"] else 0
+        sum(_metrics["response_times"]) / len(_metrics["response_times"]) if _metrics["response_times"] else 0
     ) * 1000  # Convert to ms
-    
+
     # Calculate error rate
-    error_rate = (
-        (_metrics["errors_total"] / _metrics["requests_total"]) * 100
-        if _metrics["requests_total"] > 0 else 0
-    )
-    
+    error_rate = (_metrics["errors_total"] / _metrics["requests_total"]) * 100 if _metrics["requests_total"] > 0 else 0
+
     return MetricsResponse(
         uptime_seconds=round(uptime, 2),
         requests_total=_metrics["requests_total"],
@@ -137,7 +130,7 @@ async def get_metrics():
 async def prometheus_metrics():
     """Prometheus-formatted metrics endpoint."""
     uptime = time.monotonic() - _metrics["start_time"]
-    
+
     lines = [
         "# HELP hackverify_uptime_seconds Total uptime in seconds",
         "# TYPE hackverify_uptime_seconds gauge",
@@ -155,11 +148,11 @@ async def prometheus_metrics():
         "# TYPE hackverify_active_connections gauge",
         f"hackverify_active_connections {_metrics['active_connections']}",
     ]
-    
+
     # Add per-endpoint metrics
     for endpoint, count in _metrics["requests_by_endpoint"].items():
         lines.append(f'hackverify_requests_by_endpoint{{endpoint="{endpoint}"}} {count}')
-    
+
     return "\n".join(lines)
 
 
@@ -168,10 +161,10 @@ async def track_request(request: Request, call_next):
     """Middleware to track request metrics."""
     _metrics["active_connections"] += 1
     _metrics["requests_total"] += 1
-    
+
     endpoint = f"{request.method} {request.url.path}"
     _metrics["requests_by_endpoint"][endpoint] = _metrics["requests_by_endpoint"].get(endpoint, 0) + 1
-    
+
     start = time.monotonic()
     try:
         response = await call_next(request)
@@ -185,7 +178,7 @@ async def track_request(request: Request, call_next):
         _metrics["active_connections"] -= 1
         duration = time.monotonic() - start
         _metrics["response_times"].append(duration)
-        
+
         # Keep only last 1000 response times
         if len(_metrics["response_times"]) > 1000:
             _metrics["response_times"] = _metrics["response_times"][-1000:]

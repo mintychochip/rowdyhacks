@@ -1,14 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
-from app.models import User, OAuthAccount
-from app.schemas import UserRegister, UserLogin, TokenResponse, UserResponse
-from app.auth import hash_password, verify_password, create_access_token, decode_token
-from app.oauth import VALID_PROVIDERS, PROVIDER_CONFIGS, build_authorize_url, create_state
+from app.auth import create_access_token, decode_token, hash_password, verify_password
 from app.config import settings
+from app.database import get_db
+from app.models import OAuthAccount, User
+from app.oauth import PROVIDER_CONFIGS, VALID_PROVIDERS, build_authorize_url, create_state
+from app.schemas import TokenResponse, UserLogin, UserRegister, UserResponse
 
 router = APIRouter()
 
@@ -111,9 +111,7 @@ async def oauth_unlink(
     user_id = _get_current_user_id(authorization)
 
     result = await db.execute(
-        select(OAuthAccount).where(
-            and_(OAuthAccount.provider == provider, OAuthAccount.user_id == user_id)
-        )
+        select(OAuthAccount).where(and_(OAuthAccount.provider == provider, OAuthAccount.user_id == user_id))
     )
     oauth_account = result.scalar_one_or_none()
     if not oauth_account:
@@ -152,4 +150,7 @@ async def list_linked_providers(
     result = await db.execute(select(User).where(User.id == user_id))
     user_obj = result.scalar_one_or_none()
 
-    return {"linked": [a.provider for a in accounts], "has_password": user_obj.password_hash is not None if user_obj else False}
+    return {
+        "linked": [a.provider for a in accounts],
+        "has_password": user_obj.password_hash is not None if user_obj else False,
+    }

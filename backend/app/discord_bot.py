@@ -2,19 +2,19 @@
 Discord bot for managing hackathon applications.
 Uses discord.py (official SDK) with slash commands and interactive buttons.
 """
+
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import discord
 from discord import app_commands
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.database import async_session
-from app.models import Hackathon, Registration, RegistrationStatus, User, Submission, SubmissionStatus, Verdict
+from app.models import Hackathon, Registration, RegistrationStatus, Submission, SubmissionStatus, Verdict
 
 logger = logging.getLogger("discord_bot")
 
@@ -84,7 +84,11 @@ class ApplicationView(discord.ui.View):
         detail.add_field(name="Resume", value=reg.resume_url or "—", inline=True)
         detail.add_field(name="T-Shirt", value=reg.t_shirt_size or "—", inline=True)
         detail.add_field(name="Dietary", value=reg.dietary_restrictions or "—", inline=True)
-        detail.add_field(name="Emergency Contact", value=f"{reg.emergency_contact_name or '—'}\n{reg.emergency_contact_phone or '—'}", inline=True)
+        detail.add_field(
+            name="Emergency Contact",
+            value=f"{reg.emergency_contact_name or '—'}\n{reg.emergency_contact_phone or '—'}",
+            inline=True,
+        )
         if reg.team_name:
             detail.add_field(name="Team", value=reg.team_name, inline=True)
         if reg.team_members:
@@ -119,11 +123,12 @@ class ApplicationView(discord.ui.View):
                 return
 
             reg.status = RegistrationStatus.accepted
-            reg.accepted_at = datetime.now(timezone.utc)
+            reg.accepted_at = datetime.now(UTC)
             await db.commit()
 
             # Generate QR token
             from app.auth import create_qr_token
+
             result2 = await db.execute(select(Hackathon).where(Hackathon.id == self.hackathon_id))
             hackathon = result2.scalar_one()
             reg.qr_token = create_qr_token(str(reg.id), str(reg.user_id), str(hackathon.id), hackathon.end_date)
@@ -214,9 +219,7 @@ async def list_applications(interaction: discord.Interaction, status: str = "pen
         )
         registrations = result.scalars().all()
 
-        count_result = await db.execute(
-            select(func.count(Registration.id)).where(*filters)
-        )
+        count_result = await db.execute(select(func.count(Registration.id)).where(*filters))
         total = count_result.scalar() or 0
 
     if not registrations:
@@ -240,7 +243,7 @@ async def list_applications(interaction: discord.Interaction, status: str = "pen
 
     # Send in batches of 10 (Discord limit)
     for i in range(0, len(embeds), 10):
-        batch = embeds[i:i + 10]
+        batch = embeds[i : i + 10]
         if i == 0:
             await interaction.followup.send(
                 f"**{total} {status} application(s)** for {hackathon.name}:",
@@ -264,18 +267,18 @@ async def show_stats(interaction: discord.Interaction):
         # Registration stats
         reg_counts = {}
         for s in RegistrationStatus:
-            count = (await db.execute(
-                select(func.count(Registration.id)).where(
-                    Registration.hackathon_id == hackathon.id,
-                    Registration.status == s,
+            count = (
+                await db.execute(
+                    select(func.count(Registration.id)).where(
+                        Registration.hackathon_id == hackathon.id,
+                        Registration.status == s,
+                    )
                 )
-            )).scalar() or 0
+            ).scalar() or 0
             reg_counts[s.value] = count
 
         # Submission stats
-        sub_result = await db.execute(
-            select(Submission).where(Submission.hackathon_id == hackathon.id)
-        )
+        sub_result = await db.execute(select(Submission).where(Submission.hackathon_id == hackathon.id))
         subs = sub_result.scalars().all()
         completed = [s for s in subs if s.status == SubmissionStatus.completed]
         avg_risk = sum(s.risk_score or 0 for s in completed) / len(completed) if completed else 0
@@ -322,9 +325,10 @@ async def accept_application(interaction: discord.Interaction, registration_id: 
             return
 
         reg.status = RegistrationStatus.accepted
-        reg.accepted_at = datetime.now(timezone.utc)
+        reg.accepted_at = datetime.now(UTC)
 
         from app.auth import create_qr_token
+
         reg.qr_token = create_qr_token(str(reg.id), str(reg.user_id), str(reg.hackathon_id), reg.hackathon.end_date)
         await db.commit()
 
@@ -341,9 +345,7 @@ async def reject_application(interaction: discord.Interaction, registration_id: 
 
     async with async_session() as db:
         result = await db.execute(
-            select(Registration)
-            .where(Registration.id == registration_id)
-            .options(selectinload(Registration.user))
+            select(Registration).where(Registration.id == registration_id).options(selectinload(Registration.user))
         )
         reg = result.scalar_one_or_none()
         if not reg:
@@ -415,7 +417,11 @@ async def post_application_to_discord(registration_id: str) -> bool:
     # Logistics
     embed.add_field(name="T-Shirt", value=reg.t_shirt_size or "—", inline=True)
     embed.add_field(name="Dietary", value=reg.dietary_restrictions or "—", inline=True)
-    embed.add_field(name="Emergency Contact", value=f"{reg.emergency_contact_name or '—'}\n{reg.emergency_contact_phone or '—'}", inline=True)
+    embed.add_field(
+        name="Emergency Contact",
+        value=f"{reg.emergency_contact_name or '—'}\n{reg.emergency_contact_phone or '—'}",
+        inline=True,
+    )
 
     # Team (if applicable)
     if reg.team_name:
@@ -500,7 +506,7 @@ async def start_bot():
     try:
         await asyncio.wait_for(bot.wait_until_ready(), timeout=15.0)
         print(f"[BOT] Ready! Logged in as {bot.user}, guilds: {len(bot.guilds)}")
-    except asyncio.TimeoutError:
+    except TimeoutError:
         print("[BOT] Timed out waiting to connect")
         logger.error("Discord bot did not become ready within 15s")
     except RuntimeError as e:

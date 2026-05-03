@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 from jose import JWTError, jwt
@@ -29,7 +29,7 @@ def create_access_token(
     if expires_delta is None:
         expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": user_id,
         "role": role,
@@ -55,7 +55,7 @@ def create_anonymous_token() -> str:
 
 def create_qr_token(registration_id: str, user_id: str, hackathon_id: str, hackathon_end: datetime) -> str:
     """Create a signed JWT for embedding in a QR code."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "reg_id": registration_id,
         "user_id": user_id,

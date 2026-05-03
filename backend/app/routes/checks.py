@@ -1,20 +1,21 @@
 """Routes for submitting and retrieving analysis checks."""
-import uuid
-import asyncio
-from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Header
+import asyncio
+import uuid
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.analyzer import analyze_submission
+from app.auth import create_anonymous_token, decode_token
+from app.checks import WEIGHTS
 from app.database import get_db
 from app.models import Hackathon, Submission, SubmissionStatus
 from app.schemas import SubmitRequest
 from app.scraper import is_devpost_url, is_github_url
-from app.auth import create_anonymous_token, decode_token
-from app.analyzer import analyze_submission
-from app.checks import WEIGHTS
 
 router = APIRouter(prefix="/api/check", tags=["checks"])
 
@@ -25,7 +26,7 @@ RATE_WINDOW = 60  # seconds
 
 
 def _check_rate_limit(client_ip: str) -> bool:
-    now = datetime.now(timezone.utc).timestamp()
+    now = datetime.now(UTC).timestamp()
     if client_ip not in _rate_limit_store:
         _rate_limit_store[client_ip] = []
     # Clean old entries
@@ -215,8 +216,10 @@ async def retry_check(
         raise HTTPException(status_code=404, detail="Submission not found")
 
     # Delete old check results
-    from app.models import CheckResultModel
     from sqlalchemy import delete as sqla_delete
+
+    from app.models import CheckResultModel
+
     await db.execute(sqla_delete(CheckResultModel).where(CheckResultModel.submission_id == submission_id))
 
     sub.status = SubmissionStatus.pending

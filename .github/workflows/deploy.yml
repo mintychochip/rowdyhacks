@@ -19,6 +19,8 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
+          script_stop: true
+          command_timeout: 10m
           script: |
             set -e
             cd /home/jlo/rowdyhacks
@@ -31,21 +33,30 @@ jobs:
             echo '${{ secrets.SUDO_PASSWORD }}' | sudo -S systemctl disable nginx 2>/dev/null || true
             echo '${{ secrets.SUDO_PASSWORD }}' | sudo -S systemctl mask nginx 2>/dev/null || true
             echo '${{ secrets.SUDO_PASSWORD }}' | sudo -S pkill -9 nginx 2>/dev/null || true
-            sleep 1
-            ss -tlnp | grep :80 && echo "WARN: port 80 still busy" || echo "Port 80 free"
 
             echo "==> Fetching and resetting to latest..."
             git fetch origin master
             git checkout -f origin/master -- .
             git clean -fd
 
-            echo "==> Stopping nginx container to free port 80..."
-            docker compose -f docker-compose.yml stop nginx 2>/dev/null || true
-            docker compose -f docker-compose.yml rm -f nginx 2>/dev/null || true
-            sleep 2
+            echo "==> Stopping all containers before rebuild..."
+            docker compose -f docker-compose.yml down --timeout 30 2>/dev/null || true
 
-            echo "==> Rebuilding and restarting containers..."
-            docker compose -f docker-compose.yml up -d --build --remove-orphans
+            # Wait for port 80 to be fully released
+            for i in 1 2 3 4 5; do
+              ss -tlnp | grep -q ':80 ' || break
+              echo "  Port 80 still in use, waiting... ($i/5)"
+              sleep 2
+            done
+
+            echo "==> Building backend (heaviest image, built first to avoid OOM)..."
+            docker compose -f docker-compose.yml build backend
+
+            echo "==> Building frontend..."
+            docker compose -f docker-compose.yml build frontend
+
+            echo "==> Starting all services..."
+            docker compose -f docker-compose.yml up -d --remove-orphans
 
             echo "==> Pruning old images..."
             docker image prune -f
@@ -53,11 +64,11 @@ jobs:
             echo "==> Docker containers ==="
             docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || true
 
-            echo "==> Health check..."
-            for i in 1 2 3 4 5 6 7 8 9 10; do
-              curl -sf -o /dev/null http://localhost:8000/api/health && echo "  Backend OK" && break
-              echo "  Waiting... ($i/10)"
-              sleep 3
+            echo "==> Health check (backend at :8000/api/monitoring/health)..."
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+              curl -sf -o /dev/null http://localhost:8000/api/monitoring/health && echo "  Backend OK" && break
+              echo "  Waiting... ($i/15)"
+              sleep 4
             done
 
             echo "==> Deploy complete"

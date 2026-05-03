@@ -1,5 +1,7 @@
 """QR code image generation."""
+
 import io
+
 import qrcode
 from qrcode.image.pil import PilImage
 

@@ -1,19 +1,20 @@
 """Participant registration routes."""
-import uuid
-from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Header, Query
-from sqlalchemy import select, func, and_
+import uuid
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.auth import create_qr_token, decode_token
 from app.database import get_db
 from app.discord_bot import post_application_to_discord
-from app.models import Registration, RegistrationStatus, Hackathon, User, UserRole, HackathonOrganizer
-from app.schemas import RegistrationCreate
-from app.auth import decode_token, create_qr_token
 from app.email_service import send_email
-from app.waitlist import promote_from_waitlist, auto_waitlist_if_full, get_waitlist_position
+from app.models import Hackathon, HackathonOrganizer, Registration, RegistrationStatus, User, UserRole
+from app.schemas import RegistrationCreate
+from app.waitlist import auto_waitlist_if_full, get_waitlist_position, promote_from_waitlist
 
 router = APIRouter(prefix="/api", tags=["registrations"])
 
@@ -73,12 +74,12 @@ def _registration_to_response(r: Registration, user: User | None = None) -> dict
 
 
 async def _ensure_hackathon_organizer(
-    db: AsyncSession, user_id: str, hackathon_id: uuid.UUID,
+    db: AsyncSession,
+    user_id: str,
+    hackathon_id: uuid.UUID,
 ) -> Hackathon:
     """Verify the current user is the organizer or co-organizer of the given hackathon."""
-    result = await db.execute(
-        select(Hackathon).where(Hackathon.id == hackathon_id)
-    )
+    result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
@@ -88,11 +89,11 @@ async def _ensure_hackathon_organizer(
     user = user_result.scalar_one_or_none()
     if not user or user.role != UserRole.organizer:
         raise HTTPException(status_code=403, detail="Only organizers can perform this action")
-    
+
     # Primary organizer check
     if hackathon.organizer_id == user.id:
         return hackathon
-    
+
     # Co-organizer check
     co_result = await db.execute(
         select(HackathonOrganizer).where(
@@ -101,7 +102,7 @@ async def _ensure_hackathon_organizer(
     )
     if co_result.scalar_one_or_none():
         return hackathon
-    
+
     raise HTTPException(status_code=403, detail="Only the hackathon organizer can perform this action")
 
 
@@ -143,9 +144,7 @@ async def list_hackathon_registrations(
     registrations = result.scalars().all()
 
     return {
-        "registrations": [
-            _registration_to_response(r, r.user) for r in registrations
-        ],
+        "registrations": [_registration_to_response(r, r.user) for r in registrations],
         "total": total,
         "limit": limit,
         "offset": offset,
@@ -165,10 +164,12 @@ async def accept_registration(
 
     result = await db.execute(
         select(Registration)
-        .where(and_(
-            Registration.id == registration_id,
-            Registration.hackathon_id == hackathon_id,
-        ))
+        .where(
+            and_(
+                Registration.id == registration_id,
+                Registration.hackathon_id == hackathon_id,
+            )
+        )
         .options(selectinload(Registration.user))
     )
     reg = result.scalar_one_or_none()
@@ -180,7 +181,7 @@ async def accept_registration(
             status_code=409,
             detail=f"Cannot accept registration with status '{reg.status.value}'; only pending or waitlisted registrations can be accepted",
         )
-    
+
     # Check capacity (if not already accepted/waitlisted)
     if reg.status == RegistrationStatus.pending:
         if hackathon.max_participants and hackathon.current_participants >= hackathon.max_participants:
@@ -188,7 +189,7 @@ async def accept_registration(
         hackathon.current_participants += 1
 
     reg.status = RegistrationStatus.accepted
-    reg.accepted_at = datetime.now(timezone.utc)
+    reg.accepted_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(reg)
 
@@ -208,10 +209,12 @@ async def reject_registration(
 
     result = await db.execute(
         select(Registration)
-        .where(and_(
-            Registration.id == registration_id,
-            Registration.hackathon_id == hackathon_id,
-        ))
+        .where(
+            and_(
+                Registration.id == registration_id,
+                Registration.hackathon_id == hackathon_id,
+            )
+        )
         .options(selectinload(Registration.user))
     )
     reg = result.scalar_one_or_none()
@@ -244,10 +247,12 @@ async def checkin_registration(
 
     result = await db.execute(
         select(Registration)
-        .where(and_(
-            Registration.id == registration_id,
-            Registration.hackathon_id == hackathon_id,
-        ))
+        .where(
+            and_(
+                Registration.id == registration_id,
+                Registration.hackathon_id == hackathon_id,
+            )
+        )
         .options(selectinload(Registration.user))
     )
     reg = result.scalar_one_or_none()
@@ -261,7 +266,7 @@ async def checkin_registration(
         )
 
     reg.status = RegistrationStatus.checked_in
-    reg.checked_in_at = datetime.now(timezone.utc)
+    reg.checked_in_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(reg)
 
@@ -287,14 +292,12 @@ async def register_for_hackathon(
         raise HTTPException(status_code=404, detail="Hackathon not found")
 
     # Check application deadline
-    if hackathon.application_deadline and datetime.now(timezone.utc) > hackathon.application_deadline:
+    if hackathon.application_deadline and datetime.now(UTC) > hackathon.application_deadline:
         raise HTTPException(status_code=400, detail="Application deadline has passed")
 
     # Check for duplicate registration
     existing = await db.execute(
-        select(Registration).where(
-            and_(Registration.hackathon_id == hackathon_id, Registration.user_id == user.id)
-        )
+        select(Registration).where(and_(Registration.hackathon_id == hackathon_id, Registration.user_id == user.id))
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Already registered for this hackathon")
@@ -332,11 +335,11 @@ async def register_for_hackathon(
         emergency_contact_phone=body.emergency_contact_phone,
     )
     db.add(reg)
-    
+
     # Update current_participants count if waitlisted
     if initial_status == RegistrationStatus.waitlisted:
         hackathon.current_participants += 1
-    
+
     await db.commit()
     await db.refresh(reg)
 
@@ -380,9 +383,7 @@ async def list_my_registrations(
     registrations = result.scalars().all()
 
     return {
-        "registrations": [
-            _registration_to_response(r, r.user) for r in registrations
-        ],
+        "registrations": [_registration_to_response(r, r.user) for r in registrations],
         "total": total,
         "limit": limit,
         "offset": offset,
@@ -439,7 +440,7 @@ async def accept_offer(
         raise HTTPException(status_code=404, detail="Registration not found")
     if reg.status != RegistrationStatus.offered:
         raise HTTPException(status_code=409, detail=f"Cannot accept a {reg.status.value} registration")
-    if reg.offer_expires_at and reg.offer_expires_at < datetime.now(timezone.utc):
+    if reg.offer_expires_at and reg.offer_expires_at < datetime.now(UTC):
         raise HTTPException(status_code=410, detail="Offer has expired")
 
     # Check capacity one more time
@@ -459,7 +460,7 @@ async def accept_offer(
 
     # Accept the offer
     reg.status = RegistrationStatus.accepted
-    reg.accepted_at = datetime.now(timezone.utc)
+    reg.accepted_at = datetime.now(UTC)
     reg.offer_expires_at = None
 
     # Generate QR token
@@ -487,14 +488,14 @@ async def accept_offer(
             },
             registration_id=reg.id,
             hackathon_id=hackathon.id,
-            db=db
+            db=db,
         )
 
     return {
         "id": str(reg.id),
         "status": reg.status.value,
         "qr_token": reg.qr_token,
-        "accepted_at": reg.accepted_at.isoformat()
+        "accepted_at": reg.accepted_at.isoformat(),
     }
 
 
@@ -512,9 +513,7 @@ async def decline_offer(
     user_id = payload.get("sub")
 
     result = await db.execute(
-        select(Registration)
-        .where(Registration.id == registration_id)
-        .where(Registration.user_id == user_id)
+        select(Registration).where(Registration.id == registration_id).where(Registration.user_id == user_id)
     )
     reg = result.scalar_one_or_none()
 
@@ -535,4 +534,3 @@ async def decline_offer(
     await db.commit()
 
     return {"id": str(reg.id), "status": reg.status.value, "declined_count": reg.declined_count}
-

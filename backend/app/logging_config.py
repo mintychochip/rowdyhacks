@@ -1,4 +1,5 @@
 """Structured logging configuration for HackVerify."""
+
 import logging
 import sys
 from datetime import datetime
@@ -22,7 +23,7 @@ def add_service_name(logger: Any, method_name: str, event_dict: EventDict) -> Ev
 
 def configure_logging(log_level: str = "INFO", json_logs: bool = False):
     """Configure structured logging."""
-    
+
     shared_processors: list = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
@@ -30,7 +31,7 @@ def configure_logging(log_level: str = "INFO", json_logs: bool = False):
         add_service_name,
         structlog.stdlib.ExtraAdder(),
     ]
-    
+
     if json_logs:
         # Production: JSON logs
         shared_processors.append(structlog.processors.format_exc_info)
@@ -38,7 +39,7 @@ def configure_logging(log_level: str = "INFO", json_logs: bool = False):
     else:
         # Development: pretty console logs
         shared_processors.append(structlog.dev.ConsoleRenderer())
-    
+
     structlog.configure(
         processors=shared_processors,
         wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, log_level)),
@@ -46,7 +47,7 @@ def configure_logging(log_level: str = "INFO", json_logs: bool = False):
         logger_factory=structlog.PrintLoggerFactory(),
         cache_logger_on_first_use=True,
     )
-    
+
     # Configure standard library logging
     logging.basicConfig(
         format="%(message)s",
@@ -85,14 +86,16 @@ def get_request_context() -> dict:
 
 # Performance monitoring
 import time
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 T = TypeVar("T")
 
 
 def timed(operation: str):
     """Decorator to time function execution."""
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         async def async_wrapper(*args, **kwargs) -> T:
@@ -105,7 +108,7 @@ def timed(operation: str):
                     "operation_completed",
                     operation=operation,
                     duration_ms=round(duration_ms, 2),
-                    **get_request_context()
+                    **get_request_context(),
                 )
                 return result
             except Exception as e:
@@ -115,10 +118,10 @@ def timed(operation: str):
                     operation=operation,
                     duration_ms=round(duration_ms, 2),
                     error=str(e),
-                    **get_request_context()
+                    **get_request_context(),
                 )
                 raise
-        
+
         @wraps(func)
         def sync_wrapper(*args, **kwargs) -> T:
             logger = get_logger("performance")
@@ -130,7 +133,7 @@ def timed(operation: str):
                     "operation_completed",
                     operation=operation,
                     duration_ms=round(duration_ms, 2),
-                    **get_request_context()
+                    **get_request_context(),
                 )
                 return result
             except Exception as e:
@@ -140,13 +143,14 @@ def timed(operation: str):
                     operation=operation,
                     duration_ms=round(duration_ms, 2),
                     error=str(e),
-                    **get_request_context()
+                    **get_request_context(),
                 )
                 raise
-        
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
+
     return decorator
 
 

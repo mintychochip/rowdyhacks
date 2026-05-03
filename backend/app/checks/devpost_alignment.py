@@ -1,6 +1,5 @@
 """Check Devpost claims against actual repository code."""
-import json
-from pathlib import Path
+
 from app.checks.interface import CheckContext, CheckResult
 
 PACKAGE_FILES = [
@@ -79,10 +78,7 @@ async def check_alignment(context: CheckContext) -> CheckResult:
     total_files = 0
     empty_files = 0
     for f in repo.rglob("*"):
-        if f.is_file() and not any(
-            p in str(f)
-            for p in [".git/", "node_modules/", "__pycache__/", ".venv/"]
-        ):
+        if f.is_file() and not any(p in str(f) for p in [".git/", "node_modules/", "__pycache__/", ".venv/"]):
             total_files += 1
             content = f.read_text(errors="ignore").strip()
             if len(content) < 10:

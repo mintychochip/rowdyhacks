@@ -1,13 +1,14 @@
 """Crawl scheduler: orchestrates discovery -> submission discovery -> project scrape."""
+
 import logging
-from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import select
+
+from app.crawler.discovery import discover_hackathons
+from app.crawler.project_scraper import scrape_projects
+from app.crawler.submission_discovery import discover_submissions
 from app.database import async_session
 from app.models import CrawledHackathon
-from app.config import settings
-from app.crawler.discovery import discover_hackathons
-from app.crawler.submission_discovery import discover_submissions
-from app.crawler.project_scraper import scrape_projects
 
 logger = logging.getLogger(__name__)
 

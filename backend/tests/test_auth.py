@@ -1,6 +1,8 @@
-import pytest
 from datetime import timedelta
-from app.auth import hash_password, verify_password, create_access_token, decode_token, create_anonymous_token
+
+import pytest
+
+from app.auth import create_access_token, create_anonymous_token, decode_token, hash_password, verify_password
 
 
 class TestPasswordHashing:
@@ -45,5 +47,6 @@ class TestAnonymousToken:
     def test_create_anonymous_token_format(self):
         token = create_anonymous_token()
         import uuid
+
         parsed = uuid.UUID(token)
         assert str(parsed) == token

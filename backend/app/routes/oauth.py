@@ -2,25 +2,24 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
-from app.models import User, OAuthAccount
 from app.auth import create_access_token
+from app.config import settings
+from app.database import get_db
+from app.models import OAuthAccount, User
 from app.oauth import (
-    VALID_PROVIDERS,
     PROVIDER_CONFIGS,
+    VALID_PROVIDERS,
     build_authorize_url,
-    create_state,
+    build_name_fallback,
     consume_state,
+    create_state,
     exchange_code,
     fetch_user_info,
-    build_name_fallback,
 )
-from sqlalchemy.exc import IntegrityError
-
-from app.config import settings
 
 router = APIRouter()
 

@@ -1,6 +1,8 @@
 """QR code image serving endpoint."""
+
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
+
 from app.qr_generator import generate_qr_png
 
 router = APIRouter(prefix="/api", tags=["qr"])

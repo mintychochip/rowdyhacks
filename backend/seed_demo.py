@@ -1,11 +1,14 @@
 """Seed demo data: create org + user + hackathon + accepted registration with QR."""
+
 import asyncio
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
+
 from sqlalchemy import select
+
+from app.auth import create_qr_token, hash_password
 from app.database import async_session
-from app.models import User, Hackathon, Registration, RegistrationStatus, UserRole
-from app.auth import hash_password, create_access_token, create_qr_token
+from app.models import Hackathon, Registration, RegistrationStatus, User, UserRole
 
 
 async def seed():
@@ -51,8 +54,8 @@ async def seed():
         hack = Hackathon(
             id=uuid.uuid4(),
             name="Demo Hack",
-            start_date=datetime(2026, 5, 1, tzinfo=timezone.utc),
-            end_date=datetime(2026, 5, 8, tzinfo=timezone.utc),
+            start_date=datetime(2026, 5, 1, tzinfo=UTC),
+            end_date=datetime(2026, 5, 8, tzinfo=UTC),
             organizer_id=org.id,
         )
         db.add(hack)
@@ -67,16 +70,20 @@ async def seed():
             team_name="Dream Team",
             team_members=["Alice", "Bob", "Charlie"],
             qr_token=create_qr_token(
-                registration_id="", user_id=str(user.id), hackathon_id=str(hack.id),
+                registration_id="",
+                user_id=str(user.id),
+                hackathon_id=str(hack.id),
                 hackathon_end=hack.end_date,
             ),
-            registered_at=datetime.now(timezone.utc),
-            accepted_at=datetime.now(timezone.utc),
+            registered_at=datetime.now(UTC),
+            accepted_at=datetime.now(UTC),
         )
         # Fix qr_token with actual reg id
         reg.qr_token = create_qr_token(
-            registration_id=str(reg.id), user_id=str(user.id),
-            hackathon_id=str(hack.id), hackathon_end=hack.end_date,
+            registration_id=str(reg.id),
+            user_id=str(user.id),
+            hackathon_id=str(hack.id),
+            hackathon_end=hack.end_date,
         )
         db.add(reg)
         await db.commit()

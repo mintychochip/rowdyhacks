@@ -1,0 +1,36 @@
+target-version = "py311"
+line-length = 120
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "E722",   # bare except (existing pattern throughout codebase)
+    "E741",   # ambiguous variable name
+    "B008",   # function calls in argument defaults (FastAPI Depends pattern)
+    "UP007",  # use X | Y for unions (keep Optional for readability)
+    "UP042",  # replace with PEP 695 type alias (keep backward compat)
+    "F821",   # undefined name (false positives on forward refs / deferred imports)
+    "SIM102", # collapsible if (readability preference)
+    "SIM105", # use contextlib.suppress (readability preference)
+    "SIM108", # use ternary (readability preference)
+    "E402",   # module-level import not at top (deferred imports for perf)
+    "B904",   # raise without from in except (existing pattern)
+    "B007",   # unused loop variable (use _ prefix convention)
+    "F841",   # unused variable assignment (existing pattern)
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["B", "SIM", "F841"]
+"__init__.py" = ["F401"]  # re-exports
+
+[format]
+quote-style = "double"

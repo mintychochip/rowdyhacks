@@ -1,7 +1,9 @@
-import pytest
 import tempfile
 from pathlib import Path
 from uuid import uuid4
+
+import pytest
+
 from app.checks.interface import CheckContext, ScrapedData
 from app.checks.submission_history import check_history
 
@@ -37,8 +39,6 @@ async def test_history_readme_mentions_other_hackathon():
 
 @pytest.mark.asyncio
 async def test_history_no_repo():
-    ctx = CheckContext(
-        repo_path=None, scraped=ScrapedData(), submission_id=uuid4()
-    )
+    ctx = CheckContext(repo_path=None, scraped=ScrapedData(), submission_id=uuid4())
     result = await check_history(ctx)
     assert result.score == 0  # can't check without repo

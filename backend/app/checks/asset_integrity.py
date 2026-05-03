@@ -1,6 +1,7 @@
 """Check asset links and required content."""
+
 import httpx
-from pathlib import Path
+
 from app.checks.interface import CheckContext, CheckResult
 from app.config import settings
 
@@ -37,21 +38,15 @@ async def check_assets(context: CheckContext) -> CheckResult:
             try:
                 resp = await client.head(url, follow_redirects=True)
                 if resp.status_code >= 400:
-                    details["broken_links"].append(
-                        {"name": name, "url": url, "status": resp.status_code}
-                    )
+                    details["broken_links"].append({"name": name, "url": url, "status": resp.status_code})
                     score += 20
             except Exception:
-                details["broken_links"].append(
-                    {"name": name, "url": url, "status": "error"}
-                )
+                details["broken_links"].append({"name": name, "url": url, "status": "error"})
                 score += 20
 
     # Check README
     if context.repo_path:
-        readmes = list(context.repo_path.glob("README*")) + list(
-            context.repo_path.glob("readme*")
-        )
+        readmes = list(context.repo_path.glob("README*")) + list(context.repo_path.glob("readme*"))
         if not readmes:
             details["missing_assets"].append("README")
             score += 20

@@ -1,25 +1,28 @@
 """Tests for participant registration routes (Tasks 2.2-2.4)."""
+
 import uuid
+from datetime import UTC, datetime
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import User, Hackathon, UserRole, Hackathon
-from datetime import datetime, timezone
+
+from app.models import Hackathon, User, UserRole
 
 
 async def _create_user(db, email, name, password="password123", role=UserRole.participant):
     from app.auth import hash_password
-    user = User(id=uuid.uuid4(), email=email, name=name,
-                password_hash=hash_password(password), role=role)
+
+    user = User(id=uuid.uuid4(), email=email, name=name, password_hash=hash_password(password), role=role)
     db.add(user)
     await db.commit()
     return user
 
 
 async def _create_hackathon(db, name, organizer):
-    h = Hackathon(id=uuid.uuid4(), name=name, organizer_id=organizer.id,
-                  start_date=datetime.now(timezone.utc),
-                  end_date=datetime.now(timezone.utc))
+    h = Hackathon(
+        id=uuid.uuid4(), name=name, organizer_id=organizer.id, start_date=datetime.now(UTC), end_date=datetime.now(UTC)
+    )
     db.add(h)
     await db.commit()
     return h
@@ -27,6 +30,7 @@ async def _create_hackathon(db, name, organizer):
 
 def _auth_headers(user):
     from app.auth import create_access_token
+
     token = create_access_token(str(user.id), user.role.value)
     return {"Authorization": f"Bearer {token}"}
 

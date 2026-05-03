@@ -1,10 +1,10 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
 from uuid import UUID
 
+from pydantic import BaseModel, EmailStr, Field
 
 # --- Auth Schemas ---
+
 
 class UserRegister(BaseModel):
     email: EmailStr
@@ -34,6 +34,7 @@ class UserResponse(BaseModel):
 
 # --- Check / Submission Schemas ---
 
+
 class SubmitRequest(BaseModel):
     url: str = Field(..., description="Devpost or GitHub URL to check")
     hackathon_id: UUID | None = Field(default=None, description="Optional hackathon to associate submission with")
@@ -42,13 +43,13 @@ class SubmitRequest(BaseModel):
 class SubmissionResponse(BaseModel):
     id: UUID
     devpost_url: str
-    github_url: Optional[str] = None
-    project_title: Optional[str] = None
+    github_url: str | None = None
+    project_title: str | None = None
     status: str
-    risk_score: Optional[int] = None
-    verdict: Optional[str] = None
+    risk_score: int | None = None
+    verdict: str | None = None
     created_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     check_results: list = []
 
     model_config = {"from_attributes": True}
@@ -56,44 +57,46 @@ class SubmissionResponse(BaseModel):
 
 # --- Hackathon Schemas ---
 
+
 class HackathonCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=300)
     start_date: datetime
     end_date: datetime
-    description: Optional[str] = None
-    application_deadline: Optional[datetime] = None
-    max_participants: Optional[int] = Field(None, ge=1)
+    description: str | None = None
+    application_deadline: datetime | None = None
+    max_participants: int | None = Field(None, ge=1)
     waitlist_enabled: bool = False
-    venue_address: Optional[str] = None
-    parking_info: Optional[str] = None
-    wifi_ssid: Optional[str] = None
-    wifi_password: Optional[str] = None
-    discord_invite_url: Optional[str] = None
-    devpost_url: Optional[str] = None
-    schedule: Optional[list[dict]] = None  # [{"time": "", "title": "", "description": ""}]
+    venue_address: str | None = None
+    parking_info: str | None = None
+    wifi_ssid: str | None = None
+    wifi_password: str | None = None
+    discord_invite_url: str | None = None
+    devpost_url: str | None = None
+    schedule: list[dict] | None = None  # [{"time": "", "title": "", "description": ""}]
 
 
 # --- Registration Schemas ---
 
+
 class RegistrationCreate(BaseModel):
-    team_name: Optional[str] = Field(None, max_length=200)
-    team_members: Optional[list[str]] = None
-    linkedin_url: Optional[str] = Field(None, max_length=500)
-    github_url: Optional[str] = Field(None, max_length=500)
-    resume_url: Optional[str] = Field(None, max_length=500)
-    experience_level: Optional[str] = Field(None, max_length=50)
-    t_shirt_size: Optional[str] = Field(None, max_length=10)
-    phone: Optional[str] = Field(None, max_length=20)
-    dietary_restrictions: Optional[str] = Field(None, max_length=500)
-    what_build: Optional[str] = None
-    why_participate: Optional[str] = None
-    age: Optional[int] = None
-    school: Optional[str] = Field(None, max_length=200)
-    major: Optional[str] = Field(None, max_length=200)
-    pronouns: Optional[str] = Field(None, max_length=50)
-    skills: Optional[list[str]] = None
-    emergency_contact_name: Optional[str] = Field(None, max_length=200)
-    emergency_contact_phone: Optional[str] = Field(None, max_length=30)
+    team_name: str | None = Field(None, max_length=200)
+    team_members: list[str] | None = None
+    linkedin_url: str | None = Field(None, max_length=500)
+    github_url: str | None = Field(None, max_length=500)
+    resume_url: str | None = Field(None, max_length=500)
+    experience_level: str | None = Field(None, max_length=50)
+    t_shirt_size: str | None = Field(None, max_length=10)
+    phone: str | None = Field(None, max_length=20)
+    dietary_restrictions: str | None = Field(None, max_length=500)
+    what_build: str | None = None
+    why_participate: str | None = None
+    age: int | None = None
+    school: str | None = Field(None, max_length=200)
+    major: str | None = Field(None, max_length=200)
+    pronouns: str | None = Field(None, max_length=50)
+    skills: list[str] | None = None
+    emergency_contact_name: str | None = Field(None, max_length=200)
+    emergency_contact_phone: str | None = Field(None, max_length=30)
 
 
 class RegistrationResponse(BaseModel):
@@ -101,31 +104,31 @@ class RegistrationResponse(BaseModel):
     hackathon_id: UUID
     user_id: UUID
     status: str
-    team_name: Optional[str] = None
-    team_members: Optional[list[str]] = None
-    linkedin_url: Optional[str] = None
-    github_url: Optional[str] = None
-    resume_url: Optional[str] = None
-    experience_level: Optional[str] = None
-    t_shirt_size: Optional[str] = None
-    phone: Optional[str] = None
-    dietary_restrictions: Optional[str] = None
-    what_build: Optional[str] = None
-    why_participate: Optional[str] = None
-    age: Optional[int] = None
-    school: Optional[str] = None
-    major: Optional[str] = None
-    pronouns: Optional[str] = None
-    skills: Optional[list[str]] = None
-    emergency_contact_name: Optional[str] = None
-    emergency_contact_phone: Optional[str] = None
-    qr_token: Optional[str] = None  # included only for accepted own registrations
+    team_name: str | None = None
+    team_members: list[str] | None = None
+    linkedin_url: str | None = None
+    github_url: str | None = None
+    resume_url: str | None = None
+    experience_level: str | None = None
+    t_shirt_size: str | None = None
+    phone: str | None = None
+    dietary_restrictions: str | None = None
+    what_build: str | None = None
+    why_participate: str | None = None
+    age: int | None = None
+    school: str | None = None
+    major: str | None = None
+    pronouns: str | None = None
+    skills: list[str] | None = None
+    emergency_contact_name: str | None = None
+    emergency_contact_phone: str | None = None
+    qr_token: str | None = None  # included only for accepted own registrations
     registered_at: datetime
-    accepted_at: Optional[datetime] = None
-    checked_in_at: Optional[datetime] = None
+    accepted_at: datetime | None = None
+    checked_in_at: datetime | None = None
     # Joined fields for organizer view
-    user_name: Optional[str] = None
-    user_email: Optional[str] = None
+    user_name: str | None = None
+    user_email: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -139,9 +142,10 @@ class RegistrationListResponse(BaseModel):
 
 # --- Judging Schemas ---
 
+
 class CriterionCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = Field(None, max_length=500)
+    description: str | None = Field(None, max_length=500)
     max_score: int = Field(default=10, ge=1, le=100)
     weight: int = Field(..., ge=0, le=100)  # percentage integer
     sort_order: int = 0
@@ -167,6 +171,7 @@ class JudgingResultsResponse(BaseModel):
 
 # --- Announcement Schemas ---
 
+
 class AnnouncementCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     content: str = Field(..., min_length=1)
@@ -187,9 +192,10 @@ class AnnouncementResponse(BaseModel):
 
 # --- Conflict of Interest Schemas ---
 
+
 class ConflictOfInterestCreate(BaseModel):
     submission_id: UUID
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class ConflictOfInterestResponse(BaseModel):
@@ -197,7 +203,7 @@ class ConflictOfInterestResponse(BaseModel):
     judge_id: UUID
     hackathon_id: UUID
     submission_id: UUID
-    reason: Optional[str] = None
+    reason: str | None = None
     declared_at: datetime
 
     model_config = {"from_attributes": True}

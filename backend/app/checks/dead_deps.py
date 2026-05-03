@@ -1,7 +1,8 @@
 """Check if declared dependencies are actually imported in the codebase."""
+
 import json
 import re
-from pathlib import Path
+
 from app.checks.interface import CheckContext, CheckResult
 
 
@@ -9,8 +10,11 @@ async def check_dead_deps(context: CheckContext) -> CheckResult:
     """Find dependencies listed in package files that are never imported."""
     if not context.repo_path:
         return CheckResult(
-            check_name="dead-dependencies", check_category="devpost_alignment",
-            score=20, status="pass", details={"reason": "No repo available"},
+            check_name="dead-dependencies",
+            check_category="devpost_alignment",
+            score=20,
+            status="pass",
+            details={"reason": "No repo available"},
         )
 
     repo = context.repo_path
@@ -24,7 +28,7 @@ async def check_dead_deps(context: CheckContext) -> CheckResult:
         try:
             data = json.loads(pkg_json.read_text())
             for key in ("dependencies", "devDependencies", "peerDependencies"):
-                for dep in (data.get(key) or {}):
+                for dep in data.get(key) or {}:
                     declared.append(dep.lower())
         except Exception:
             pass
@@ -47,8 +51,11 @@ async def check_dead_deps(context: CheckContext) -> CheckResult:
 
     if not declared:
         return CheckResult(
-            check_name="dead-dependencies", check_category="devpost_alignment",
-            score=0, status="pass", details={"reason": "No package files found"},
+            check_name="dead-dependencies",
+            check_category="devpost_alignment",
+            score=0,
+            status="pass",
+            details={"reason": "No package files found"},
         )
     declared = list(set(declared))  # dedup
 
@@ -79,9 +86,9 @@ async def check_dead_deps(context: CheckContext) -> CheckResult:
         patterns = [
             re.escape(dep),  # exact package name in import/require
             re.escape(normalized),  # normalized
-            f'from ["\']{re.escape(dep)}',  # python import
-            f'import {re.escape(dep)}',  # python import
-            f'require\\(["\'].*{re.escape(dep)}',  # JS require
+            f"from [\"']{re.escape(dep)}",  # python import
+            f"import {re.escape(dep)}",  # python import
+            f"require\\([\"'].*{re.escape(dep)}",  # JS require
         ]
         found = False
         for pat in patterns:
@@ -98,7 +105,9 @@ async def check_dead_deps(context: CheckContext) -> CheckResult:
     if len(missing) > 0:
         if pct_dead > 50:
             score = 40
-            evidence.append(f"{pct_dead}% of dependencies ({len(missing)}/{len(declared)}) never imported — likely inflated tech stack")
+            evidence.append(
+                f"{pct_dead}% of dependencies ({len(missing)}/{len(declared)}) never imported — likely inflated tech stack"
+            )
         elif pct_dead > 25:
             score = 25
             evidence.append(f"{pct_dead}% of dependencies ({len(missing)}/{len(declared)}) never imported")
@@ -109,8 +118,10 @@ async def check_dead_deps(context: CheckContext) -> CheckResult:
     status = "pass" if score <= 30 else "warn" if score <= 60 else "fail"
 
     return CheckResult(
-        check_name="dead-dependencies", check_category="devpost_alignment",
-        score=score, status=status,
+        check_name="dead-dependencies",
+        check_category="devpost_alignment",
+        score=score,
+        status=status,
         details={
             "total_declared": len(declared),
             "imported": len(imports_found),

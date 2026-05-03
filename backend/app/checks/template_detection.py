@@ -1,7 +1,8 @@
 """Detect unmodified or minimally modified project templates."""
-import json
+
 import re
 from pathlib import Path
+
 from app.checks.interface import CheckContext, CheckResult
 
 # Template signatures - known fingerprints of common boilerplate
@@ -94,10 +95,10 @@ def _count_meaningful_lines(repo: Path) -> tuple[int, int]:
     """Count total lines vs meaningful (non-comment, non-empty) lines."""
     total = 0
     meaningful = 0
-    
+
     _SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", "dist", "build"}
     _CODE_EXTS = {".py", ".js", ".ts", ".jsx", ".tsx", ".go", ".rs", ".java", ".c", ".cpp", ".rb", ".php"}
-    
+
     for f in repo.rglob("*"):
         if not f.is_file():
             continue
@@ -105,30 +106,30 @@ def _count_meaningful_lines(repo: Path) -> tuple[int, int]:
             continue
         if f.suffix not in _CODE_EXTS:
             continue
-        
+
         try:
             content = f.read_text(errors="ignore")
-            lines = content.split('\n')
+            lines = content.split("\n")
             for line in lines:
                 total += 1
                 stripped = line.strip()
                 # Skip empty lines and common comment patterns
-                if stripped and not stripped.startswith(('#', '//', '/*', '*', '*/', '<!--')):
+                if stripped and not stripped.startswith(("#", "//", "/*", "*", "*/", "<!--")):
                     meaningful += 1
         except:
             pass
-    
+
     return total, meaningful
 
 
 def _check_template_markers(repo: Path) -> dict:
     """Check for template-specific markers."""
     results = {}
-    
+
     for template_name, config in TEMPLATE_PATTERNS.items():
         matches = 0
         total_checks = 0
-        
+
         # Check for marker strings in files
         markers = config.get("markers", [])
         for f in repo.rglob("*"):
@@ -141,9 +142,9 @@ def _check_template_markers(repo: Path) -> dict:
                         matches += 1
             except:
                 pass
-        
+
         total_checks += len(markers)
-        
+
         # Check for expected files
         expected_files = config.get("files", [])
         files_found = 0
@@ -158,22 +159,22 @@ def _check_template_markers(repo: Path) -> dict:
             else:
                 if (repo / expected).exists():
                     files_found += 1
-        
+
         total_checks += len(expected_files)
         matches += files_found
-        
+
         # Calculate confidence
         if total_checks > 0:
             confidence = matches / total_checks
         else:
             confidence = 0
-        
+
         results[template_name] = {
             "confidence": confidence,
             "matches": matches,
             "total_checks": total_checks,
         }
-    
+
     return results
 
 
@@ -181,27 +182,27 @@ def _check_boilerplate_ratio(repo: Path) -> float:
     """Calculate ratio of boilerplate to custom code."""
     total_lines = 0
     boilerplate_lines = 0
-    
+
     _SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", "dist", "build"}
-    
+
     BOILERPLACE_PATTERNS = [
         r'^\s*import\s+React\s+from\s+[\'"]react[\'"]\s*$',
         r'^\s*import\s+\{\s*useState\s*,\s*useEffect\s*\}\s+from\s+[\'"]react[\'"]\s*$',
-        r'^\s*def\s+main\(\):\s*pass\s*$',
+        r"^\s*def\s+main\(\):\s*pass\s*$",
         r'^\s*if\s+__name__\s*==\s*[\'"]__main__[\'"]:\s*pass\s*$',
-        r'^\s*app\.listen\(.*PORT.*\)\s*$',
-        r'^\s*export\s+default\s+function\s+\w+\(\)\s*\{\s*$',
+        r"^\s*app\.listen\(.*PORT.*\)\s*$",
+        r"^\s*export\s+default\s+function\s+\w+\(\)\s*\{\s*$",
     ]
-    
+
     for f in repo.rglob("*"):
         if not f.is_file():
             continue
         if any(p in _SKIP_DIRS for p in f.relative_to(repo).parts):
             continue
-        
+
         try:
             content = f.read_text(errors="ignore")
-            lines = content.split('\n')
+            lines = content.split("\n")
             for line in lines:
                 total_lines += 1
                 for pattern in BOILERPLACE_PATTERNS:
@@ -210,10 +211,10 @@ def _check_boilerplate_ratio(repo: Path) -> float:
                         break
         except:
             pass
-    
+
     if total_lines == 0:
         return 0
-    
+
     return boilerplate_lines / total_lines
 
 
@@ -227,10 +228,10 @@ async def check_template(context: CheckContext) -> CheckResult:
             status="pass",
             details={"reason": "No repo available"},
         )
-    
+
     # Count lines
     total_lines, meaningful_lines = _count_meaningful_lines(context.repo_path)
-    
+
     if total_lines == 0:
         return CheckResult(
             check_name="template-detection",
@@ -239,10 +240,10 @@ async def check_template(context: CheckContext) -> CheckResult:
             status="warn",
             details={"reason": "No code files found"},
         )
-    
+
     # Check template signatures
     template_results = _check_template_markers(context.repo_path)
-    
+
     # Find best matching template
     best_template = None
     best_confidence = 0
@@ -250,10 +251,10 @@ async def check_template(context: CheckContext) -> CheckResult:
         if result["confidence"] > best_confidence:
             best_confidence = result["confidence"]
             best_template = name
-    
+
     # Check boilerplate ratio
     boilerplate_ratio = _check_boilerplate_ratio(context.repo_path)
-    
+
     score = 0
     details = {
         "total_lines": total_lines,
@@ -265,7 +266,7 @@ async def check_template(context: CheckContext) -> CheckResult:
         "all_templates": template_results,
     }
     evidence = []
-    
+
     # High template confidence = high score (suspicious)
     if best_confidence > 0.7:
         score += 50
@@ -273,7 +274,7 @@ async def check_template(context: CheckContext) -> CheckResult:
     elif best_confidence > 0.5:
         score += 30
         evidence.append(f"Possible match for '{best_template}' template ({best_confidence:.0%} confidence)")
-    
+
     # Very few meaningful lines
     if meaningful_lines < 50:
         score += 40
@@ -281,18 +282,18 @@ async def check_template(context: CheckContext) -> CheckResult:
     elif meaningful_lines < 100:
         score += 20
         evidence.append(f"Only {meaningful_lines} meaningful lines — minimal customization")
-    
+
     # Low meaningful ratio (lots of comments/empty lines = suspicious)
     meaningful_ratio = details["meaningful_ratio"]
     if meaningful_ratio < 0.5:
         score += 15
         evidence.append(f"Only {meaningful_ratio:.0%} of lines are actual code")
-    
+
     # High boilerplate ratio
     if boilerplate_ratio > 0.3:
         score += 20
         evidence.append(f"High boilerplate ratio ({boilerplate_ratio:.0%}) — common import patterns")
-    
+
     # Check for default README
     readme_paths = list(context.repo_path.glob("README*")) + list(context.repo_path.glob("readme*"))
     has_custom_readme = False
@@ -306,10 +307,10 @@ async def check_template(context: CheckContext) -> CheckResult:
         if any(marker in content for marker in ["getting started with create react app", "next.js project"]):
             score += 15
             evidence.append("README appears to be default template")
-    
+
     score = min(100, score)
     status = "pass" if score <= 30 else "warn" if score <= 60 else "fail"
-    
+
     return CheckResult(
         check_name="template-detection",
         check_category="devpost_alignment",

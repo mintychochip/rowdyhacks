@@ -1,12 +1,15 @@
 """Tracks management routes."""
+
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Header
+
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.auth import decode_token
+from app.cache import cache_delete_pattern, cached
 from app.database import get_db
 from app.models import Hackathon, Track, User, UserRole
-from app.auth import decode_token
-from app.cache import cached, cache_delete_pattern
 
 router = APIRouter(prefix="/api/hackathons", tags=["tracks"])
 
@@ -177,12 +180,11 @@ def seed_tracks(hackathon_id: uuid.UUID) -> list[Track]:
 
 # ── Routes ────────────────────────────────────────────────
 
+
 @router.get("/{hackathon_id}/tracks")
 @cached(ttl_seconds=TRACKS_CACHE_TTL, key_prefix=CACHE_PFX)
 async def list_tracks(hackathon_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Track).where(Track.hackathon_id == hackathon_id).order_by(Track.created_at)
-    )
+    result = await db.execute(select(Track).where(Track.hackathon_id == hackathon_id).order_by(Track.created_at))
     tracks = result.scalars().all()
     return {"hackathon_id": hackathon_id, "tracks": [_track_to_response(t) for t in tracks]}
 
@@ -223,9 +225,7 @@ async def update_track(
     db: AsyncSession = Depends(get_db),
 ):
     await _require_organizer(hackathon_id, db, authorization)
-    result = await db.execute(
-        select(Track).where(Track.id == track_id, Track.hackathon_id == hackathon_id)
-    )
+    result = await db.execute(select(Track).where(Track.id == track_id, Track.hackathon_id == hackathon_id))
     track = result.scalar_one_or_none()
     if not track:
         raise HTTPException(status_code=404, detail="Track not found")
@@ -247,9 +247,7 @@ async def delete_track(
     db: AsyncSession = Depends(get_db),
 ):
     await _require_organizer(hackathon_id, db, authorization)
-    result = await db.execute(
-        select(Track).where(Track.id == track_id, Track.hackathon_id == hackathon_id)
-    )
+    result = await db.execute(select(Track).where(Track.id == track_id, Track.hackathon_id == hackathon_id))
     track = result.scalar_one_or_none()
     if not track:
         raise HTTPException(status_code=404, detail="Track not found")

@@ -1,10 +1,13 @@
 """Tests for the submission discovery crawler (submission_discovery.py)."""
+
 import uuid
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
 from sqlalchemy import select
-from app.models import CrawledHackathon, CrawledProject
+
 from app.crawler.submission_discovery import discover_submissions
+from app.models import CrawledHackathon, CrawledProject
 
 
 def _make_mock_page(links_data: list[str]):
@@ -14,9 +17,7 @@ def _make_mock_page(links_data: list[str]):
     mock_page.goto = AsyncMock()
     mock_page.wait_for_selector = AsyncMock()
     mock_page.add_init_script = AsyncMock()
-    mock_page.wait_for_function = AsyncMock(
-        side_effect=Exception("no more content")
-    )
+    mock_page.wait_for_function = AsyncMock(side_effect=Exception("no more content"))
     return mock_page
 
 
@@ -45,11 +46,13 @@ def _make_mock_session(db_session):
 async def test_discover_submissions_inserts_urls(db_session):
     """New submission URLs should be inserted."""
     hackathon_id = uuid.uuid4()
-    db_session.add(CrawledHackathon(
-        id=hackathon_id,
-        devpost_url="https://test-subs-{}.devpost.com".format(uuid.uuid4().hex[:6]),
-        name="Test Fest",
-    ))
+    db_session.add(
+        CrawledHackathon(
+            id=hackathon_id,
+            devpost_url=f"https://test-subs-{uuid.uuid4().hex[:6]}.devpost.com",
+            name="Test Fest",
+        )
+    )
     await db_session.commit()
 
     links = [
@@ -65,9 +68,7 @@ async def test_discover_submissions_inserts_urls(db_session):
         result = await discover_submissions(hackathon_id, "https://test-subs.devpost.com")
         assert len(result) == 2
 
-    rows = await db_session.execute(
-        select(CrawledProject).where(CrawledProject.hackathon_id == hackathon_id)
-    )
+    rows = await db_session.execute(select(CrawledProject).where(CrawledProject.hackathon_id == hackathon_id))
     assert len(rows.scalars().all()) == 2
 
 
@@ -75,19 +76,23 @@ async def test_discover_submissions_inserts_urls(db_session):
 async def test_discover_submissions_deduplicates(db_session):
     """Known URLs should be skipped."""
     hackathon_id = uuid.uuid4()
-    db_session.add(CrawledHackathon(
-        id=hackathon_id,
-        devpost_url="https://test-subs-{}.devpost.com".format(uuid.uuid4().hex[:6]),
-        name="Test Fest",
-    ))
+    db_session.add(
+        CrawledHackathon(
+            id=hackathon_id,
+            devpost_url=f"https://test-subs-{uuid.uuid4().hex[:6]}.devpost.com",
+            name="Test Fest",
+        )
+    )
     await db_session.commit()
 
     existing_url = "https://devpost.com/software/existing"
-    db_session.add(CrawledProject(
-        id=uuid.uuid4(),
-        devpost_url=existing_url,
-        hackathon_id=hackathon_id,
-    ))
+    db_session.add(
+        CrawledProject(
+            id=uuid.uuid4(),
+            devpost_url=existing_url,
+            hackathon_id=hackathon_id,
+        )
+    )
     await db_session.commit()
 
     links = [existing_url, "https://devpost.com/software/new-project"]
@@ -105,11 +110,13 @@ async def test_discover_submissions_deduplicates(db_session):
 async def test_discover_submissions_empty_page(db_session):
     """Empty gallery should return no submissions."""
     hackathon_id = uuid.uuid4()
-    db_session.add(CrawledHackathon(
-        id=hackathon_id,
-        devpost_url="https://test-subs-{}.devpost.com".format(uuid.uuid4().hex[:6]),
-        name="Test Fest",
-    ))
+    db_session.add(
+        CrawledHackathon(
+            id=hackathon_id,
+            devpost_url=f"https://test-subs-{uuid.uuid4().hex[:6]}.devpost.com",
+            name="Test Fest",
+        )
+    )
     await db_session.commit()
 
     mock_page = _make_mock_page([])

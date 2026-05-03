@@ -1,18 +1,19 @@
 """Email service with retry logic and logging."""
+
 import asyncio
-import uuid
-import httpx
 import smtplib
-from email.mime.text import MIMEText
+import uuid
+from datetime import UTC, datetime
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timezone
+from email.mime.text import MIMEText
 from typing import Any
+
+import httpx
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 
-from app.models import EmailLog, Registration, Hackathon, User
-from app.config import EMAIL_PROVIDER, SENDGRID_API_KEY, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, EMAIL_FROM
-
+from app.config import EMAIL_FROM, EMAIL_PROVIDER, SENDGRID_API_KEY, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_USER
+from app.models import EmailLog
 
 # Email templates
 EMAIL_TEMPLATES = {
@@ -24,7 +25,7 @@ Your application to {hackathon_name} has been received! We'll review it and get 
 
 Best,
 {hackathon_name} Team
-"""
+""",
     },
     "status_accepted": {
         "subject": "You're In! {hackathon_name} Application Accepted",
@@ -40,7 +41,7 @@ Location: {venue}
 
 See you there!
 {hackathon_name} Team
-"""
+""",
     },
     "status_waitlisted": {
         "subject": "You're on the Waitlist - {hackathon_name}",
@@ -54,7 +55,7 @@ If a spot opens up, we'll notify you immediately. Hang tight!
 
 Best,
 {hackathon_name} Team
-"""
+""",
     },
     "status_rejected": {
         "subject": "Update on your {hackathon_name} Application",
@@ -66,7 +67,7 @@ We encourage you to apply to future events!
 
 Best,
 {hackathon_name} Team
-"""
+""",
     },
     "spot_offered": {
         "subject": "Spot Available! Accept by {deadline} - {hackathon_name}",
@@ -82,7 +83,7 @@ If you don't respond within 24 hours, we'll offer the spot to the next person.
 
 Best,
 {hackathon_name} Team
-"""
+""",
     },
     "event_reminder": {
         "subject": "Tomorrow: {hackathon_name} Starts!",
@@ -94,8 +95,8 @@ Check-in opens at {checkin_time}. Don't forget to bring your QR code.
 
 See you soon!
 {hackathon_name} Team
-"""
-    }
+""",
+    },
 }
 
 
@@ -105,7 +106,7 @@ async def send_email(
     context: dict[str, Any],
     registration_id: uuid.UUID | None = None,
     hackathon_id: uuid.UUID | None = None,
-    db: AsyncSession | None = None
+    db: AsyncSession | None = None,
 ) -> bool:
     """Send an email with retry logic and logging."""
     template = EMAIL_TEMPLATES.get(email_type)
@@ -125,7 +126,7 @@ async def send_email(
             email_type=email_type,
             recipient_email=to_email,
             status="pending",
-            retry_count=0
+            retry_count=0,
         )
         db.add(email_log)
         await db.flush()
@@ -142,7 +143,7 @@ async def send_email(
             # Success
             if email_log:
                 email_log.status = "sent"
-                email_log.sent_at = datetime.now(timezone.utc)
+                email_log.sent_at = datetime.now(UTC)
                 await db.commit()
             return True
 
@@ -151,7 +152,7 @@ async def send_email(
             if email_log:
                 email_log.retry_count = attempt + 1
             if attempt < 2:  # Don't sleep on last attempt
-                await asyncio.sleep(2 ** attempt)  # Exponential backoff: 1s, 2s
+                await asyncio.sleep(2**attempt)  # Exponential backoff: 1s, 2s
 
     # All retries failed
     if email_log:
@@ -175,8 +176,8 @@ async def _send_sendgrid(to_email: str, subject: str, body: str) -> None:
                 "personalizations": [{"to": [{"email": to_email}]}],
                 "from": {"email": EMAIL_FROM},
                 "subject": subject,
-                "content": [{"type": "text/plain", "value": body}]
-            }
+                "content": [{"type": "text/plain", "value": body}],
+            },
         )
         response.raise_for_status()
 
@@ -189,10 +190,10 @@ async def _send_smtp(to_email: str, subject: str, body: str) -> None:
     # Run blocking SMTP in thread pool
     def _send():
         msg = MIMEMultipart()
-        msg['From'] = EMAIL_FROM
-        msg['To'] = to_email
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain'))
+        msg["From"] = EMAIL_FROM
+        msg["To"] = to_email
+        msg["Subject"] = subject
+        msg.attach(MIMEText(body, "plain"))
 
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
             server.starttls()
@@ -203,12 +204,7 @@ async def _send_smtp(to_email: str, subject: str, body: str) -> None:
     await loop.run_in_executor(None, _send)
 
 
-async def send_email_with_retry(
-    to_email: str,
-    email_type: str,
-    context: dict[str, Any],
-    max_retries: int = 3
-) -> bool:
+async def send_email_with_retry(to_email: str, email_type: str, context: dict[str, Any], max_retries: int = 3) -> bool:
     """Send email without DB logging (for background jobs)."""
     template = EMAIL_TEMPLATES.get(email_type)
     if not template:
@@ -226,7 +222,7 @@ async def send_email_with_retry(
             return True
         except Exception:
             if attempt < max_retries - 1:
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
     return False
 
 

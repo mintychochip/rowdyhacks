@@ -1,5 +1,7 @@
 """Cross-reference Devpost team members against actual git commit authors."""
+
 import subprocess
+
 from app.checks.interface import CheckContext, CheckResult
 
 
@@ -18,7 +20,8 @@ async def check_contributors(context: CheckContext) -> CheckResult:
         return CheckResult(
             check_name="contributor-audit",
             check_category="submission_history",
-            score=30, status="warn",
+            score=30,
+            status="warn",
             details={"reason": "No repo available"},
         )
 
@@ -26,7 +29,8 @@ async def check_contributors(context: CheckContext) -> CheckResult:
         return CheckResult(
             check_name="contributor-audit",
             check_category="submission_history",
-            score=0, status="pass",
+            score=0,
+            status="pass",
             details={"reason": "No team member data from Devpost"},
         )
 
@@ -37,7 +41,9 @@ async def check_contributors(context: CheckContext) -> CheckResult:
         try:
             result = subprocess.run(
                 ["git", "-C", str(repo), "log", "--format=%an|%ae|%cn|%ce"],
-                capture_output=True, text=True, timeout=15,
+                capture_output=True,
+                text=True,
+                timeout=15,
             )
             if result.returncode == 0:
                 all_lines.extend(result.stdout.strip().split("\n"))
@@ -47,8 +53,11 @@ async def check_contributors(context: CheckContext) -> CheckResult:
 
     if not all_lines:
         return CheckResult(
-            check_name="contributor-audit", check_category="submission_history",
-            score=20, status="pass", details={"reason": "Git log failed across all repos"},
+            check_name="contributor-audit",
+            check_category="submission_history",
+            score=20,
+            status="pass",
+            details={"reason": "Git log failed across all repos"},
         )
 
     # Parse authors: count commits per author + extract names and emails
@@ -155,11 +164,15 @@ async def check_contributors(context: CheckContext) -> CheckResult:
     if ghost_count > 0:
         score += min(ghost_count * 15, 50)
         ghost_pcts = {g: commit_pct.get(g, 0) for g in details["ghost_contributors"]}
-        evidence.append(f"Found {ghost_count} repo contributor(s) not on Devpost: {', '.join(f'{g} ({ghost_pcts.get(g,0)}%)' for g in details['ghost_contributors'][:5])}")
+        evidence.append(
+            f"Found {ghost_count} repo contributor(s) not on Devpost: {', '.join(f'{g} ({ghost_pcts.get(g, 0)}%)' for g in details['ghost_contributors'][:5])}"
+        )
 
     if mia_count > 0:
         score += min(mia_count * 20, 40)
-        evidence.append(f"Devpost lists {mia_count} team member(s) with no commits: {', '.join(details['mia_members'])}")
+        evidence.append(
+            f"Devpost lists {mia_count} team member(s) with no commits: {', '.join(details['mia_members'])}"
+        )
 
     # Contribution imbalance: one person dominates
     if commit_pct and team_names:
@@ -170,7 +183,9 @@ async def check_contributors(context: CheckContext) -> CheckResult:
             evidence.append(f"{max_author} wrote {max_pct}% of commits — team imbalance (1 person did all the work)")
         elif max_pct >= 80 and len(team_names) >= 3:
             score += 15
-            evidence.append(f"{max_author} wrote {max_pct}% of commits — heavily imbalanced ({len(team_names)} members listed)")
+            evidence.append(
+                f"{max_author} wrote {max_pct}% of commits — heavily imbalanced ({len(team_names)} members listed)"
+            )
 
     # All commits from one person but team claims multiple members
     if len(raw_authors) == 1 and len(team_names) > 2:
@@ -184,6 +199,8 @@ async def check_contributors(context: CheckContext) -> CheckResult:
     return CheckResult(
         check_name="contributor-audit",
         check_category="submission_history",
-        score=score, status=status,
-        details=details, evidence=evidence,
+        score=score,
+        status=status,
+        details=details,
+        evidence=evidence,
     )

@@ -1,6 +1,6 @@
 from apscheduler.triggers.cron import CronTrigger
-from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -86,34 +86,13 @@ class Settings(BaseSettings):
         return v
 
     # Email configuration
-    email_provider: str = Field(
-        default="smtp",
-        description='Email provider: "sendgrid" or "smtp"'
-    )
-    sendgrid_api_key: str = Field(
-        default="",
-        description="SendGrid API key for email sending"
-    )
-    smtp_host: str = Field(
-        default="",
-        description="SMTP server hostname"
-    )
-    smtp_port: int = Field(
-        default=587,
-        description="SMTP server port"
-    )
-    smtp_user: str = Field(
-        default="",
-        description="SMTP username"
-    )
-    smtp_password: str = Field(
-        default="",
-        description="SMTP password"
-    )
-    email_from: str = Field(
-        default="noreply@rowdyhacks.io",
-        description="Default sender email address"
-    )
+    email_provider: str = Field(default="smtp", description='Email provider: "sendgrid" or "smtp"')
+    sendgrid_api_key: str = Field(default="", description="SendGrid API key for email sending")
+    smtp_host: str = Field(default="", description="SMTP server hostname")
+    smtp_port: int = Field(default=587, description="SMTP server port")
+    smtp_user: str = Field(default="", description="SMTP username")
+    smtp_password: str = Field(default="", description="SMTP password")
+    email_from: str = Field(default="noreply@rowdyhacks.io", description="Default sender email address")
 
     model_config = {"env_prefix": "HACKVERIFY_", "env_file": ".env"}
 
