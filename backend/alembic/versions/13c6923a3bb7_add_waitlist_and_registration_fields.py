@@ -85,9 +85,12 @@ def upgrade() -> None:
         fk_type = sa.String(36)
         server_default_uuid = None  # SQLite doesn't support server_default for UUID
 
+    # Build server_default conditionally (use explicit None check to avoid boolean evaluation of SQL expression)
+    id_server_default = server_default_uuid if server_default_uuid is not None else None
+
     op.create_table(
         'email_logs',
-        sa.Column('id', id_type, primary_key=True, server_default=server_default_uuid if server_default_uuid else None),
+        sa.Column('id', id_type, primary_key=True, server_default=id_server_default),
         sa.Column('registration_id', fk_type, sa.ForeignKey('registrations.id'), nullable=True),
         sa.Column('hackathon_id', fk_type, sa.ForeignKey('hackathons.id'), nullable=True),
         sa.Column('email_type', sa.String(length=50), nullable=False),
