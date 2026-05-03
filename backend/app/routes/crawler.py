@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from app.crawler.scheduler import is_crawling, run_crawl
 from app.auth import decode_token
-from app.models import UserRole, CrawledHackathon
+from app.models import UserRole, CrawledHackathon, CrawledProject
 from app.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -77,3 +78,144 @@ async def create_crawled_hackathon(
     db.add(hackathon)
     await db.commit()
     return {"id": str(hackathon.id), "name": hackathon.name, "created": True}
+
+
+@router.get("/hackathons")
+async def list_crawled_hackathons(
+    user: dict = Depends(_require_organizer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all crawled hackathons with project counts."""
+    from sqlalchemy import func, select
+    from app.models import CrawledProject
+
+    query = (
+        select(
+            CrawledHackathon.id,
+            CrawledHackathon.name,
+            CrawledHackathon.devpost_url,
+            CrawledHackathon.start_date,
+            CrawledHackathon.end_date,
+            CrawledHackathon.last_crawled_at,
+            func.count(CrawledProject.id).label("project_count"),
+        )
+        .outerjoin(CrawledProject, CrawledProject.hackathon_id == CrawledHackathon.id)
+        .group_by(CrawledHackathon.id)
+        .order_by(CrawledHackathon.last_crawled_at.desc().nulls_last())
+    )
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    return [
+        {
+            "id": str(r.id),
+            "name": r.name,
+            "devpost_url": r.devpost_url,
+            "start_date": r.start_date.isoformat() if r.start_date else None,
+            "end_date": r.end_date.isoformat() if r.end_date else None,
+            "last_crawled_at": r.last_crawled_at.isoformat() if r.last_crawled_at else None,
+            "project_count": r.project_count,
+        }
+        for r in rows
+    ]
+
+
+@router.get("/hackathons/{hackathon_id}/projects")
+async def list_crawled_projects(
+    hackathon_id: str,
+    offset: int = 0,
+    limit: int = 50,
+    user: dict = Depends(_require_organizer),
+    db: AsyncSession = Depends(get_db),
+):
+    """List projects for a specific crawled hackathon."""
+    from uuid import UUID
+    from app.models import CrawledProject
+
+    try:
+        hk_id = UUID(hackathon_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid hackathon ID")
+
+    # Verify hackathon exists
+    hk_result = await db.execute(
+        select(CrawledHackathon).where(CrawledHackathon.id == hk_id)
+    )
+    hackathon = hk_result.scalar_one_or_none()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+
+    # Get projects
+    query = (
+        select(CrawledProject)
+        .where(CrawledProject.hackathon_id == hk_id)
+        .order_by(CrawledProject.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    result = await db.execute(query)
+    projects = result.scalars().all()
+
+    # Get total count
+    count_result = await db.execute(
+        select(func.count()).where(CrawledProject.hackathon_id == hk_id)
+    )
+    total = count_result.scalar()
+
+    return {
+        "hackathon": {
+            "id": str(hackathon.id),
+            "name": hackathon.name,
+            "devpost_url": hackathon.devpost_url,
+        },
+        "projects": [
+            {
+                "id": str(p.id),
+                "title": p.title,
+                "devpost_url": p.devpost_url,
+                "github_url": p.github_url,
+                "team_members": p.team_members,
+                "created_at": p.created_at.isoformat() if p.created_at else None,
+            }
+            for p in projects
+        ],
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+    }
+
+
+@router.get("/projects")
+async def search_crawled_projects(
+    q: str = "",
+    offset: int = 0,
+    limit: int = 50,
+    user: dict = Depends(_require_organizer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Search crawled projects by title."""
+    from app.models import CrawledProject
+
+    query = select(CrawledProject)
+    if q:
+        query = query.where(CrawledProject.title.ilike(f"%{q}%"))
+
+    query = query.order_by(CrawledProject.created_at.desc()).offset(offset).limit(limit)
+    result = await db.execute(query)
+    projects = result.scalars().all()
+
+    return {
+        "projects": [
+            {
+                "id": str(p.id),
+                "title": p.title,
+                "devpost_url": p.devpost_url,
+                "github_url": p.github_url,
+                "hackathon_id": str(p.hackathon_id),
+                "created_at": p.created_at.isoformat() if p.created_at else None,
+            }
+            for p in projects
+        ],
+        "total": len(projects),
+    }

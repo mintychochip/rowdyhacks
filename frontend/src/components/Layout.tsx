@@ -74,6 +74,7 @@ export default function Layout() {
     { to: '/tracks', icon: 'route', label: 'Tracks', roles: ['participant', 'organizer', 'judge'] },
     { to: '/check-in', icon: 'qr_code_scanner', label: 'Check-In', roles: ['organizer'] },
     { to: '/dashboard', icon: 'monitoring', label: 'Submissions', roles: ['organizer'] },
+    { to: '/crawled-data', icon: 'database', label: 'Indexed Data', roles: ['organizer'] },
     { to: '/registrations', icon: 'badge', label: 'Your Application', roles: ['participant'] },
     { to: '/judge', icon: 'gavel', label: 'Judge Portal', roles: ['judge'] },
   ];
