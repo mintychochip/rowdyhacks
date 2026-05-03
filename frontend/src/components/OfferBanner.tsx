@@ -5,12 +5,17 @@ import {
   Button,
   HStack,
   VStack,
-  useToast,
   Badge,
   Alert,
-  AlertIcon,
+  createToaster,
 } from '@chakra-ui/react';
 import { acceptOffer, declineOffer } from '../services/api';
+
+const toaster = createToaster({
+  placement: 'bottom-end',
+  overlap: true,
+  gap: 8,
+});
 
 interface OfferBannerProps {
   registrationId: string;
@@ -28,7 +33,6 @@ export function OfferBanner({
   const [timeLeft, setTimeLeft] = useState('');
   const [loading, setLoading] = useState(false);
   const [expired, setExpired] = useState(false);
-  const toast = useToast();
 
   useEffect(() => {
     const updateTimer = () => {
@@ -57,18 +61,18 @@ export function OfferBanner({
     setLoading(true);
     try {
       await acceptOffer(registrationId);
-      toast({
+      toaster.create({
         title: "You're in!",
         description: `You've been accepted to ${hackathonName}`,
-        status: 'success',
+        type: 'success',
         duration: 5000,
       });
       onStatusChange();
     } catch (error) {
-      toast({
+      toaster.create({
         title: 'Failed to accept',
         description: error instanceof Error ? error.message : 'Spot may no longer be available',
-        status: 'error',
+        type: 'error',
         duration: 3000,
       });
     } finally {
@@ -80,17 +84,17 @@ export function OfferBanner({
     setLoading(true);
     try {
       await declineOffer(registrationId);
-      toast({
+      toaster.create({
         title: 'Offer declined',
         description: 'You\'ve been returned to the waitlist',
-        status: 'info',
+        type: 'info',
         duration: 3000,
       });
       onStatusChange();
     } catch (error) {
-      toast({
+      toaster.create({
         title: 'Failed to decline',
-        status: 'error',
+        type: 'error',
         duration: 3000,
       });
     } finally {
@@ -100,10 +104,10 @@ export function OfferBanner({
 
   if (expired) {
     return (
-      <Alert status="warning" borderRadius="md">
-        <AlertIcon />
+      <Alert.Root status="warning" borderRadius="md">
+        <Alert.Indicator />
         <Text>This offer has expired. You've been returned to the waitlist.</Text>
-      </Alert>
+      </Alert.Root>
     );
   }
 
@@ -115,7 +119,7 @@ export function OfferBanner({
       borderWidth={2}
       borderColor="green.300"
     >
-      <VStack align="stretch" spacing={4}>
+      <VStack align="stretch" gap={4}>
         <HStack justify="space-between">
           <Box>
             <Text fontSize="lg" fontWeight="bold" color="green.800">
@@ -130,20 +134,20 @@ export function OfferBanner({
           </Badge>
         </HStack>
 
-        <Alert status="info" borderRadius="md">
-          <AlertIcon />
+        <Alert.Root status="info" borderRadius="md">
+          <Alert.Indicator />
           <Text fontSize="sm">
             You have 24 hours to accept this offer. If you don't respond, the spot will be offered to the next person.
           </Text>
-        </Alert>
+        </Alert.Root>
 
-        <HStack spacing={3}>
+        <HStack gap={3}>
           <Button
             colorScheme="green"
             size="lg"
             flex={1}
             onClick={handleAccept}
-            isLoading={loading}
+            loading={loading}
           >
             Accept Spot
           </Button>
@@ -151,8 +155,8 @@ export function OfferBanner({
             variant="outline"
             size="lg"
             onClick={handleDecline}
-            isLoading={loading}
-            isDisabled={loading}
+            loading={loading}
+            disabled={loading}
           >
             Decline
           </Button>

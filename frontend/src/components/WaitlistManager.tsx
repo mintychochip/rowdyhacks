@@ -1,24 +1,33 @@
 import { useState, useEffect } from 'react';
 import {
   Box,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
   Button,
   Badge,
   Text,
   Flex,
-  useToast,
   Spinner,
   HStack,
   VStack,
+  Table,
+  createToaster,
 } from '@chakra-ui/react';
-import { ArrowUpIcon } from '@chakra-ui/icons';
-import { WaitlistEntry } from '../types/registration';
+import type { WaitlistEntry } from '../types/registration';
 import { getWaitlist, promoteFromWaitlist } from '../services/api';
+
+const toaster = createToaster({
+  placement: 'bottom-end',
+  overlap: true,
+  gap: 8,
+});
+
+// Simple SVG arrow up icon
+function ArrowUpIcon() {
+  return (
+    <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 19V5M5 12l7-7 7 7" />
+    </svg>
+  );
+}
 
 interface WaitlistManagerProps {
   hackathonId: string;
@@ -28,7 +37,6 @@ export function WaitlistManager({ hackathonId }: WaitlistManagerProps) {
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [promoting, setPromoting] = useState(false);
-  const toast = useToast();
 
   useEffect(() => {
     loadWaitlist();
@@ -39,9 +47,9 @@ export function WaitlistManager({ hackathonId }: WaitlistManagerProps) {
       const data = await getWaitlist(hackathonId);
       setWaitlist(data.waitlist);
     } catch (error) {
-      toast({
+      toaster.create({
         title: 'Error loading waitlist',
-        status: 'error',
+        type: 'error',
         duration: 3000,
       });
     } finally {
@@ -53,18 +61,18 @@ export function WaitlistManager({ hackathonId }: WaitlistManagerProps) {
     setPromoting(true);
     try {
       const result = await promoteFromWaitlist(hackathonId);
-      toast({
+      toaster.create({
         title: 'Offer sent!',
         description: `Promoted position #1 (expires ${new Date(result.offer_expires_at).toLocaleString()})`,
-        status: 'success',
+        type: 'success',
         duration: 5000,
       });
       loadWaitlist(); // Refresh
     } catch (error) {
-      toast({
+      toaster.create({
         title: 'Failed to promote',
         description: error instanceof Error ? error.message : 'Unknown error',
-        status: 'error',
+        type: 'error',
         duration: 3000,
       });
     } finally {
@@ -77,7 +85,7 @@ export function WaitlistManager({ hackathonId }: WaitlistManagerProps) {
   return (
     <Box>
       <Flex justify="space-between" align="center" mb={4}>
-        <VStack align="start" spacing={1}>
+        <VStack align="start" gap={1}>
           <Text fontSize="lg" fontWeight="bold">
             Waitlist ({waitlist.length} people)
           </Text>
@@ -86,13 +94,12 @@ export function WaitlistManager({ hackathonId }: WaitlistManagerProps) {
           </Text>
         </VStack>
         <Button
-          leftIcon={<ArrowUpIcon />}
           colorScheme="blue"
           onClick={handlePromote}
-          isLoading={promoting}
-          isDisabled={waitlist.length === 0}
+          loading={promoting}
+          disabled={waitlist.length === 0}
         >
-          Promote #1 to Offered
+          <ArrowUpIcon /> Promote #1 to Offered
         </Button>
       </Flex>
 
@@ -101,40 +108,40 @@ export function WaitlistManager({ hackathonId }: WaitlistManagerProps) {
           Waitlist is empty
         </Text>
       ) : (
-        <Table size="sm">
-          <Thead>
-            <Tr>
-              <Th>Position</Th>
-              <Th>Name</Th>
-              <Th>Email</Th>
-              <Th>Registered</Th>
-              <Th>Shirt Size</Th>
-              <Th>Declines</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
+        <Table.Root size="sm">
+          <Table.Header>
+            <Table.Row>
+              <Table.ColumnHeader>Position</Table.ColumnHeader>
+              <Table.ColumnHeader>Name</Table.ColumnHeader>
+              <Table.ColumnHeader>Email</Table.ColumnHeader>
+              <Table.ColumnHeader>Registered</Table.ColumnHeader>
+              <Table.ColumnHeader>Shirt Size</Table.ColumnHeader>
+              <Table.ColumnHeader>Declines</Table.ColumnHeader>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
             {waitlist.map((entry) => (
-              <Tr key={entry.id}>
-                <Td>
+              <Table.Row key={entry.id}>
+                <Table.Cell>
                   <Badge colorScheme={entry.position === 1 ? 'green' : 'gray'}>
                     #{entry.position}
                   </Badge>
-                </Td>
-                <Td fontWeight="medium">{entry.user_name}</Td>
-                <Td fontSize="sm">{entry.user_email}</Td>
-                <Td fontSize="sm">
+                </Table.Cell>
+                <Table.Cell fontWeight="medium">{entry.user_name}</Table.Cell>
+                <Table.Cell fontSize="sm">{entry.user_email}</Table.Cell>
+                <Table.Cell fontSize="sm">
                   {new Date(entry.registered_at).toLocaleDateString()}
-                </Td>
-                <Td>{entry.t_shirt_size || '-'}</Td>
-                <Td>
+                </Table.Cell>
+                <Table.Cell>{entry.t_shirt_size || '-'}</Table.Cell>
+                <Table.Cell>
                   {entry.declined_count > 0 && (
                     <Badge colorScheme="orange">{entry.declined_count}</Badge>
                   )}
-                </Td>
-              </Tr>
+                </Table.Cell>
+              </Table.Row>
             ))}
-          </Tbody>
-        </Table>
+          </Table.Body>
+        </Table.Root>
       )}
     </Box>
   );

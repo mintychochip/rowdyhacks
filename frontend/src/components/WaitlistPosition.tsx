@@ -1,4 +1,4 @@
-import { Box, Text, Badge, HStack, VStack, Progress } from '@chakra-ui/react';
+import { Box, Text, Badge, HStack, VStack, ProgressRoot, ProgressTrack, ProgressRange } from '@chakra-ui/react';
 
 interface WaitlistPositionProps {
   position: number;
@@ -17,7 +17,7 @@ export function WaitlistPosition({ position, totalWaitlist }: WaitlistPositionPr
       borderWidth={1}
       borderColor="orange.200"
     >
-      <VStack align="stretch" spacing={3}>
+      <VStack align="stretch" gap={3}>
         <HStack justify="space-between">
           <Text fontSize="sm" color="orange.800" fontWeight="medium">
             Waitlist Status
@@ -25,7 +25,11 @@ export function WaitlistPosition({ position, totalWaitlist }: WaitlistPositionPr
           <Badge colorScheme="orange">#{position} in line</Badge>
         </HStack>
 
-        <Progress value={progress} colorScheme="orange" size="sm" borderRadius="full" />
+        <ProgressRoot value={progress} colorScheme="orange" size="sm">
+          <ProgressTrack borderRadius="full">
+            <ProgressRange />
+          </ProgressTrack>
+        </ProgressRoot>
 
         <Text fontSize="sm" color="gray.600">
           {position === 1
