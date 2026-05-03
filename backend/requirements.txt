@@ -32,3 +32,6 @@ aioredis==2.0.1
 websockets==15.0.1
 structlog==25.2.0
 sentry-sdk==2.24.1
+
+# Database migrations
+alembic==1.18.4
