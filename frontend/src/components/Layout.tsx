@@ -115,13 +115,13 @@ export default function Layout() {
         {/* Logo */}
         <div style={{ padding: '16px 16px 12px' }}>
           <Link to="/" onClick={closeSidebar} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-            <img src="/rowdy-mascot.png" alt="Rowdy the Roadrunner" style={{ width: 90, height: 'auto' }} />
+            <img src="/htv-logo.png" alt="Hack the Valley" style={{ width: 120, height: 'auto', borderRadius: 8 }} />
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 18, fontWeight: 800, color: TEXT_WHITE, letterSpacing: -0.5, fontFamily: 'Inter, sans-serif' }}>
-                RowdyHacks
+                Hack the Valley
               </div>
               <div style={{ fontSize: 10, color: PRIMARY, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600, marginTop: 2 }}>
-                Build. Create. Innovate.
+                Canada's largest student-run hackathon
               </div>
             </div>
           </Link>
@@ -246,7 +246,7 @@ export default function Layout() {
             </button>
           )}
           <span style={{ fontSize: 14, color: TEXT_PRIMARY, fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>
-            RowdyHacks 2026
+            Hack the Valley 2026
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>

@@ -1,28 +1,28 @@
 // ============================================================
-// RowdyHacks Design System — Hack the Valley Inspired
-// Clean, modern hackathon aesthetic: Dark Navy + Cyan Energy
+// Hack the Valley Design System
+// Clean, modern hackathon aesthetic: Dark Navy + Blue Energy
 //
-// Brand: Deep Navy (#0B1120) + Electric Cyan (#00D4FF) + White
+// Brand: Deep Navy (#0f172a) + Electric Blue (#2563eb) + Cyan (#06b6d4)
 // ============================================================
 
 // ── Color Tokens (surface layering, deep navy → card surfaces) ─────
-export const PAGE_BG = '#0B1120';
-export const CARD_BG = '#111827';
-export const INPUT_BG = '#1a2332';
-export const NAV_BG = '#0B1120';
-export const EXPANDED_BG = '#0f172a';
-export const TABLE_HOVER = '#1e293b';
+export const PAGE_BG = '#0f172a';
+export const CARD_BG = '#1e293b';
+export const INPUT_BG = '#334155';
+export const NAV_BG = '#0f172a';
+export const EXPANDED_BG = '#1e293b';
+export const TABLE_HOVER = '#334155';
 
-// Primary accent (Electric Cyan — the "Innovate" energy)
-export const PRIMARY = '#00D4FF';
-export const PRIMARY_HOVER = '#00bcd4';
-export const PRIMARY_DISABLED = '#0891b2';
-export const PRIMARY_BG20 = '#00D4FF20';
+// Primary accent (Electric Blue — the "Hack" energy)
+export const PRIMARY = '#2563eb';
+export const PRIMARY_HOVER = '#1d4ed8';
+export const PRIMARY_DISABLED = '#3b82f6';
+export const PRIMARY_BG20 = '#2563eb20';
 
-// Secondary accent (Deeper teal for gradients)
-export const CYAN = '#0891b2';
-export const CYAN_BG20 = '#0891b220';
-export const CYAN_BG10 = '#0891b210';
+// Secondary accent (Cyan for gradients)
+export const CYAN = '#06b6d4';
+export const CYAN_BG20 = '#06b6d420';
+export const CYAN_BG10 = '#06b6d410';
 
 // Accent Gold (for highlights and prizes)
 export const GOLD = '#fbbf24';

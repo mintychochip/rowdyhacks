@@ -1,6 +1,12 @@
 #!/bin/sh
 set -e
 
+# Install openssl if not present (nginx:alpine doesn't have it)
+if ! command -v openssl >/dev/null 2>&1; then
+    echo "Installing openssl..."
+    apk add --no-cache openssl
+fi
+
 # Generate self-signed SSL certificates if they don't exist
 if [ ! -f /etc/nginx/ssl/fullchain.pem ] || [ ! -f /etc/nginx/ssl/privkey.pem ]; then
     echo "Generating self-signed SSL certificates..."
