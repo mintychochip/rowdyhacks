@@ -135,7 +135,7 @@ class LLMClient:
                 tools=tools,
             ):
                 # Check if chunk is a tool call
-                if chunk.startswith("{\"tool\":"):
+                if chunk.startswith('{"tool":'):
                     try:
                         tool_data = json.loads(chunk)
                         tool_calls.append(tool_data)
@@ -163,25 +163,31 @@ class LLMClient:
                     tool_result = json.dumps({"success": False, "error": str(e)})
 
                 # Add assistant message with tool call
-                messages.append({
-                    "role": "assistant",
-                    "content": full_content or None,
-                    "tool_calls": [{
-                        "id": f"call_{iteration}",
-                        "type": "function",
-                        "function": {
-                            "name": tool_name,
-                            "arguments": json.dumps(parameters),
-                        }
-                    }],
-                })
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": full_content or None,
+                        "tool_calls": [
+                            {
+                                "id": f"call_{iteration}",
+                                "type": "function",
+                                "function": {
+                                    "name": tool_name,
+                                    "arguments": json.dumps(parameters),
+                                },
+                            }
+                        ],
+                    }
+                )
 
                 # Add tool result
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": f"call_{iteration}",
-                    "content": tool_result,
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": f"call_{iteration}",
+                        "content": tool_result,
+                    }
+                )
 
             # Continue loop with updated messages
 
