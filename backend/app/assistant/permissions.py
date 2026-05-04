@@ -1,7 +1,7 @@
 """Permission system for the assistant - role-based tool access."""
 
 from enum import Enum
-from typing import Dict, List, Set
+from typing import Dict, List, Optional, Set
 
 from fastapi import HTTPException
 

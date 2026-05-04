@@ -19,11 +19,9 @@ from sqlalchemy import (
     Enum as SAEnum,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
-from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.orm import relationship
 
-
-class Base(DeclarativeBase):
-    pass
+from app.database import Base
 
 
 # --- Custom types for cross-dialect compatibility (PostgreSQL + SQLite) ---
