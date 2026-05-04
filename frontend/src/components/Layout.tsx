@@ -143,17 +143,15 @@ const hk = (path: string) => hackathonId ? `/hackathons/${hackathonId}${path}` :
         <nav style={{ flex: 1, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {visibleNav.map(item => {
             const active = isActive(item.to);
-            // Only disable links that explicitly need a hackathon
-const disabled = item.to === '#' || (item.to.startsWith('/hackathons/') && !hackathonId && item.to !== '/hackathons');
             return (
               <Link
                 key={item.to + item.label}
-                to={disabled ? '#' : item.to}
-                onClick={disabled ? (e) => { e.preventDefault(); alert('Create a hackathon first!'); } : closeSidebar}
+                to={item.to}
+                onClick={closeSidebar}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 12px', borderRadius: RADIUS.md,
-                  color: active ? PRIMARY : (disabled ? '#475569' : TEXT_MUTED),
+                  color: active ? PRIMARY : TEXT_MUTED,
                   background: active ? 'rgba(0,212,255,0.08)' : 'transparent',
                   borderLeft: active ? `3px solid ${PRIMARY}` : '3px solid transparent',
                   textDecoration: 'none',
@@ -161,13 +159,11 @@ const disabled = item.to === '#' || (item.to.startsWith('/hackathons/') && !hack
                   fontWeight: active ? 600 : 400,
                   fontFamily: 'Inter, sans-serif',
                   transition: 'all 0.15s',
-                  cursor: disabled ? 'not-allowed' : 'pointer',
-                  opacity: disabled ? 0.5 : 1,
+                  cursor: 'pointer',
                 }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: 20, color: active ? PRIMARY : 'inherit' }}>{item.icon}</span>
                 {item.label}
-                {disabled && <span style={{ fontSize: 10, marginLeft: 'auto', color: '#64748b' }}>No hackathon</span>}
               </Link>
             );
           })}
