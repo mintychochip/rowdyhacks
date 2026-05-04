@@ -71,7 +71,7 @@ async def check_alignment_ai(context: CheckContext) -> CheckResult:
             details={"reason": "No repo available"},
         )
 
-    if not settings.poolside_api_key:
+    if not settings.get_poolside_key():
         return CheckResult(
             check_name="claimed-vs-actual-tech",
             check_category="devpost_alignment",
@@ -125,7 +125,7 @@ async def check_alignment_ai(context: CheckContext) -> CheckResult:
     )
 
     api_url = f"{settings.poolside_api_url}/chat/completions"
-    api_key = settings.poolside_api_key
+    api_key = settings.get_poolside_key()
     model = settings.poolside_model
 
     try:

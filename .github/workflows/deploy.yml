@@ -24,11 +24,27 @@ jobs:
             set -e
             cd /home/jlo/rowdyhacks
 
+            echo "==> Creating .env file with secrets..."
+            echo "POSTGRES_USER=hackverify" > .env
+            echo "POSTGRES_PASSWORD=changeme" >> .env
+            echo "SECRET_KEY=change-me-to-32-char-secret-key-here-change-me" >> .env
+            echo "LLM_API_KEY=${{ secrets.LLM_API_KEY }}" >> .env
+            echo "BASE_URL=https://rowdyhackin.duckdns.org" >> .env
+
+            echo "==> System resources ==="
+            free -h
+
+            echo "==> Killing host nginx to free port 80 ==="
+            echo '${{ secrets.SUDO_PASSWORD }}' | sudo -S systemctl stop nginx 2>/dev/null || true
+            echo '${{ secrets.SUDO_PASSWORD }}' | sudo -S systemctl disable nginx 2>/dev/null || true
+            echo '${{ secrets.SUDO_PASSWORD }}' | sudo -S systemctl mask nginx 2>/dev/null || true
+            echo '${{ secrets.SUDO_PASSWORD }}' | sudo -S pkill -9 nginx 2>/dev/null || true
+
             echo "==> Fetching and resetting to latest..."
             git fetch origin master
             git checkout -f origin/master -- .
             
-            echo "==> Pulling latest images..."
+            echo "==> Pulling latest images from GHCR..."
             docker compose pull
 
             echo "==> Stopping old containers..."

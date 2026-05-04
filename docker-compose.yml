@@ -50,7 +50,6 @@ services:
       HACKVERIFY_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-hackverify}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-hackverify}
       HACKVERIFY_SECRET_KEY: ${SECRET_KEY:-change-me-to-32-char-secret-key-here}
       HACKVERIFY_LLM_API_KEY: ${LLM_API_KEY:-}
-      HACKVERIFY_POOLSIDE_API_KEY: ${HACKVERIFY_POOLSIDE_API_KEY:-}
       HACKVERIFY_GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       HACKVERIFY_DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
       HACKVERIFY_BASE_URL: ${BASE_URL:-https://localhost}
