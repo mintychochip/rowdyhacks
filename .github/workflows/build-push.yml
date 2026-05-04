@@ -101,7 +101,7 @@ jobs:
 
       - name: Image Summary
         run: |
-          echo "✅ Images built and pushed successfully!"
+          echo "Images built and pushed successfully!"
           echo ""
           echo "Backend: ${{ env.BACKEND_IMAGE }}:latest"
           echo "         ${{ env.BACKEND_IMAGE }}:${{ steps.sha.outputs.sha }}"
