@@ -75,7 +75,7 @@ export default function Layout() {
 
   const NAV_ITEMS: NavItem[] = [
     { to: '/', icon: 'home', label: 'Home' },
-    { to: '/assistant', icon: 'smart_toy', label: 'AI Assistant', roles: ['participant', 'organizer', 'judge'] },
+    { to: '/assistant', icon: 'smart_toy', label: 'AI Assistant' },
     { to: '/analyze', icon: 'science', label: 'Analyze', roles: ['organizer'] },
     { to: hk('/registrations'), icon: 'group', label: 'Registrations', roles: ['organizer'] },
     { to: hk('/judging/setup'), icon: 'gavel', label: 'Judging', roles: ['organizer'] },
