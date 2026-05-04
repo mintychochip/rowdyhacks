@@ -1,7 +1,7 @@
 """Permission system for the assistant - role-based tool access."""
 
 from enum import Enum
-from typing import Dict, List, Optional, Set
+from typing import Optional
 
 from fastapi import HTTPException
 
@@ -191,7 +191,7 @@ TOOL_DEFINITIONS = {
 }
 
 # Role-based tool permissions
-ROLE_TOOLS: Dict[UserRole, Set[str]] = {
+ROLE_TOOLS: dict[UserRole, set[str]] = {
     UserRole.PARTICIPANT: {
         "query_hackathon_info",
         "get_tracks",
@@ -231,7 +231,7 @@ ROLE_TOOLS: Dict[UserRole, Set[str]] = {
 }
 
 
-def get_tools_for_role(role: str) -> List[Dict]:
+def get_tools_for_role(role: str) -> list[dict]:
     """Get tool definitions available to a role."""
     try:
         user_role = UserRole(role)
@@ -252,11 +252,11 @@ def can_use_tool(role: str, tool_name: str) -> bool:
     return tool_name in ROLE_TOOLS.get(user_role, set())
 
 
-def get_all_tools() -> List[str]:
+def get_all_tools() -> list[str]:
     """Get all available tool names."""
     return list(TOOL_DEFINITIONS.keys())
 
 
-def get_tool_definition(tool_name: str) -> Optional[Dict]:
+def get_tool_definition(tool_name: str) -> Optional[dict]:
     """Get definition for a specific tool."""
     return TOOL_DEFINITIONS.get(tool_name)
