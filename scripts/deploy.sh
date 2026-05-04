@@ -1,62 +1,52 @@
 #!/usr/bin/env bash
-# deploy.sh — Deploy Hack the Valley via GHCR images
+# deploy.sh — Manual deployment trigger for Watchtower
 #
 # Usage:
-#   ./scripts/deploy.sh                    # deploys to host configured below
-#   ./scripts/deploy.sh user@1.2.3.4       # deploys to specific host
+#   ./scripts/deploy.sh                    # triggers immediate Watchtower check
 #
-# This script now pulls pre-built images from GitHub Container Registry
-# instead of building on the VPS (much faster, no OOM issues)
+# Note: In normal operation, Watchtower auto-deploys when new images are pushed
+# to GHCR. This script is only for manual/emergency deployments.
+#
+# For first-time setup on VPS:
+#   docker compose up -d
+#
+# To check deployment status:
+#   docker compose ps
+#   docker compose logs watchtower -f
 
 set -euo pipefail
-
-# ── Configuration ──────────────────────────────────────────
-# Change these to match your droplet, or pass host as argument
-SSH_HOST="${1:-user@your-droplet-ip}"
-APP_DIR="${APP_DIR:-/home/jlo/rowdyhacks}"
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
-# ───────────────────────────────────────────────────────────
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
 NC='\033[0m'
 
 say() { echo -e "${CYAN}==>${NC} $*"; }
 ok()  { echo -e "${GREEN}  ✓${NC} $*"; }
+warn() { echo -e "${YELLOW}  !${NC} $*"; }
 err() { echo -e "${RED}  ✗${NC} $*"; }
 
-say "Deploying to ${SSH_HOST}..."
+say "Triggering Watchtower for immediate deployment check..."
 
-# ── 1. Push current branch ──────────────────────────────
-say "Pushing latest commits..."
-git push
-ok "Pushed"
+# Check if running locally or needs SSH
+if command -v docker &> /dev/null && docker info &> /dev/null; then
+    # Docker available locally - assume we're on the VPS
+    docker run --rm \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        containrrr/watchtower \
+        --run-once \
+        backend frontend nginx
+    ok "Watchtower check triggered locally"
+else
+    warn "Docker not available locally. Run this script on the VPS:"
+    echo "  cd /home/jlo/rowdyhacks && ./scripts/deploy.sh"
+    exit 1
+fi
 
-# ── 2. Pull latest code and images ─────────────────────
-say "Fetching code and pulling images..."
-ssh "$SSH_HOST" "cd ${APP_DIR} && git fetch origin master && git checkout -f origin/master -- . && docker compose -f ${COMPOSE_FILE} pull"
-ok "Code updated and images pulled"
+say "Deployment triggered. Monitoring containers..."
+sleep 5
+docker compose ps
 
-# ── 3. Stop and restart ─────────────────────────────────
-say "Restarting containers..."
-ssh "$SSH_HOST" "cd ${APP_DIR} && docker compose -f ${COMPOSE_FILE} down --timeout 30 && docker compose -f ${COMPOSE_FILE} up -d --remove-orphans"
-ok "Containers restarted"
-
-# ── 4. Cleanup old images ───────────────────────────────
-say "Pruning old images..."
-ssh "$SSH_HOST" "docker image prune -f"
-ok "Done"
-
-# ── 5. Health check ─────────────────────────────────────
-say "Running health check..."
-for i in $(seq 1 10); do
-  if ssh "$SSH_HOST" "curl -sf -o /dev/null http://localhost:8000/api/monitoring/health"; then
-    ok "Backend healthy"
-    break
-  fi
-  echo "  Waiting... ($i/10)"
-  sleep 3
-done
-
-say "Deploy complete: https://$(echo "$SSH_HOST" | cut -d@ -f2)"
+say "To watch deployment progress:"
+echo "  docker compose logs watchtower -f"

@@ -1,0 +1,19 @@
+{
+  "name": "rowdyhacks",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "prepare": "husky",
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "lint": "cd frontend && npm run lint",
+    "lint:backend": "cd backend && ruff check .",
+    "lint:backend:fix": "cd backend && ruff check --fix .",
+    "format:backend": "cd backend && ruff format .",
+    "test": "cd backend && pytest -q"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
+  }
+}

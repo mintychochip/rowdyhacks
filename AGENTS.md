@@ -212,20 +212,32 @@ frontend (started) ────────────────────�
 3. **Frontend Lint & Build** — eslint + `npm run build`
 4. **Docker Compose Validate** — `docker compose config`
 
-### CD — runs on push to master (in two stages)
+### CD — Auto-Deploy via Watchtower
 
-#### Stage 1: Build and Push Images (`.github/workflows/build-push.yml`)
-1. Build backend and frontend Docker images on GitHub Actions runners
-2. Push to GitHub Container Registry (GHCR) with both `latest` and SHA tags
-3. Uses Docker layer caching for fast rebuilds
+**No SSH required!** Deployments are fully automated using Watchtower:
 
-#### Stage 2: Deploy (`.github/workflows/deploy.yml`)
-1. SSH into DigitalOcean droplet
-2. Pull latest code from master
-3. Pull latest images from GHCR (`docker compose pull`)
-4. Stop old containers (`docker compose down`)
-5. Start with new images (`docker compose up -d`)
-6. Health check loop (10 retries × 3s)
+```
+Push to master
+    ↓
+GitHub Actions builds images (build-push.yml)
+    ↓
+Push to GHCR (public images)
+    ↓
+Watchtower detects new images (~60 seconds)
+    ↓
+Auto-pull and rolling restart of containers
+```
+
+#### Build and Push Images (`.github/workflows/build-push.yml`)
+- Builds backend and frontend Docker images on GitHub Actions runners
+- Pushes to GitHub Container Registry (GHCR) with `latest` and SHA tags
+- Uses Docker layer caching for fast rebuilds
+
+#### Watchtower (runs on VPS)
+- Polls GHCR every 60 seconds for new images
+- Automatically pulls and restarts `backend`, `frontend`, and `nginx` containers
+- Rolling restart ensures zero-downtime deployments
+- Cleans up old images automatically
 
 ## Common Issues
 
@@ -234,8 +246,15 @@ frontend (started) ────────────────────�
 - **OOM during build**: Fixed! Images are now built on GitHub Actions (free, 4-core runners) instead of the 2GB VPS.
 - **Health check timeout**: Backend may take up to 30s to start (DB migrations, demo data seeding). The health check retries 10 times.
 
+### Manual Deployment (Emergency)
+If you need to force an immediate deployment check:
+```bash
+cd /home/jlo/rowdyhacks
+./scripts/deploy.sh
+```
+
 ### Rolling Back
-If a deployment fails, roll back by SSHing to the VPS and using a previous image:
+If a deployment fails, roll back by editing docker-compose.yml on the VPS:
 ```bash
 cd /home/jlo/rowdyhacks
 # Edit docker-compose.yml to use specific SHA tag:

@@ -119,3 +119,7 @@ export const SHADOW = {
   elevated: '0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3)',
   modal: '0 8px 32px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.4)',
 };
+
+// Test lint error
+const unusedVariable = 'this should trigger ESLint';
+console.log(unusedVariable);
