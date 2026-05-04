@@ -2,7 +2,6 @@
 
 import logging
 from typing import Any, Dict, List, Optional
-from uuid import UUID
 
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http.models import (
@@ -13,7 +12,6 @@ from qdrant_client.http.models import (
     MatchValue,
     PointIdsList,
     PointStruct,
-    Range,
     VectorParams,
 )
 
