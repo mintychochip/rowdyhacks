@@ -1,4 +1,4 @@
-# RowdyHacks / Hack the Valley - Agent Context
+# Hack the Valley - Agent Context
 
 ## Quick Facts
 
@@ -8,7 +8,7 @@
 | **Frontend URL** | https://rowdyhackin.vercel.app |
 | **Backend API** | https://rowdyhackin.duckdns.org/api |
 | **Status** | Production (with self-signed SSL) |
-| **Branding** | "Hack the Valley" (rebranded from RowdyHacks) |
+| **Branding** | "Hack the Valley" |
 
 ## Tech Stack
 
@@ -67,6 +67,6 @@ docker logs rowdyhacks-nginx-1 --tail 50
 
 ## Backend Health Check
 ```bash
-curl https://rowdyhackin.duckdns.org/api/health -k
-# Should return: {"status":"ok"}
+curl https://rowdyhackin.duckdns.org/api/monitoring/health -k
+# Should return: {"status":"healthy", ...}
 ```
