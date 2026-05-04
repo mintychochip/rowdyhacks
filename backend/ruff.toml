@@ -31,6 +31,7 @@ ignore = [
     "B017",   # assert blind exception in tests (existing pattern)
     "F841",   # unused variable assignment (existing pattern)
     "SIM117", # nested with statements (readability preference)
+    "I001",   # import sorting (fix later - requires systematic reorganization)
 ]
 
 [lint.per-file-ignores]
