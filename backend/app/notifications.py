@@ -3,7 +3,7 @@
 import httpx
 
 
-async def send_discord_webhook(webhook_url: str, content: str, username: str = "RowdyHacks") -> bool:
+async def send_discord_webhook(webhook_url: str, content: str, username: str = "Hack the Valley") -> bool:
     """Send a message to a Discord webhook. Returns True on success."""
     if not webhook_url:
         return False

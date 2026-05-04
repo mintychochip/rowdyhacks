@@ -92,7 +92,7 @@ class Settings(BaseSettings):
     smtp_port: int = Field(default=587, description="SMTP server port")
     smtp_user: str = Field(default="", description="SMTP username")
     smtp_password: str = Field(default="", description="SMTP password")
-    email_from: str = Field(default="noreply@rowdyhacks.io", description="Default sender email address")
+    email_from: str = Field(default="noreply@hackthevalley.io", description="Default sender email address")
 
     model_config = {"env_prefix": "HACKVERIFY_", "env_file": ".env"}
 

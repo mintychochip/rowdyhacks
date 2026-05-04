@@ -6663,7 +6663,7 @@ export default function HackathonSetup() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              placeholder="e.g., RowdyHacks 2026"
+              placeholder="e.g., Hack the Valley 2026"
             />
           </div>
           <div className="form-row">

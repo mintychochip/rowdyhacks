@@ -1,8 +1,8 @@
-# RowdyHacks Deployment Guide
+# Hack the Valley Deployment Guide
 
 ## Architecture Overview
 
-RowdyHacks uses a **split deployment**:
+Hack the Valley uses a **split deployment**:
 
 | Component | Platform | URL |
 |---|---|---|
@@ -83,9 +83,9 @@ systemctl disable nginx
 systemctl mask nginx   # prevent accidental restart
 ```
 
-**B. Run RowdyHacks on different ports** — in `docker-compose.yml`, change nginx ports from `"80:80"` / `"443:443"` to something like `"8080:80"` / `"8443:443"`, then use your existing nginx as a reverse proxy.
+**B. Run Hack the Valley on different ports** — in `docker-compose.yml`, change nginx ports from `"80:80"` / `"443:443"` to something like `"8080:80"` / `"8443:443"`, then use your existing nginx as a reverse proxy.
 
-**C. Skip RowdyHacks' nginx and route through your existing one** — remove the `nginx` and `certbot` services from docker-compose, then add a server block in your existing nginx pointing at `localhost:3000` (frontend) and `localhost:8000` (backend).
+**C. Skip Hack the Valley's nginx and route through your existing one** — remove the `nginx` and `certbot` services from docker-compose, then add a server block in your existing nginx pointing at `localhost:3000` (frontend) and `localhost:8000` (backend).
 
 #### Reverse proxy with existing nginx (Option C example)
 

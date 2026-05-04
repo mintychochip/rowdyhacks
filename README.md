@@ -1,6 +1,6 @@
-# RowdyHacks
+# Hack the Valley
 
-CSUB's hackathon platform — registration, check-in, judging, and everything in between. Built for California State University, Bakersfield.
+Toronto's hackathon platform — registration, check-in, judging, and everything in between. Canada's largest student-run hackathon.
 
 ## Features
 
