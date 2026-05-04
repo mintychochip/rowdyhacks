@@ -19,7 +19,7 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          command_timeout: 10m
+          command_timeout: 20m
           script: |
             set -e
             cd /home/jlo/rowdyhacks
