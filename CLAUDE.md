@@ -7,7 +7,7 @@
 | **Repo** | mintychochip/rowdyhacks |
 | **Frontend URL** | https://rowdyhackin.vercel.app |
 | **Backend API** | https://rowdyhackin.duckdns.org/api |
-| **Status** | Production (with self-signed SSL) |
+| **Status** | Production (Let's Encrypt SSL) |
 | **Branding** | "Hack the Valley" |
 
 ## Tech Stack
@@ -50,9 +50,7 @@ docker logs rowdyhacks-nginx-1 --tail 50
 
 ## Known Issues
 
-1. **SSL Warnings:** Using self-signed certs. Browser shows warning but site works.
-2. **API Mixed Content:** Frontend (HTTPS) → Backend (HTTPS with self-signed) shows console errors but functions.
-3. **Form Labels:** Email/password inputs on auth page lack explicit `<label>` elements.
+1. **Form Labels:** Email/password inputs on auth page lack explicit `<label>` elements.
 
 ## File Locations
 
@@ -63,10 +61,10 @@ docker logs rowdyhacks-nginx-1 --tail 50
 | Nginx config | `nginx/nginx.conf` |
 | Docker compose | `docker-compose.yml` |
 | Deploy script | `.github/workflows/deploy.yml` |
-| SSL init | `scripts/init-ssl.sh` |
+| SSL setup | `nginx/docker-entrypoint.sh` |
 
 ## Backend Health Check
 ```bash
-curl https://rowdyhackin.duckdns.org/api/monitoring/health -k
+curl https://rowdyhackin.duckdns.org/api/monitoring/health
 # Should return: {"status":"healthy", ...}
 ```

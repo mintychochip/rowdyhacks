@@ -1,0 +1,39 @@
+name: OpenHands Agent
+
+on:
+  issues:
+    types: [opened, reopened, labeled]
+  pull_request:
+    types: [opened, reopened, labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  openhands-agent:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issue_comment' &&
+      contains(github.event.comment.body, '@openhands-agent') ||
+      contains(github.event.issue.labels.*.name, 'openhands') ||
+      contains(github.event.pull_request.labels.*.name, 'openhands')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run OpenHands Agent
+        uses: xinbenlv/openhands-action@v1.0.1
+        with:
+          prompt: |
+            Please help with this GitHub issue: "${{ github.event.issue.title || github.event.pull_request.title }}"
+            
+            Description: ${{ github.event.issue.body || github.event.pull_request.body }}
+            
+            Follow the project's development guidelines in AGENTS.md and README.md.
+            Make the minimal necessary changes to fix the issue.
+          llm_api_key: ${{ secrets.LLM_API_KEY }}
+          llm_model: "anthropic/claude-3-7-sonnet-20250219"

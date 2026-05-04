@@ -19,7 +19,6 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          script_stop: true
           command_timeout: 10m
           script: |
             set -e
@@ -37,7 +36,7 @@ jobs:
             echo "==> Fetching and resetting to latest..."
             git fetch origin master
             git checkout -f origin/master -- .
-            git clean -fd
+            echo '${{ secrets.SUDO_PASSWORD }}' | sudo -S git clean -fd || git clean -fd -e "nginx/ssl/*" -e "data/**"
 
             echo "==> Stopping all containers before rebuild..."
             docker compose -f docker-compose.yml down --timeout 30 2>/dev/null || true
