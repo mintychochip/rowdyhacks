@@ -1,0 +1,18 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
+    hooks:
+      # Run the linter with auto-fix
+      - id: ruff
+        args: [--fix, --config, backend/ruff.toml]
+        files: ^backend/.*\.py$
+      # Run the formatter
+      - id: ruff-format
+        args: [--config, backend/ruff.toml]
+        files: ^backend/.*\.py$
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.13.0
+    hooks:
+      - id: eslint
+        files: ^frontend/.*\.(ts|tsx)$
+        args: [--fix]

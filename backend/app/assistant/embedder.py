@@ -17,11 +17,11 @@ DEFAULT_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 class Embedder:
     """Manages sentence embeddings for the assistant."""
 
-    _instance: "Embedder" | None = None
+    _instance: Embedder | None = None
     _model: SentenceTransformer | None = None
     _model_name: str = DEFAULT_MODEL
 
-    def __new__(cls) -> "Embedder":
+    def __new__(cls) -> Embedder:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
