@@ -1,7 +1,7 @@
 """Document indexing pipeline for the assistant."""
 
 import logging
-from typing import List, Optional
+
 from uuid import uuid4
 
 from sqlalchemy import select

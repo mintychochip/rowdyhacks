@@ -2,7 +2,8 @@
 
 import json
 import logging
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from collections.abc import AsyncGenerator
+from typing import Any
 
 import httpx
 
@@ -24,7 +25,7 @@ class LLMClient:
         self.api_key = POOLSIDE_API_KEY
         self.model = DEFAULT_MODEL
 
-    def _get_headers(self) -> Dict[str, str]:
+    def _get_headers(self) -> dict[str, str]:
         """Get authorization headers."""
         return {
             "Authorization": f"Bearer {self.api_key}",
@@ -33,12 +34,12 @@ class LLMClient:
 
     async def chat_completion(
         self,
-        messages: List[Dict[str, str]],
-        tools: Optional[List[Dict]] = None,
+        messages: list[dict[str, str]],
+        tools: list[dict] | None = None,
         temperature: float = 0.7,
         max_tokens: int = 2000,
         stream: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Send a chat completion request."""
         payload = {
             "model": self.model,
@@ -63,8 +64,8 @@ class LLMClient:
 
     async def chat_completion_stream(
         self,
-        messages: List[Dict[str, str]],
-        tools: Optional[List[Dict]] = None,
+        messages: list[dict[str, str]],
+        tools: list[dict] | None = None,
         temperature: float = 0.7,
         max_tokens: int = 2000,
     ) -> AsyncGenerator[str, None]:
@@ -106,9 +107,9 @@ class LLMClient:
     async def execute_tool_loop(
         self,
         system_prompt: str,
-        history: List[Dict[str, str]],
+        history: list[dict[str, str]],
         user_message: str,
-        tools: List[Dict],
+        tools: list[dict],
         tool_executor: callable,
         max_iterations: int = 5,
     ) -> AsyncGenerator[str, None]:
