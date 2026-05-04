@@ -14,10 +14,11 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.database import Base
+from app.models import JsonType
 
 
 class ConversationRole(str, Enum):
@@ -123,8 +124,8 @@ class AssistantMessage(Base):
         nullable=False,
     )
     content = Column(Text, nullable=False, default="")
-    tool_calls = Column(JSONB, nullable=False, default=default_tool_calls)
-    tool_results = Column(JSONB, nullable=False, default=default_tool_results)
+    tool_calls = Column(JsonType, nullable=False, default=default_tool_calls)
+    tool_results = Column(JsonType, nullable=False, default=default_tool_results)
     status = Column(
         SQLEnum(AssistantMessageStatus),
         nullable=False,
@@ -170,7 +171,7 @@ class AssistantDocument(Base):
         UUID(as_uuid=True),
         nullable=True,
     )  # e.g., track_id, faq_id
-    doc_metadata = Column(JSONB, nullable=False, default=dict)
+    doc_metadata = Column(JsonType, nullable=False, default=dict)
     version = Column(Integer, nullable=False, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
