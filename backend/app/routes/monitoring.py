@@ -74,7 +74,9 @@ async def health_check():
     except Exception as e:
         checks["disk"] = f"unknown: {str(e)}"
 
-    overall = "healthy" if all(c == "healthy" or c == "not_configured" for c in checks.values()) else "degraded"
+    overall = (
+        "healthy" if all(c.startswith("healthy") or c == "not_configured" for c in checks.values()) else "degraded"
+    )
 
     return HealthStatus(
         status=overall,
