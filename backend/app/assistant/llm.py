@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 # Poolside API configuration
 POOLSIDE_API_URL = settings.poolside_api_url
-POOLSIDE_API_KEY = settings.poolside_api_key
+POOLSIDE_API_KEY = settings.get_poolside_key()
 DEFAULT_MODEL = settings.assistant_model
 
 

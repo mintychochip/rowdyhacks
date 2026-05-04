@@ -30,7 +30,11 @@ class Settings(BaseSettings):
     )
     poolside_api_key: str = Field(
         default="",
-        description="Poolside API key for AI-powered checks (free inference)",
+        description="Poolside API key for AI-powered checks (free inference). Falls back to llm_api_key if not set.",
+    )
+    llm_api_key: str = Field(
+        default="",
+        description="Generic LLM API key (Anthropic/Poolside). Used as fallback for poolside_api_key if not set.",
     )
     poolside_api_url: str = Field(
         default="https://inference.poolside.ai/v1",
@@ -109,6 +113,10 @@ class Settings(BaseSettings):
     email_from: str = Field(default="noreply@hackthevalley.io", description="Default sender email address")
 
     model_config = {"env_prefix": "HACKVERIFY_", "env_file": ".env"}
+
+    def get_poolside_key(self) -> str:
+        """Get Poolside API key with fallback to generic LLM key."""
+        return self.poolside_api_key or self.llm_api_key
 
 
 settings = Settings()

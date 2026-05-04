@@ -24,6 +24,15 @@ jobs:
             set -e
             cd /home/jlo/rowdyhacks
 
+            echo "==> Creating .env file with secrets..."
+            cat > .env << 'EOF'
+POSTGRES_USER=hackverify
+POSTGRES_PASSWORD=changeme
+SECRET_KEY=change-me-to-32-char-secret-key-here-change-me
+LLM_API_KEY=${{ secrets.LLM_API_KEY }}
+BASE_URL=https://rowdyhackin.duckdns.org
+EOF
+
             echo "==> System resources ==="
             free -h
 
