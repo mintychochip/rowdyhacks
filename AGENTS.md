@@ -212,22 +212,37 @@ frontend (started) ────────────────────�
 3. **Frontend Lint & Build** — eslint + `npm run build`
 4. **Docker Compose Validate** — `docker compose config`
 
-### CD (`.github/workflows/deploy.yml`) — runs on push to master
+### CD — runs on push to master (in two stages)
+
+#### Stage 1: Build and Push Images (`.github/workflows/build-push.yml`)
+1. Build backend and frontend Docker images on GitHub Actions runners
+2. Push to GitHub Container Registry (GHCR) with both `latest` and SHA tags
+3. Uses Docker layer caching for fast rebuilds
+
+#### Stage 2: Deploy (`.github/workflows/deploy.yml`)
 1. SSH into DigitalOcean droplet
-2. Stop host nginx (free port 80)
-3. Pull latest code from master
-4. Stop all Docker containers (`docker compose down`)
-5. Build backend image (heavy — built first to avoid OOM)
-6. Build frontend image
-7. Start all services (`docker compose up -d`)
-8. Health check loop (15 retries × 4s)
+2. Pull latest code from master
+3. Pull latest images from GHCR (`docker compose pull`)
+4. Stop old containers (`docker compose down`)
+5. Start with new images (`docker compose up -d`)
+6. Health check loop (10 retries × 3s)
 
 ## Common Issues
 
 ### Deployment failures
-- **Port 80 conflict**: Host nginx may conflict with Docker nginx. Deploy script stops/masks host nginx before starting containers.
-- **OOM during build**: The 2GB droplet can run out of memory building backend (Playwright+Chromium) and frontend (npm) simultaneously. Builds are staggered sequentially.
-- **Health check timeout**: Backend may take up to 30s to start (DB migrations, demo data seeding). The health check retries 15 times.
+- **Port 80 conflict**: Host nginx may conflict with Docker nginx. Fixed by using Docker-only nginx.
+- **OOM during build**: Fixed! Images are now built on GitHub Actions (free, 4-core runners) instead of the 2GB VPS.
+- **Health check timeout**: Backend may take up to 30s to start (DB migrations, demo data seeding). The health check retries 10 times.
+
+### Rolling Back
+If a deployment fails, roll back by SSHing to the VPS and using a previous image:
+```bash
+cd /home/jlo/rowdyhacks
+# Edit docker-compose.yml to use specific SHA tag:
+# image: ghcr.io/mintychochip/rowdyhacks/backend:abc1234
+docker compose up -d
+```
+Or simply wait for a new fix and redeploy.
 
 ### Known pre-existing test failures
 These tests fail on master and are not regressions:

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# deploy.sh — Deploy Hack the Valley to a Digital Ocean droplet
+# deploy.sh — Deploy Hack the Valley via GHCR images
 #
 # Usage:
 #   ./scripts/deploy.sh                    # deploys to host configured below
 #   ./scripts/deploy.sh user@1.2.3.4       # deploys to specific host
 #
-# First time: set your droplet's host/ip below or pass it as an argument.
+# This script now pulls pre-built images from GitHub Container Registry
+# instead of building on the VPS (much faster, no OOM issues)
 
 set -euo pipefail
 
@@ -32,24 +33,15 @@ say "Pushing latest commits..."
 git push
 ok "Pushed"
 
-# ── 2. Pull on droplet ──────────────────────────────────
-say "Fetching and resetting to latest..."
-ssh "$SSH_HOST" "cd ${APP_DIR} && git fetch origin master && git checkout -f origin/master -- . && git clean -fd"
-ok "Code updated"
+# ── 2. Pull latest code and images ─────────────────────
+say "Fetching code and pulling images..."
+ssh "$SSH_HOST" "cd ${APP_DIR} && git fetch origin master && git checkout -f origin/master -- . && docker compose -f ${COMPOSE_FILE} pull"
+ok "Code updated and images pulled"
 
-# ── 3. Stop, rebuild, restart ────────────────────────────
-say "Stopping all containers..."
-ssh "$SSH_HOST" "cd ${APP_DIR} && docker compose -f ${COMPOSE_FILE} down --timeout 30 2>/dev/null || true"
-
-say "Building backend..."
-ssh "$SSH_HOST" "cd ${APP_DIR} && docker compose -f ${COMPOSE_FILE} build backend"
-
-say "Building frontend..."
-ssh "$SSH_HOST" "cd ${APP_DIR} && docker compose -f ${COMPOSE_FILE} build frontend"
-
-say "Starting all services..."
-ssh "$SSH_HOST" "cd ${APP_DIR} && docker compose -f ${COMPOSE_FILE} up -d --remove-orphans"
-ok "Containers started"
+# ── 3. Stop and restart ─────────────────────────────────
+say "Restarting containers..."
+ssh "$SSH_HOST" "cd ${APP_DIR} && docker compose -f ${COMPOSE_FILE} down --timeout 30 && docker compose -f ${COMPOSE_FILE} up -d --remove-orphans"
+ok "Containers restarted"
 
 # ── 4. Cleanup old images ───────────────────────────────
 say "Pruning old images..."
@@ -58,13 +50,13 @@ ok "Done"
 
 # ── 5. Health check ─────────────────────────────────────
 say "Running health check..."
-for i in $(seq 1 15); do
+for i in $(seq 1 10); do
   if ssh "$SSH_HOST" "curl -sf -o /dev/null http://localhost:8000/api/monitoring/health"; then
     ok "Backend healthy"
     break
   fi
-  echo "  Waiting... ($i/15)"
-  sleep 4
+  echo "  Waiting... ($i/10)"
+  sleep 3
 done
 
 say "Deploy complete: https://$(echo "$SSH_HOST" | cut -d@ -f2)"
