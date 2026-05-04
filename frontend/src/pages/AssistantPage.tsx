@@ -1,24 +1,24 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import {
   deleteConversation,
   getConversation,
   getConversations,
   sendChatMessage,
   streamChatResponse,
-  type ChatMessage,
+  type ChatMessage as ChatMessageType,
   type Conversation,
-} from '../../services/assistant';
-import { CARD_BG, PAGE_BG, PRIMARY, RADIUS, SPACE, TEXT_PRIMARY, TEXT_SECONDARY, TYPO } from '../../theme';
-import ChatInput from './ChatInput';
-import ChatMessage from './ChatMessage';
-import ConversationSidebar from './ConversationSidebar';
+} from '../services/assistant';
+import { CARD_BG, PAGE_BG, PRIMARY, RADIUS, SPACE, TEXT_PRIMARY, TEXT_SECONDARY, TYPO } from '../theme';
+import ChatInput from '../components/assistant/ChatInput';
+import ChatMessageComponent from '../components/assistant/ChatMessage';
+import ConversationSidebar from '../components/assistant/ConversationSidebar';
 
 export default function AssistantPage() {
   const { isMobile } = useMediaQuery();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,7 +99,7 @@ export default function AssistantPage() {
       setError(null);
 
       // Add user message to UI immediately
-      const userMessage: ChatMessage = {
+      const userMessage: ChatMessageType = {
         id: 'temp-' + Date.now(),
         role: 'user',
         content,
@@ -122,7 +122,7 @@ export default function AssistantPage() {
       }
 
       // Create placeholder for assistant response
-      const assistantMessage: ChatMessage = {
+      const assistantMessage: ChatMessageType = {
         id: response.message_id,
         role: 'assistant',
         content: '',
@@ -330,7 +330,7 @@ export default function AssistantPage() {
           )}
 
           {messages.map((msg, i) => (
-            <ChatMessage
+            <ChatMessageComponent
               key={msg.id || i}
               role={msg.role}
               content={msg.content}
