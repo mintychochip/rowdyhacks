@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Install CPU-only torch first to avoid large CUDA packages
-RUN pip install --no-cache-dir torch==2.11.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
 
 # Install remaining requirements
 RUN pip install --no-cache-dir -r requirements.txt
