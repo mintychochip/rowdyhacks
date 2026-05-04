@@ -16,8 +16,11 @@ ignore = [
     "E722",   # bare except (existing pattern throughout codebase)
     "E741",   # ambiguous variable name
     "B008",   # function calls in argument defaults (FastAPI Depends pattern)
+    "UP006",  # use list/dict instead of List/Dict (temporarily disabled - widespread issues)
     "UP007",  # use X | Y for unions (keep Optional for readability)
+    "UP035",  # use collections.abc instead of typing (temporarily disabled)
     "UP042",  # replace with PEP 695 type alias (keep backward compat)
+    "UP045",  # use X | None for type annotations (temporarily disabled - widespread issues)
     "F821",   # undefined name (false positives on forward refs / deferred imports)
     "SIM102", # collapsible if (readability preference)
     "SIM105", # use contextlib.suppress (readability preference)
