@@ -179,6 +179,11 @@ class User(Base):
         foreign_keys="HackathonOrganizer.user_id",
         cascade="all, delete-orphan",
     )
+    assistant_conversations = relationship(
+        "AssistantConversation",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email} role={self.role}>"
@@ -231,6 +236,8 @@ class Hackathon(Base):
     registrations = relationship("Registration", back_populates="hackathon")
     co_organizers = relationship("HackathonOrganizer", back_populates="hackathon", cascade="all, delete-orphan")
     tracks = relationship("Track", back_populates="hackathon", cascade="all, delete-orphan")
+    assistant_conversations = relationship("AssistantConversation", back_populates="hackathon")
+    assistant_documents = relationship("AssistantDocument", back_populates="hackathon", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Hackathon {self.name}>"

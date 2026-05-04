@@ -287,7 +287,7 @@ async def show_stats(interaction: discord.Interaction):
         flagged = sum(1 for s in completed if s.verdict == Verdict.flagged)
 
     embed = discord.Embed(
-        title=f"📊 {hackathon.name}",
+        title=f"Stats: {hackathon.name}",
         color=discord.Color.gold(),
     )
     embed.add_field(name="Total Registered", value=str(sum(reg_counts.values())), inline=True)

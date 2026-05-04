@@ -178,9 +178,6 @@ def seed_tracks(hackathon_id: uuid.UUID) -> list[Track]:
     ]
 
 
-# ── Routes ────────────────────────────────────────────────
-
-
 @router.get("/{hackathon_id}/tracks")
 @cached(ttl_seconds=TRACKS_CACHE_TTL, key_prefix=CACHE_PFX)
 async def list_tracks(hackathon_id: str, db: AsyncSession = Depends(get_db)):

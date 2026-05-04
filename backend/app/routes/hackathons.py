@@ -1027,9 +1027,6 @@ async def import_devpost_submissions(
     }
 
 
-# ── Cache helpers ───────────────────────────────────────────
-
-
 async def _bust_hackathon_list_cache():
     await cache_delete_pattern(f"{HK_CACHE_PFX}:list_hackathons:*")
 

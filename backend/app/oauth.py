@@ -9,7 +9,6 @@ import httpx
 
 from app.config import settings
 
-# ── State Store (CSRF protection) ──────────────────────────────
 
 _state_store: dict[str, tuple[float, dict[str, Any]]] = {}
 
@@ -45,8 +44,6 @@ def consume_state(nonce: str) -> dict[str, Any] | None:
     return payload
 
 
-# ── Provider Configs ──────────────────────────────────────────
-
 PROVIDER_CONFIGS = {
     "google": {
         "authorize_url": "https://accounts.google.com/o/oauth2/v2/auth",
@@ -75,9 +72,6 @@ PROVIDER_CONFIGS = {
 }
 
 VALID_PROVIDERS = list(PROVIDER_CONFIGS.keys())
-
-
-# ── Helpers ────────────────────────────────────────────────────
 
 
 def build_authorize_url(provider: str, redirect_uri: str, state: str) -> str:

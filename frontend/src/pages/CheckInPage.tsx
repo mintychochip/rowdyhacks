@@ -199,7 +199,6 @@ export default function CheckInPage() {
     try {
       // Fetch all registrations - backend max is 100 per request, so we may need pagination for large events
       const data = await api.getHackathonRegistrations(selectedHackathonId, { limit: 100 });
-      console.log('API response:', data);
       // Handle both {registrations: [...]} and direct array response
       const registrations = Array.isArray(data) ? data : (data.registrations || []);
       // Map API response to Participant interface

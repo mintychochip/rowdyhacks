@@ -9,8 +9,6 @@ from app.models import OAuthAccount, User, UserRole
 from app.oauth import build_name_fallback, consume_state, create_state
 from sqlalchemy import select
 
-# ── State Store ──────────────────────────────────────────────
-
 
 def test_create_and_consume_state():
     state = create_state("google")
@@ -34,9 +32,6 @@ def test_consume_state_twice_fails():
     assert consume_state(state) is None
 
 
-# ── Name Fallbacks ──────────────────────────────────────────
-
-
 def test_build_name_fallback_uses_name():
     assert build_name_fallback("google", {"name": "Alice"}) == "Alice"
 
@@ -47,9 +42,6 @@ def test_build_name_fallback_uses_email_local_part():
 
 def test_build_name_fallback_returns_hacker():
     assert build_name_fallback("google", {"name": "", "email": ""}) == "Hacker"
-
-
-# ── Route Tests ─────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
@@ -150,9 +142,6 @@ async def test_unlink_succeeds_when_has_password(db_session, client):
 
     result = await db_session.execute(select(OAuthAccount).where(OAuthAccount.user_id == user.id))
     assert len(result.scalars().all()) == 0
-
-
-# ── Callback integration tests (httpx mocked) ──────────────
 
 
 @pytest.mark.asyncio

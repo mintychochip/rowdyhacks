@@ -16,9 +16,6 @@ _redis_client = None
 _redis = None
 
 
-# ── In-memory fallback cache ────────────────────────────────
-
-
 class _MemoryCache:
     """Simple TTL cache that works without Redis."""
 
@@ -55,9 +52,6 @@ class _MemoryCache:
 _memory_cache = _MemoryCache()
 
 
-# ── Redis helpers ───────────────────────────────────────────
-
-
 async def get_redis():
     """Get or create Redis client (returns None if redis not installed)."""
     global _redis_client, _redis
@@ -82,9 +76,6 @@ async def close_redis():
     if _redis_client:
         await _redis_client.close()
         _redis_client = None
-
-
-# ── Unified cache API ───────────────────────────────────────
 
 
 async def cache_get(key: str) -> Any | None:

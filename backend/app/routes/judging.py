@@ -30,9 +30,6 @@ from app.schemas import JudgingSessionCreate, SubmitScoreRequest
 router = APIRouter(prefix="/api", tags=["judging"])
 
 
-# ── helpers ──────────────────────────────────────────────────────────────────
-
-
 async def _get_judging_session(hackathon_id: uuid.UUID, db: AsyncSession) -> JudgingSession:
     result = await db.execute(
         select(JudgingSession)
@@ -64,9 +61,6 @@ def _compute_raw_score(scores: list[Score], criteria_map: dict) -> float:
         if c and s.score is not None:
             total += (s.score / c.max_score) * c.weight  # weight already 0-100
     return total  # 0-100 scale
-
-
-# ── session configuration ────────────────────────────────────────────────────
 
 
 @router.post("/hackathons/{hackathon_id}/judging/session", status_code=201)
@@ -213,9 +207,6 @@ def _session_detail(session: JudgingSession, rubric: Rubric | None) -> dict:
         if rubric
         else None,
     }
-
-
-# ── judge assignment ─────────────────────────────────────────────────────────
 
 
 @router.post("/hackathons/{hackathon_id}/judging/assign", status_code=201)
@@ -529,8 +520,6 @@ async def submit_scores(
     }
 
 
-# ── ELO engine & results ─────────────────────────────────────────────────────
-
 K_FACTOR = 32
 BASE_ELO = 1500
 
@@ -719,9 +708,6 @@ async def get_judging_results(
         "rankings": rankings,
         "judge_stats": judge_stats_detail,
     }
-
-
-# ── ELO re-judging queue ─────────────────────────────────────────────────────
 
 
 @router.get("/hackathons/{hackathon_id}/judging/queue")
@@ -1086,9 +1072,6 @@ async def rerun_judging(
         "flagged_submissions": len(flagged_submissions),
         "details": [{"submission_id": str(sid), "current_judges": count} for sid, count in flagged_submissions],
     }
-
-
-# ── session lifecycle ────────────────────────────────────────────────────────
 
 
 @router.post("/hackathons/{hackathon_id}/judging/activate")

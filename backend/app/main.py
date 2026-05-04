@@ -7,9 +7,6 @@ from sqlalchemy import text
 
 from app.background_jobs import shutdown_scheduler, start_scheduler
 from app.cache import close_redis
-
-# from apscheduler.schedulers.asyncio import AsyncIOScheduler  # disabled — requires Playwright
-# from app.crawler.scheduler import run_crawl
 from app.config import settings
 from app.database import engine
 from app.discord_bot import bot as discord_bot
@@ -69,23 +66,7 @@ async def lifespan(app: FastAPI):
         await _seed_demo_data()
     except Exception:
         import traceback
-
         traceback.print_exc()
-
-    # Crawler scheduler disabled — requires Playwright chromium (not installed)
-    # scheduler = AsyncIOScheduler()
-    # cron_parts = settings.crawler_schedule.split()
-    # scheduler.add_job(
-    #     run_crawl,
-    #     trigger="cron",
-    #     minute=cron_parts[0],
-    #     hour=cron_parts[1],
-    #     day=cron_parts[2],
-    #     month=cron_parts[3],
-    #     day_of_week=cron_parts[4],
-    #     id="devpost_crawl",
-    # )
-    # scheduler.start()
 
     # Start Discord bot (if token configured, fails gracefully)
     await start_bot()
