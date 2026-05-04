@@ -104,7 +104,7 @@ rowdyhacks/
 │
 ├── nginx/
 │   ├── nginx.conf             # SSL, rate limiting, WebSocket, reverse proxy
-│   ├── docker-entrypoint.sh   # Auto-generates self-signed certs if missing
+│   ├── docker-entrypoint.sh   # Uses Let's Encrypt certs, falls back to self-signed
 │   └── ssl/                   # SSL certificate storage (gitignored)
 │
 └── scripts/
