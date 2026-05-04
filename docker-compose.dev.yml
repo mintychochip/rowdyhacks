@@ -1,0 +1,86 @@
+version: '3.8'
+
+# Full local development stack with hot reload
+# All services run in Docker for consistency
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hackverify
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: hackverify
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hackverify"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      HACKVERIFY_DATABASE_URL: postgresql+asyncpg://hackverify:changeme@db:5432/hackverify
+      HACKVERIFY_SECRET_KEY: local-dev-secret-key-32-chars-long-here
+      HACKVERIFY_BASE_URL: http://localhost:5173
+      HACKVERIFY_REDIS_URL: redis://redis:6379/0
+      HACKVERIFY_QDRANT_URL: http://qdrant:6333
+      HACKVERIFY_LOG_LEVEL: DEBUG
+    volumes:
+      - ./backend:/app
+      - /app/.venv  # Don't overwrite the venv
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+  frontend:
+    image: node:20-alpine
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      # Empty string means use Vite proxy (relies on proxy config in vite.config.ts)
+      VITE_API_URL: ""
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Don't overwrite node_modules
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install --legacy-peer-deps && npm run dev -- --host 0.0.0.0"
+
+volumes:
+  postgres_data:
+  redis_data:
+  qdrant_data:

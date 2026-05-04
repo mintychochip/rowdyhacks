@@ -232,14 +232,27 @@ ROLE_TOOLS: dict[UserRole, set[str]] = {
 
 
 def get_tools_for_role(role: str) -> list[dict]:
-    """Get tool definitions available to a role."""
+    """Get tool definitions available to a role in OpenAI format."""
     try:
         user_role = UserRole(role)
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
 
     allowed_tools = ROLE_TOOLS.get(user_role, set())
-    return [TOOL_DEFINITIONS[tool] for tool in allowed_tools if tool in TOOL_DEFINITIONS]
+    # Convert to OpenAI function calling format (requires type + function wrapper)
+    tools = []
+    for tool_name in allowed_tools:
+        if tool_name in TOOL_DEFINITIONS:
+            tool_def = TOOL_DEFINITIONS[tool_name]
+            tools.append({
+                "type": "function",
+                "function": {
+                    "name": tool_def["name"],
+                    "description": tool_def["description"],
+                    "parameters": tool_def["parameters"]
+                }
+            })
+    return tools
 
 
 def can_use_tool(role: str, tool_name: str) -> bool:

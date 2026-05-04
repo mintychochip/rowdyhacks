@@ -40,7 +40,9 @@ class ContextBuilder:
         if tools:
             parts.append("\nYou have access to the following tools:")
             for tool in tools:
-                parts.append(f"- {tool['name']}: {tool['description']}")
+                # Tool is now in OpenAI format with type and function wrapper
+                func = tool.get("function", {})
+                parts.append(f"- {func.get('name', 'unknown')}: {func.get('description', '')}")
             parts.append("\nWhen you need to use a tool, respond with a JSON object in this format:")
             parts.append('{"tool": "tool_name", "parameters": {...}}')
             parts.append("After the tool returns, I'll provide the result and you can continue.")

@@ -24,7 +24,28 @@ export default function AssistantPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  const [backendReady, setBackendReady] = useState(true);
   const abortControllerRef = useRef<(() => void) | null>(null);
+
+  // Health check - verify backend is ready
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/monitoring/health`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+          },
+        });
+        setBackendReady(res.ok);
+      } catch {
+        setBackendReady(false);
+      }
+    };
+    checkHealth();
+    const interval = setInterval(checkHealth, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, []);
 
   // Load conversations on mount
   useEffect(() => {
@@ -62,15 +83,20 @@ export default function AssistantPage() {
     }
   };
 
-  const handleNewChat = () => {
-    setActiveConversationId(undefined);
-    setMessages([]);
-    setError(null);
+  const handleStop = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current();
       abortControllerRef.current = null;
     }
     setIsStreaming(false);
+    setIsLoading(false);
+  };
+
+  const handleNewChat = () => {
+    setActiveConversationId(undefined);
+    setMessages([]);
+    setError(null);
+    handleStop();
   };
 
   const handleSelectConversation = (id: string) => {
@@ -361,11 +387,28 @@ export default function AssistantPage() {
           )}
         </div>
 
-        {/* Input */}
+        {/* Backend Status & Input */}
         <div style={{ padding: SPACE.lg }}>
+          {!backendReady && (
+            <div
+              style={{
+                padding: SPACE.sm,
+                marginBottom: SPACE.sm,
+                background: 'rgba(239, 68, 68, 0.2)',
+                borderRadius: RADIUS.sm,
+                color: '#ef4444',
+                textAlign: 'center',
+                fontSize: 13,
+              }}
+            >
+              ⚠️ Backend is not responding - messages may not work
+            </div>
+          )}
           <ChatInput
             onSend={handleSendMessage}
-            disabled={isStreaming}
+            onStop={handleStop}
+            disabled={isStreaming || !backendReady}
+            isStreaming={isStreaming}
           />
         </div>
       </div>

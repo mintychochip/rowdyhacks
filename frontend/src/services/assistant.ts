@@ -39,20 +39,41 @@ export async function sendChatMessage(
   if (conversationId) params.append('conversation_id', conversationId);
   if (hackathonId) params.append('hackathon_id', hackathonId);
 
-  const res = await fetch(`${BASE}/assistant/chat?${params.toString()}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
-    },
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.detail || 'Failed to send message');
+  try {
+    const res = await fetch(`${BASE}/assistant/chat?${params.toString()}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      let errorMessage = 'Failed to send message';
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.detail || errorMessage;
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+
+    return res.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out - please try again');
+    }
+    throw error;
   }
-
-  return res.json();
 }
 
 // Stream response using SSE
@@ -68,38 +89,113 @@ export function streamChatResponse(
     `${BASE}/assistant/stream/${messageId}?token=${encodeURIComponent(token)}`
   );
 
+  // Connection timeout - if no message received in 30s, consider it failed
+  const CONNECTION_TIMEOUT = 30000;
+  let connectionTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  let isConnected = false;
+
+  const clearConnectionTimeout = () => {
+    if (connectionTimeoutId) {
+      clearTimeout(connectionTimeoutId);
+      connectionTimeoutId = null;
+    }
+  };
+
+  const startConnectionTimeout = () => {
+    clearConnectionTimeout();
+    connectionTimeoutId = setTimeout(() => {
+      if (!isConnected) {
+        console.error('[SSE] Connection timeout - no data received');
+        onError('Connection timeout - assistant is taking too long to respond');
+        eventSource.close();
+      }
+    }, CONNECTION_TIMEOUT);
+  };
+
+  startConnectionTimeout();
+
+  // Buffer chunks to reduce React re-renders (batch updates every 50ms)
+  let chunkBuffer = '';
+  let flushTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  const flushBuffer = () => {
+    if (chunkBuffer) {
+      onChunk(chunkBuffer);
+      chunkBuffer = '';
+    }
+    flushTimeout = null;
+  };
+
+  eventSource.onopen = () => {
+    console.log('[SSE] Connection opened');
+    isConnected = true;
+  };
+
   eventSource.onmessage = (event) => {
+    isConnected = true;
+    clearConnectionTimeout();
     try {
       const data = JSON.parse(event.data);
 
       if (data.content) {
-        onChunk(data.content);
+        // Buffer content chunks for smoother UI updates
+        chunkBuffer += data.content;
+        if (!flushTimeout) {
+          flushTimeout = setTimeout(flushBuffer, 50);
+        }
       }
 
       if (data.tool_call) {
+        // Flush any pending chunks before tool call
+        if (flushTimeout) {
+          clearTimeout(flushTimeout);
+          flushBuffer();
+        }
         onToolCall(data.tool_call, data.result);
       }
 
       if (data.completed) {
+        // Flush remaining buffer
+        if (flushTimeout) {
+          clearTimeout(flushTimeout);
+        }
+        flushBuffer();
         onComplete();
         eventSource.close();
       }
 
       if (data.error) {
+        if (flushTimeout) {
+          clearTimeout(flushTimeout);
+        }
+        flushBuffer();
         onError(data.error);
         eventSource.close();
       }
     } catch (e) {
-      // Ignore parse errors for incomplete chunks
+      // Log parse errors for debugging
+      console.error('Failed to parse SSE message:', event.data);
+      console.error('Parse error:', e);
+      onError('Failed to parse response');
+      eventSource.close();
     }
   };
 
   eventSource.onerror = (error) => {
-    onError('Connection error');
+    console.error('[SSE] Connection error:', error);
+    clearConnectionTimeout();
+    
+    // Don't show error if we already received data (connection might just be closing)
+    if (!isConnected) {
+      onError('Failed to connect to assistant. Please try again.');
+    }
     eventSource.close();
   };
 
-  return () => eventSource.close();
+  return () => {
+    clearConnectionTimeout();
+    eventSource.close();
+  };
 }
 
 // Get conversation history

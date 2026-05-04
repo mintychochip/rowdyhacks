@@ -67,7 +67,7 @@ class LLMClient:
         messages: list[dict[str, str]],
         tools: list[dict] | None = None,
         temperature: float = 0.7,
-        max_tokens: int = 2000,
+        max_tokens: int = 800,
     ) -> AsyncGenerator[str, None]:
         """Stream chat completion response (SSE format)."""
         payload = {
@@ -82,27 +82,46 @@ class LLMClient:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
 
+        # Debug logging
+        print(f"[DEBUG LLM] Poolside API URL: {self.api_url}")
+        print(f"[DEBUG LLM] Poolside model: {self.model}")
+        print(f"[DEBUG LLM] Messages count: {len(messages)}")
+        print(f"[DEBUG LLM] Tools count: {len(tools) if tools else 0}")
+        print(f"[DEBUG LLM] Payload preview: {json.dumps(payload, indent=2)[:500]}")
+
         async with httpx.AsyncClient(timeout=60.0) as client:
-            async with client.stream(
-                "POST",
-                f"{self.api_url}/chat/completions",
-                headers=self._get_headers(),
-                json=payload,
-            ) as response:
-                response.raise_for_status()
-                async for line in response.aiter_lines():
-                    if line.startswith("data: "):
-                        data = line[6:]
-                        if data == "[DONE]":
-                            break
-                        try:
-                            chunk = json.loads(data)
-                            delta = chunk.get("choices", [{}])[0].get("delta", {})
-                            content = delta.get("content", "")
-                            if content:
-                                yield content
-                        except json.JSONDecodeError:
-                            continue
+            try:
+                async with client.stream(
+                    "POST",
+                    f"{self.api_url}/chat/completions",
+                    headers=self._get_headers(),
+                    json=payload,
+                ) as response:
+                    if response.status_code >= 400:
+                        error_body = await response.aread()
+                        error_text = error_body.decode()
+                        print(f"[ERROR] Poolside API {response.status_code}: {error_text[:1000]}")
+                        yield f'{{"error": "Poolside API error {response.status_code}: {error_text[:200]}"}}'
+                        return
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            data = line[6:]
+                            if data == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(data)
+                                delta = chunk.get("choices", [{}])[0].get("delta", {})
+                                content = delta.get("content", "")
+                                if content:
+                                    yield content
+                            except json.JSONDecodeError:
+                                continue
+            except Exception as e:
+                import traceback
+                error_detail = f"{type(e).__name__}: {str(e)}"
+                print(f"[ERROR] chat_completion_stream: {error_detail}")
+                print(f"[ERROR] Traceback: {traceback.format_exc()[:500]}")
+                yield json.dumps({"error": error_detail})
 
     async def execute_tool_loop(
         self,

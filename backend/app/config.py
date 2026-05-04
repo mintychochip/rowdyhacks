@@ -51,8 +51,8 @@ class Settings(BaseSettings):
         description="Qdrant vector store URL",
     )
     assistant_model: str = Field(
-        default="poolside/m.1",
-        description="LLM model for assistant chat (poolside/m.1 is free)",
+        default="poolside/laguna-xs.2",
+        description="LLM model for assistant chat",
     )
     assistant_max_history: int = Field(
         default=10,

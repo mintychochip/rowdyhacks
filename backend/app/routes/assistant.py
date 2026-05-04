@@ -29,7 +29,7 @@ from app.routes.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/assistant", tags=["assistant"])
+router = APIRouter(tags=["assistant"])
 
 
 async def get_hackathon(
@@ -119,11 +119,45 @@ async def create_chat_message(
     }
 
 
+async def get_current_user_sse(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Get current user from either Authorization header or query param (for SSE)."""
+    # Try header first
+    auth_header = request.headers.get("Authorization")
+    token = None
+    
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:]  # Remove "Bearer " prefix
+    else:
+        # Try query parameter (for EventSource which can't set headers)
+        token = request.query_params.get("token")
+    
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing authentication token")
+    
+    try:
+        from app.auth import decode_token
+        payload = decode_token(token)
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+
 @router.get("/stream/{message_id}")
 async def stream_response(
     message_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_sse),
 ):
     """Stream the assistant response for a message."""
 
@@ -161,6 +195,9 @@ async def stream_response(
     async def generate_stream() -> AsyncGenerator[str, None]:
         """Generate streaming response."""
         try:
+            # Send initial heartbeat to confirm connection
+            yield f"data: {json.dumps({'connected': True})}\n\n"
+            
             # Update status to streaming
             message.status = AssistantMessageStatus.STREAMING
             await db.commit()
@@ -195,9 +232,16 @@ async def stream_response(
             # Build messages for LLM
             messages = [
                 {"role": "system", "content": system_prompt},
-                *[{"role": h["role"], "content": h["content"]} for h in history],
+                *[{ "role": h["role"], "content": h["content"] } for h in history],
                 {"role": "user", "content": user_message.content},
             ]
+
+            # Debug: log what we're sending
+            import json as json_lib
+            print(f"[DEBUG ASSISTANT] Sending {len(messages)} messages to LLM")
+            print(f"[DEBUG ASSISTANT] Tools count: {len(tools) if tools else 0}")
+            print(f"[DEBUG ASSISTANT] First message role: {messages[0]['role'] if messages else 'none'}")
+            print(f"[DEBUG ASSISTANT] System prompt length: {len(system_prompt)}")
 
             # Stream response
             full_content = []
@@ -207,16 +251,23 @@ async def stream_response(
                 messages=messages,
                 tools=tools if tools else None,
             ):
-                # Try to parse tool calls
+                # Check if chunk is an error from LLM
+                if chunk.startswith('{"error":'):
+                    yield f"data: {chunk}\n\n"
+                    return
+                
+                # Try to parse tool calls (custom format from LLM)
                 if chunk.startswith("{\"tool\":"):
                     try:
                         tool_data = json.loads(chunk)
                         tool_calls.append(tool_data)
                     except json.JSONDecodeError:
                         full_content.append(chunk)
+                        # Use json.dumps for proper escaping
                         yield f"data: {json.dumps({'content': chunk})}\n\n"
                 else:
                     full_content.append(chunk)
+                    # Use json.dumps for proper escaping
                     yield f"data: {json.dumps({'content': chunk})}\n\n"
 
             # Execute any tool calls

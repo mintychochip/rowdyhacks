@@ -1,0 +1,36 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    libpq-dev \
+    gcc \
+    g++ \
+    openssl \
+    libssl-dev \
+    swig \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt || \
+    (echo "Some packages failed, continuing with core dependencies..." && \
+     pip install --no-cache-dir fastapi uvicorn sqlalchemy[asyncio] asyncpg pydantic pydantic-settings \
+     email-validator python-jose[cryptography] passlib[bcrypt] httpx beautifulsoup4 \
+     python-multipart pytest pytest-asyncio aiosqlite google-auth apscheduler \
+     redis websockets alembic psycopg2-binary qrcode pillow passbook \
+     discord.py structlog sentry-sdk qdrant-client)
+
+# Copy application code
+COPY . .
+
+# Create data directory
+RUN mkdir -p /app/data
+
+# Expose port
+EXPOSE 8000
+
+# Default command (overridden in docker-compose for dev)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
