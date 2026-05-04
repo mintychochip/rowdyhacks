@@ -1,11 +1,12 @@
 from logging.config import fileConfig
 
 from alembic import context
+from sqlalchemy import create_engine, pool
+
 from app.config import settings
 from app.models import Base
 # Import assistant models to include in migrations
 from app.models_assistant import AssistantConversation, AssistantDocument, AssistantMessage
-from sqlalchemy import create_engine, pool
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

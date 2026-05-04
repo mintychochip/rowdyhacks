@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,14 +24,14 @@ class ContextBuilder:
     async def build_system_prompt(
         self,
         user: User,
-        hackathon: Optional[Hackathon] = None,
-        user_query: Optional[str] = None,
+        hackathon: Hackathon | None = None,
+        user_query: str | None = None,
     ) -> str:
         """Build a comprehensive system prompt for the LLM."""
         parts = []
 
         # Identity and role
-        parts.append(f"You are an AI assistant for Hack the Valley, a hackathon management platform.")
+        parts.append("You are an AI assistant for Hack the Valley, a hackathon management platform.")
         parts.append(f"The user's role is: {user.role}")
         parts.append(f"Current date: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 
@@ -84,7 +84,7 @@ class ContextBuilder:
         self,
         conversation_id: str,
         limit: int = 10,
-    ) -> List[Dict[str, str]]:
+    ) -> list[dict[str, str]]:
         """Build conversation history for context window."""
         from app.models_assistant import AssistantMessage
 
@@ -108,7 +108,7 @@ class ContextBuilder:
 
         return history
 
-    async def _get_tracks(self, hackathon_id: str) -> List[Dict[str, Any]]:
+    async def _get_tracks(self, hackathon_id: str) -> list[dict[str, Any]]:
         """Get tracks for a hackathon."""
         result = await self.db.execute(
             select(Track)
@@ -130,10 +130,10 @@ class ContextBuilder:
     async def _get_relevant_documents(
         self,
         query: str,
-        hackathon_id: Optional[str],
+        hackathon_id: str | None,
         role: str,
         limit: int = 3,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get relevant documents via semantic search."""
         try:
             query_embedding = embedder.embed_text(query)
@@ -149,7 +149,7 @@ class ContextBuilder:
             logger.error(f"Error retrieving documents: {e}")
             return []
 
-    async def get_user_active_hackathons(self, user_id: str) -> List[Dict[str, Any]]:
+    async def get_user_active_hackathons(self, user_id: str) -> list[dict[str, Any]]:
         """Get hackathons the user is actively participating in."""
         # Get registrations
         result = await self.db.execute(

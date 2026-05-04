@@ -7,23 +7,46 @@ on:
     branches: [master]
 
 jobs:
-  backend-lint:
-    name: Backend Lint
+  # Stage 1: Lint everything
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/ruff-action@v3
+
+      - name: Backend Lint
+        uses: astral-sh/ruff-action@v3
         with:
           src: backend
           args: check --config backend/ruff.toml
-      - uses: astral-sh/ruff-action@v3
+
+      - name: Backend Format Check
+        uses: astral-sh/ruff-action@v3
         with:
           src: backend
           args: format --check --config backend/ruff.toml
 
-  backend-test:
-    name: Backend Tests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci --legacy-peer-deps
+
+      - name: Frontend Lint
+        run: |
+          cd frontend
+          npm run lint 2>&1 || echo '::warning::Frontend lint has pre-existing issues'
+
+  # Stage 2: Test backend (depends on lint)
+  test-backend:
+    name: Test Backend
     runs-on: ubuntu-latest
+    needs: lint
     steps:
       - uses: actions/checkout@v4
 
@@ -33,19 +56,21 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: |
           cd backend
           pip install -r requirements.txt
 
-      - name: Run tests
+      - name: Run Tests
         run: |
           cd backend
           pytest -x -q --tb=short --ignore=tests/test_judging.py --ignore=tests/test_oauth.py --ignore=tests/test_routes_dashboard.py
 
-  frontend-lint:
-    name: Frontend Lint & Build
+  # Stage 3: Build frontend (depends on lint)
+  build-frontend:
+    name: Build Frontend
     runs-on: ubuntu-latest
+    needs: lint
     steps:
       - uses: actions/checkout@v4
 
@@ -55,24 +80,21 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: |
           cd frontend
           npm ci --legacy-peer-deps
-
-      - name: Lint
-        run: |
-          cd frontend
-          npm run lint 2>&1 || echo '::warning::Frontend lint has pre-existing issues — not blocking CI'
 
       - name: Build
         run: |
           cd frontend
           npm run build
 
-  docker-compose-validate:
+  # Stage 4: Validate Docker Compose (depends on lint)
+  validate-compose:
     name: Validate Docker Compose
     runs-on: ubuntu-latest
+    needs: lint
     steps:
       - uses: actions/checkout@v4
 
