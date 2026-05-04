@@ -10,6 +10,18 @@ repos:
       - id: ruff-format
         args: [--config, backend/ruff.toml]
         files: ^backend/.*\.py$
+
+  # TypeScript type checking - catches build errors like invalid CSS properties
+  - repo: local
+    hooks:
+      - id: frontend-typecheck
+        name: Frontend TypeScript Type Check
+        entry: bash -c 'cd frontend && npx tsc -b'
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
+        pass_filenames: false
+        stages: [pre-commit]
+
   - repo: https://github.com/pre-commit/mirrors-eslint
     rev: v9.13.0
     hooks:

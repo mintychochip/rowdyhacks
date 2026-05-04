@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -32,21 +32,19 @@ export default function RubricBuilderPage() {
     { name: 'Pitch', description: 'Presentation and storytelling', max_score: 10, weight: 20 },
   ]);
   const [saving, setSaving] = useState(false);
-  const [existingSession, setExistingSession] = useState<any>(null);
+  const [existingSession, setExistingSession] = useState<unknown>(null);
 
-  useEffect(() => {
-    if (!user) { navigate('/auth'); return; }
-    if (id) loadSession();
-  }, [id, user]);
-
-  const loadSession = async () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const loadSession = useCallback(async () => {
+    if (!id) return;
     try {
-      const s = await api.getJudgingSession(id!);
+      const s = await api.getJudgingSession(id);
       setExistingSession(s);
       setStartTime(s.start_time.slice(0, 16));
       setEndTime(s.end_time.slice(0, 16));
       setPerProjectSeconds(s.per_project_seconds);
       if (s.rubric?.criteria?.length) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setCriteria(s.rubric.criteria.map((c: any) => ({
           name: c.name,
           description: c.description || '',
@@ -57,7 +55,12 @@ export default function RubricBuilderPage() {
     } catch {
       // No session yet — use defaults
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (!user) { navigate('/auth'); return; }
+    if (id) loadSession();
+  }, [id, user, navigate, loadSession]);
 
   const totalWeight = criteria.reduce((s, c) => s + c.weight, 0);
 

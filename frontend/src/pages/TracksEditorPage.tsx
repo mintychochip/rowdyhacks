@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import * as api from '../services/api';
@@ -34,18 +34,19 @@ export default function TracksEditorPage() {
   const [resourceName, setResourceName] = useState('');
   const [resourceUrl, setResourceUrl] = useState('');
 
-  useEffect(() => {
-    if (id) loadTracks();
-  }, [id]);
-
-  const loadTracks = async () => {
+  const loadTracks = useCallback(async () => {
+    if (!id) return;
     setLoading(true);
     try {
-      const data = await api.getHackathonTracks(id!);
+      const data = await api.getHackathonTracks(id);
       setTracks(data.tracks || []);
-    } catch { }
+    } catch { /* empty */ }
     setLoading(false);
-  };
+  }, [id]);
+
+  useEffect(() => {
+    loadTracks();
+  }, [loadTracks]);
 
   const startEdit = (track?: Track) => {
     if (track) {

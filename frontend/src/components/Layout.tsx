@@ -112,14 +112,13 @@ const hk = (path: string) => hackathonId ? `/hackathons/${hackathonId}${path}` :
       )}
 
       {/* Sidebar */}
-      <aside style={{
+      <aside className="hide-scrollbar" style={{
         position: 'fixed', left: 0, top: 0, bottom: 0, width: 240,
         background: NAV_BG, borderRight: `1px solid ${BORDER}`,
         display: 'flex', flexDirection: 'column', zIndex: 50,
         overflowY: 'auto',
         scrollbarWidth: 'none',
         msOverflowStyle: 'none',
-        WebkitScrollbar: { display: 'none' },
         ...(isMobile ? {
           transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
           transition: 'transform 0.2s ease',

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useAuth } from '../contexts/AuthContext';
@@ -359,11 +359,7 @@ export default function TracksPage() {
   const [loading, setLoading] = useState(true);
   const [expandedTrack, setExpandedTrack] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadTracks();
-  }, [id]);
-
-  const loadTracks = async () => {
+  const loadTracks = useCallback(async () => {
     try {
       let hId = id;
       if (!hId) {
@@ -386,7 +382,11 @@ export default function TracksPage() {
       console.error('Failed to load tracks:', e);
     }
     setLoading(false);
-  };
+  }, [id]);
+
+  useEffect(() => {
+    loadTracks();
+  }, [loadTracks]);
 
   const toggleTrack = (trackId: string) => {
     setExpandedTrack(expandedTrack === trackId ? null : trackId);
