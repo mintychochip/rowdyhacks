@@ -71,7 +71,8 @@ export default function Layout() {
     return location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
   };
 
-  const hk = (path: string) => hackathonId ? `/hackathons/${hackathonId}${path}` : '#';
+  // Generate hackathon-scoped paths; fall back to /hackathons list when none exists
+const hk = (path: string) => hackathonId ? `/hackathons/${hackathonId}${path}` : '/hackathons';
 
   const NAV_ITEMS: NavItem[] = [
     { to: '/', icon: 'home', label: 'Home' },
@@ -142,7 +143,8 @@ export default function Layout() {
         <nav style={{ flex: 1, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {visibleNav.map(item => {
             const active = isActive(item.to);
-            const disabled = item.to === '#' || (item.to.startsWith('/hackathons/') && !hackathonId);
+            // Only disable links that explicitly need a hackathon
+const disabled = item.to === '#' || (item.to.startsWith('/hackathons/') && !hackathonId && item.to !== '/hackathons');
             return (
               <Link
                 key={item.to + item.label}
