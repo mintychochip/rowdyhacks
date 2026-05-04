@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run OpenHands Agent
-        uses: All-Hands-AI/OpenHands@v0.24
+        uses: OpenHands/OpenHands@v1.7.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.issue.number || github.event.pull_request.number }}
