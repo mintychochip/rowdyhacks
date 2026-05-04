@@ -6,7 +6,11 @@ from sqlalchemy import create_engine, pool
 from app.config import settings
 from app.models import Base
 # Import assistant models to include in migrations
-from app.models_assistant import AssistantConversation, AssistantDocument, AssistantMessage
+from app.models_assistant import (  # noqa: F401
+    AssistantConversation,
+    AssistantDocument,
+    AssistantMessage,
+)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

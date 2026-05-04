@@ -38,7 +38,7 @@ class ContextBuilder:
         # Available tools
         tools = get_tools_for_role(user.role)
         if tools:
-            parts.append(f"\nYou have access to the following tools:")
+            parts.append("\nYou have access to the following tools:")
             for tool in tools:
                 parts.append(f"- {tool['name']}: {tool['description']}")
             parts.append("\nWhen you need to use a tool, respond with a JSON object in this format:")
@@ -53,7 +53,7 @@ class ContextBuilder:
             # Get tracks
             tracks = await self._get_tracks(hackathon.id)
             if tracks:
-                parts.append(f"\nAvailable tracks:")
+                parts.append("\nAvailable tracks:")
                 for track in tracks:
                     parts.append(f"- {track['name']}: {track['description'][:100]}...")
 
@@ -65,12 +65,12 @@ class ContextBuilder:
                 role=user.role,
             )
             if relevant_docs:
-                parts.append(f"\nRelevant information from knowledge base:")
+                parts.append("\nRelevant information from knowledge base:")
                 for doc in relevant_docs:
                     parts.append(f"[{doc['doc_type']}] {doc['title']}: {doc['content'][:200]}...")
 
         # Response guidelines
-        parts.append(f"\nGuidelines:")
+        parts.append("\nGuidelines:")
         parts.append("- Be helpful, friendly, and concise")
         parts.append("- If you don't know something, say so clearly")
         parts.append("- Use the tools available to you to provide accurate information")

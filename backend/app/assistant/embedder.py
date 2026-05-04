@@ -1,7 +1,7 @@
 """Embedding service using sentence-transformers."""
 
 import logging
-from typing import List, Optional
+
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -16,8 +16,8 @@ DEFAULT_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 class Embedder:
     """Manages sentence embeddings for the assistant."""
 
-    _instance: Optional["Embedder"] = None
-    _model: Optional[SentenceTransformer] = None
+    _instance: "Embedder" | None = None
+    _model: SentenceTransformer | None = None
     _model_name: str = DEFAULT_MODEL
 
     def __new__(cls) -> "Embedder":
@@ -33,13 +33,13 @@ class Embedder:
             logger.info("Embedding model loaded")
         return self._model
 
-    def embed_text(self, text: str) -> List[float]:
+    def embed_text(self, text: str) -> list[float]:
         """Embed a single text string."""
         model = self._load_model()
         embedding = model.encode(text, convert_to_numpy=True)
         return embedding.tolist()
 
-    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Embed multiple texts efficiently."""
         if not texts:
             return []
@@ -47,7 +47,7 @@ class Embedder:
         embeddings = model.encode(texts, convert_to_numpy=True, batch_size=32)
         return embeddings.tolist()
 
-    def embed_chunks(self, chunks: List[str]) -> List[List[float]]:
+    def embed_chunks(self, chunks: list[str]) -> list[list[float]]:
         """Embed document chunks with progress logging."""
         if not chunks:
             return []
@@ -57,7 +57,7 @@ class Embedder:
         logger.info(f"Embedded {len(chunks)} chunks successfully")
         return embeddings
 
-    def cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
+    def cosine_similarity(self, vec1: list[float], vec2: list[float]) -> float:
         """Calculate cosine similarity between two vectors."""
         a = np.array(vec1)
         b = np.array(vec2)
