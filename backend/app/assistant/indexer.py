@@ -101,7 +101,7 @@ class DocumentIndexer:
                 qdrant_id=qdrant_id,
                 doc_type=DocumentType.HACKATHON_INFO,
                 title=f"{hackathon.name} - General Information",
-                metadata={"content": content},
+                doc_doc_metadata={"content": content},
             )
             self.db.add(doc)
 
@@ -113,7 +113,7 @@ class DocumentIndexer:
             hackathon_id=str(hackathon.id),
             doc_type=DocumentType.HACKATHON_INFO.value,
             title=f"{hackathon.name} - Information",
-            metadata={"source": "hackathon"},
+            doc_doc_metadata={"source": "hackathon"},
             role_access=["participant", "judge", "organizer"],
         )
 
@@ -168,7 +168,7 @@ class DocumentIndexer:
                     doc_type=DocumentType.TRACK_INFO,
                     title=track.name,
                     source_id=track.id,
-                    metadata={"content": content, "track_id": str(track.id)},
+                    doc_metadata={"content": content, "track_id": str(track.id)},
                 )
                 self.db.add(doc)
 
@@ -180,7 +180,7 @@ class DocumentIndexer:
                 hackathon_id=str(hackathon.id),
                 doc_type=DocumentType.TRACK_INFO.value,
                 title=track.name,
-                metadata={"track_id": str(track.id)},
+                doc_metadata={"track_id": str(track.id)},
                 role_access=["participant", "judge", "organizer"],
             )
 
@@ -232,7 +232,7 @@ class DocumentIndexer:
                     qdrant_id=qdrant_id,
                     doc_type=DocumentType.FAQ,
                     title=f"FAQ: {faq['question'][:50]}...",
-                    metadata={"question": faq["question"], "answer": faq["answer"]},
+                    doc_metadata={"question": faq["question"], "answer": faq["answer"]},
                 )
                 self.db.add(doc)
 
@@ -244,7 +244,7 @@ class DocumentIndexer:
                     hackathon_id=str(hackathon.id),
                     doc_type=DocumentType.FAQ.value,
                     title=faq["question"],
-                    metadata={"question": faq["question"]},
+                    doc_metadata={"question": faq["question"]},
                     role_access=["participant", "judge", "organizer"],
                 )
 
@@ -271,7 +271,7 @@ class DocumentIndexer:
             qdrant_id=doc_id,
             doc_type=DocumentType.FAQ,
             title=f"FAQ: {question[:50]}...",
-            metadata={"question": question, "answer": answer},
+            doc_metadata={"question": question, "answer": answer},
         )
         self.db.add(doc)
 
@@ -282,7 +282,7 @@ class DocumentIndexer:
             hackathon_id=str(hackathon.id),
             doc_type=DocumentType.FAQ.value,
             title=question,
-            metadata={"question": question},
+            doc_metadata={"question": question},
             role_access=["participant", "judge", "organizer"],
         )
 

@@ -116,7 +116,7 @@ export default function Layout() {
         {/* Logo */}
         <div style={{ padding: '16px 16px 12px' }}>
           <Link to="/" onClick={closeSidebar} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-            <img src="/htv-logo.png" alt="Hack the Valley" style={{ width: 120, height: 'auto', borderRadius: 8 }} />
+            <img src="/rowdy-mascot.png" alt="Hack the Valley" style={{ width: 120, height: 'auto', borderRadius: 8 }} />
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 18, fontWeight: 800, color: TEXT_WHITE, letterSpacing: -0.5, fontFamily: 'Inter, sans-serif' }}>
                 Hack the Valley

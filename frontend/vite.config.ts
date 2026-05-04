@@ -8,7 +8,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       pwaAssets: {
-        image: 'public/htv-logo.png',
+        image: 'public/rowdy-mascot.png',
       },
       manifest: {
         name: 'Hack the Valley',
