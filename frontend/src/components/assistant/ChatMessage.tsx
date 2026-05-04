@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { CARD_BG, PRIMARY, SPACE, TEXT_PRIMARY, TEXT_SECONDARY } from '../../theme';
 
+// Message role type matching backend AssistantMessageRole
 interface ChatMessageProps {
-  role: 'user' | 'assistant' | 'tool';
+  role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   isStreaming?: boolean;
   toolCalls?: any[];
@@ -25,6 +26,7 @@ export default function ChatMessage({
 
   const isUser = role === 'user';
   const isAssistant = role === 'assistant';
+  const isSystem = role === 'system';
 
   return (
     <div
@@ -56,7 +58,7 @@ export default function ChatMessage({
             letterSpacing: 0.5,
           }}
         >
-          {isUser ? 'You' : isAssistant ? 'Assistant' : 'Tool'}
+          {isUser ? 'You' : isAssistant ? 'Assistant' : isSystem ? 'System' : 'Tool'}
         </div>
 
         {/* Message content */}

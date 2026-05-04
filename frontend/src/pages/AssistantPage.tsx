@@ -14,6 +14,7 @@ import ChatInput from '../components/assistant/ChatInput';
 import ChatMessageComponent from '../components/assistant/ChatMessage';
 import ConversationSidebar from '../components/assistant/ConversationSidebar';
 
+// Assistant AI chat page - auto-rebuild v2
 export default function AssistantPage() {
   const { isMobile } = useMediaQuery();
   const [conversations, setConversations] = useState<Conversation[]>([]);
