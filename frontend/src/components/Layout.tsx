@@ -90,6 +90,7 @@ export default function Layout() {
   ];
 
   const visibleNav = NAV_ITEMS.filter(item => !item.roles || (role && item.roles.includes(role)));
+  const needsHackathon = (to: string) => to.startsWith('/hackathons/') || (to !== '/' && to !== '/assistant' && to !== '/analyze' && to !== '/tracks' && to !== '/check-in' && to !== '/dashboard' && to !== '/crawled-data' && to !== '/registrations' && to !== '/judge' && to !== '/auth');
 
   const handleLogout = () => {
     closeSidebar();
@@ -141,15 +142,16 @@ export default function Layout() {
         <nav style={{ flex: 1, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {visibleNav.map(item => {
             const active = isActive(item.to);
+            const disabled = item.to === '#' || (item.to.startsWith('/hackathons/') && !hackathonId);
             return (
               <Link
                 key={item.to + item.label}
-                to={item.to}
-                onClick={closeSidebar}
+                to={disabled ? '#' : item.to}
+                onClick={disabled ? (e) => { e.preventDefault(); alert('Create a hackathon first!'); } : closeSidebar}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 12px', borderRadius: RADIUS.md,
-                  color: active ? PRIMARY : TEXT_MUTED,
+                  color: active ? PRIMARY : (disabled ? '#475569' : TEXT_MUTED),
                   background: active ? 'rgba(0,212,255,0.08)' : 'transparent',
                   borderLeft: active ? `3px solid ${PRIMARY}` : '3px solid transparent',
                   textDecoration: 'none',
@@ -157,10 +159,13 @@ export default function Layout() {
                   fontWeight: active ? 600 : 400,
                   fontFamily: 'Inter, sans-serif',
                   transition: 'all 0.15s',
+                  cursor: disabled ? 'not-allowed' : 'pointer',
+                  opacity: disabled ? 0.5 : 1,
                 }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: 20, color: active ? PRIMARY : 'inherit' }}>{item.icon}</span>
                 {item.label}
+                {disabled && <span style={{ fontSize: 10, marginLeft: 'auto', color: '#64748b' }}>No hackathon</span>}
               </Link>
             );
           })}
