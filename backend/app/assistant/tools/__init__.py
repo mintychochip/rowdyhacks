@@ -458,7 +458,7 @@ class ToolExecutor:
             select(func.count(JudgeAssignment.id))
             .join(Submission, JudgeAssignment.submission_id == Submission.id)
             .where(Submission.hackathon_id == self.hackathon.id)
-            .where(JudgeAssignment.scores_submitted == True)
+            .where(JudgeAssignment.scores_submitted)
         )
         completed = result.scalar()
 

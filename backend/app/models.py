@@ -8,15 +8,13 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Enum as SAEnum,
     ForeignKey,
     Index,
     Integer,
     String,
     Text,
     TypeDecorator,
-)
-from sqlalchemy import (
-    Enum as SAEnum,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import relationship
