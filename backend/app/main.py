@@ -13,8 +13,8 @@ from app.discord_bot import bot as discord_bot
 from app.discord_bot import start_bot
 from app.logging_config import configure_logging
 from app.models import Base
-from app.routes.assistant import router as assistant_router
 from app.routes.auth import router as auth_router
+from app.routes.assistant import router as assistant_router
 from app.routes.checkin import router as checkin_router
 from app.routes.checks import router as checks_router
 from app.routes.crawler import router as crawler_router
