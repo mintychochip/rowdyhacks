@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { PRIMARY, ERROR_TEXT, ERROR_BG20, ERROR, TEXT_MUTED, TEXT_PRIMARY, TEXT_WHITE, INPUT_BG, INPUT_BORDER } from '../theme';
-import { getOAuthAuthorizeUrl } from '../services/api';
+import { PRIMARY, ERROR_TEXT, ERROR_BG20, ERROR, SUCCESS, TEXT_MUTED, TEXT_PRIMARY, TEXT_WHITE, INPUT_BG, INPUT_BORDER } from '../theme';
+import { getOAuthAuthorizeUrl, forgotPassword, resetPassword } from '../services/api';
 import BrandIcon from '../components/BrandIcon';
 
 export default function AuthPage() {
@@ -17,6 +17,12 @@ export default function AuthPage() {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+  const [resetToken] = useState(new URLSearchParams(window.location.search).get('reset_token') || '');
+  const [newPassword, setNewPassword] = useState('');
+  const [resetDone, setResetDone] = useState(false);
 
   const urlError = searchParams.get('error');
 
@@ -112,6 +118,50 @@ export default function AuthPage() {
           ))}
         </div>
       </div>
+
+      {isLogin && (
+        <p style={{ textAlign: 'center', marginTop: 12, fontSize: 13 }}>
+          <button onClick={() => setShowForgot(!showForgot)}
+            style={{ background: 'none', border: 'none', color: TEXT_MUTED, cursor: 'pointer', fontSize: 13, textDecoration: 'underline' }}>
+            Forgot password?
+          </button>
+        </p>
+      )}
+
+      {showForgot && !forgotSent && (
+        <div style={{ marginTop: 16, padding: 16, background: INPUT_BG, borderRadius: 8, border: `1px solid ${INPUT_BORDER}` }}>
+          <p style={{ fontSize: 13, color: TEXT_MUTED, marginBottom: 8 }}>Enter your email to receive a reset link.</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
+              placeholder="your@email.com" style={{ flex: 1, padding: '8px 12px', background: '#0f172a', border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14 }} />
+            <button onClick={async () => { await forgotPassword(forgotEmail); setForgotSent(true); }}
+              style={{ padding: '8px 16px', background: PRIMARY, border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontWeight: 500 }}>Send</button>
+          </div>
+        </div>
+      )}
+
+      {forgotSent && (
+        <div style={{ marginTop: 16, padding: 12, background: `${SUCCESS}15`, border: `1px solid ${SUCCESS}`, borderRadius: 8, color: SUCCESS, fontSize: 13 }}>
+          If that email exists, a reset link has been sent. Check your inbox.
+        </div>
+      )}
+
+      {resetToken && !resetDone && (
+        <div style={{ marginTop: 16, padding: 16, background: INPUT_BG, borderRadius: 8, border: `1px solid ${INPUT_BORDER}` }}>
+          <p style={{ fontSize: 14, color: TEXT_PRIMARY, marginBottom: 8, fontWeight: 600 }}>Reset Your Password</p>
+          <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
+            placeholder="New password (min 8 chars)" minLength={8}
+            style={{ width: '100%', padding: '8px 12px', background: '#0f172a', border: `1px solid ${INPUT_BORDER}`, borderRadius: 6, color: '#fff', fontSize: 14, marginBottom: 8, boxSizing: 'border-box' }} />
+          <button onClick={async () => { try { await resetPassword(resetToken, newPassword); setResetDone(true); } catch (err: any) { setError(err.message); } }}
+            style={{ padding: '8px 16px', background: PRIMARY, border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontWeight: 500 }}>Reset Password</button>
+        </div>
+      )}
+
+      {resetDone && (
+        <div style={{ marginTop: 16, padding: 12, background: `${SUCCESS}15`, border: `1px solid ${SUCCESS}`, borderRadius: 8, color: SUCCESS, fontSize: 13 }}>
+          Password reset successful! You can now sign in with your new password.
+        </div>
+      )}
 
       <p style={{ textAlign: 'center', marginTop: 20, fontSize: 14, color: TEXT_MUTED }}>
         {isLogin ? "Don't have an account? " : 'Already have an account? '}

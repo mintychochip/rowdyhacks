@@ -2,9 +2,10 @@
 
 import argparse
 import asyncio
-import random
 
 # Add parent to path
+import os
+import random
 import sys
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -12,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 from faker import Faker
 from sqlalchemy import select
 
-sys.path.insert(0, "C:/Users/justi/dev/rowdyhacks/backend")
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.auth import hash_password
 from app.database import async_session

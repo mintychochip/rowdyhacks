@@ -1,10 +1,13 @@
 """Judging routes: session config, rubric management, judge assignment, scoring, ELO results."""
 
+import csv
+import io
 import math
 import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -25,6 +28,7 @@ from app.models import (
     User,
     UserRole,
 )
+from app.routes.deps import get_current_user_payload as _get_current_user_payload
 from app.schemas import JudgingSessionCreate, SubmitScoreRequest
 
 router = APIRouter(prefix="/api", tags=["judging"])
@@ -1165,3 +1169,87 @@ async def close_judging(
     session.status = JudgingSessionStatus.closed
     await db.commit()
     return {"status": "closed"}
+
+
+@router.get("/hackathons/{hackathon_id}/judging/export")
+async def export_judging_csv(
+    hackathon_id: uuid.UUID,
+    authorization: str = Header(alias="Authorization"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Export judging results as CSV (organizer only)."""
+    payload = _get_current_user_payload(authorization)
+    hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
+    hackathon = hackathon_result.scalar_one_or_none()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+    if str(hackathon.organizer_id) != payload["sub"]:
+        raise HTTPException(status_code=403, detail="Only the organizer can export results")
+
+    session = await _get_judging_session(hackathon_id, db)
+
+    # Fetch rubric criteria
+    rubric = session.rubric
+    criteria = sorted(rubric.criteria, key=lambda c: c.sort_order) if rubric else []
+    criteria_names = [c.name for c in criteria]
+
+    # Fetch all assignments with scores
+    result = await db.execute(
+        select(JudgeAssignment)
+        .where(JudgeAssignment.session_id == session.id)
+        .options(selectinload(JudgeAssignment.scores))
+    )
+    assignments = result.scalars().all()
+
+    # Build submission scores map
+    submission_scores: dict[str, dict] = {}
+    for a in assignments:
+        sub_id = str(a.submission_id)
+        if sub_id not in submission_scores:
+            submission_scores[sub_id] = {"scores": [], "judges": 0}
+        if a.is_completed:
+            submission_scores[sub_id]["judges"] += 1
+            score_map = {str(s.criterion_id): s.score for s in a.scores if s.score is not None}
+            submission_scores[sub_id]["scores"].append(score_map)
+
+    # Fetch submission titles
+    sub_ids = [uuid.UUID(sid) for sid in submission_scores]
+    submissions = {}
+    if sub_ids:
+        sub_result = await db.execute(select(Submission).where(Submission.id.in_(sub_ids)))
+        for s in sub_result.scalars().all():
+            submissions[str(s.id)] = s
+
+    criteria_id_to_name = {str(c.id): c.name for c in criteria}
+
+    # Build CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+    header = ["Submission ID", "Title", "Judges Scored"] + criteria_names + ["Average Total"]
+    writer.writerow(header)
+
+    for sub_id, data in submission_scores.items():
+        sub = submissions.get(sub_id)
+        title = sub.title if sub else "Unknown"
+        row = [sub_id, title, data["judges"]]
+
+        avg_by_criterion: dict[str, float] = {}
+        for cn in criteria_names:
+            crit_id = next((str(c.id) for c in criteria if c.name == cn), None)
+            if crit_id and data["scores"]:
+                vals = [s.get(crit_id) for s in data["scores"] if s.get(crit_id) is not None]
+                avg_by_criterion[cn] = sum(vals) / len(vals) if vals else 0
+            else:
+                avg_by_criterion[cn] = 0
+            row.append(round(avg_by_criterion[cn], 2))
+
+        total = sum(avg_by_criterion.values())
+        row.append(round(total, 2))
+        writer.writerow(row)
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=judging_results_{hackathon_id}.csv"},
+    )

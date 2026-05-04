@@ -164,8 +164,18 @@ async def track_request(request: Request, call_next):
     _metrics["active_connections"] += 1
     _metrics["requests_total"] += 1
 
-    endpoint = f"{request.method} {request.url.path}"
-    _metrics["requests_by_endpoint"][endpoint] = _metrics["requests_by_endpoint"].get(endpoint, 0) + 1
+    # Normalize path to prevent unbounded cardinality
+    path = request.url.path
+    # Collapse UUID/numeric path segments to placeholders
+    import re
+
+    normalized = re.sub(r"/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "/:id", path)
+    normalized = re.sub(r"/\d+", "/:id", normalized)
+    endpoint = f"{request.method} {normalized}"
+
+    # Cap endpoint cardinality to prevent memory growth
+    if len(_metrics["requests_by_endpoint"]) < 500:
+        _metrics["requests_by_endpoint"][endpoint] = _metrics["requests_by_endpoint"].get(endpoint, 0) + 1
 
     start = time.monotonic()
     try:

@@ -8,7 +8,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth import create_qr_token, decode_token
+from app.auth import create_qr_token
 from app.database import get_db
 from app.discord_bot import post_application_to_discord
 from app.email_service import send_email
@@ -19,15 +19,7 @@ from app.waitlist import auto_waitlist_if_full, get_waitlist_position, promote_f
 router = APIRouter(prefix="/api", tags=["registrations"])
 
 
-def _get_current_user_payload(authorization: str | None):
-    """Extract and validate the current user from Bearer token. Returns payload dict."""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authentication required")
-    token = authorization.removeprefix("Bearer ")
-    try:
-        return decode_token(token)
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+from app.routes.deps import get_current_user_payload as _get_current_user_payload
 
 
 async def _get_user(db: AsyncSession, user_id: str) -> User:

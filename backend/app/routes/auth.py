@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+import secrets
+from datetime import UTC, datetime, timedelta
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,8 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import create_access_token, decode_token, hash_password, verify_password
 from app.config import settings
 from app.database import get_db
-from app.models import OAuthAccount, User
+from app.models import OAuthAccount, PasswordResetToken, User
 from app.oauth import PROVIDER_CONFIGS, VALID_PROVIDERS, build_authorize_url, create_state
+from app.rate_limit import login_limiter, password_reset_limiter, register_limiter
 from app.schemas import TokenResponse, UserLogin, UserRegister, UserResponse
 
 router = APIRouter()
@@ -29,8 +33,12 @@ def _get_current_user_id(authorization: str = Header(alias="Authorization")) -> 
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
+async def register(body: UserRegister, request: Request, db: AsyncSession = Depends(get_db)):
     """Register a new user account."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not register_limiter.is_allowed(client_ip):
+        retry = register_limiter.retry_after(client_ip)
+        raise HTTPException(status_code=429, detail=f"Too many registration attempts. Try again in {retry}s.")
     result = await db.execute(select(User).where(User.email == body.email))
     if result.scalar_one_or_none():
         raise HTTPException(
@@ -51,8 +59,13 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
+async def login(body: UserLogin, request: Request, db: AsyncSession = Depends(get_db)):
     """Authenticate and return a JWT."""
+    client_ip = request.client.host if request.client else "unknown"
+    rate_key = f"{client_ip}:{body.email}"
+    if not login_limiter.is_allowed(rate_key):
+        retry = login_limiter.retry_after(rate_key)
+        raise HTTPException(status_code=429, detail=f"Too many login attempts. Try again in {retry}s.")
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
     if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
@@ -154,3 +167,75 @@ async def list_linked_providers(
         "linked": [a.provider for a in accounts],
         "has_password": user_obj.password_hash is not None if user_obj else False,
     }
+
+
+# --- Password Reset ---
+
+
+@router.post("/forgot-password")
+async def forgot_password(body: dict, request: Request, db: AsyncSession = Depends(get_db)):
+    """Request a password reset link. Always returns 200 to prevent email enumeration."""
+    email = body.get("email", "")
+    client_ip = request.client.host if request.client else "unknown"
+    if not password_reset_limiter.is_allowed(client_ip):
+        return {"ok": True, "message": "If that email exists, a reset link has been sent."}
+
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if not user:
+        return {"ok": True, "message": "If that email exists, a reset link has been sent."}
+
+    token = secrets.token_urlsafe(48)
+    reset = PasswordResetToken(
+        user_id=user.id,
+        token=token,
+        expires_at=datetime.now(UTC) + timedelta(hours=1),
+    )
+    db.add(reset)
+    await db.commit()
+
+    reset_url = f"{settings.frontend_url}/auth?reset_token={token}"
+    try:
+        from app.email_service import send_email
+
+        await send_email(
+            to=user.email,
+            subject="Password Reset - Hack the Valley",
+            body=f"Hi {user.name},\n\nClick the link below to reset your password:\n{reset_url}\n\nThis link expires in 1 hour.\n\nHack the Valley Team",
+            db=db,
+        )
+    except Exception:
+        pass
+
+    return {"ok": True, "message": "If that email exists, a reset link has been sent."}
+
+
+@router.post("/reset-password")
+async def reset_password(body: dict, db: AsyncSession = Depends(get_db)):
+    """Reset password using a valid token."""
+    token = body.get("token", "")
+    new_password = body.get("password", "")
+    if len(new_password) < 8:
+        raise HTTPException(status_code=422, detail="Password must be at least 8 characters")
+
+    result = await db.execute(
+        select(PasswordResetToken).where(
+            PasswordResetToken.token == token,
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > datetime.now(UTC),
+        )
+    )
+    reset_token = result.scalar_one_or_none()
+    if not reset_token:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    result = await db.execute(select(User).where(User.id == reset_token.user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=400, detail="User not found")
+
+    user.password_hash = hash_password(new_password)
+    reset_token.used_at = datetime.now(UTC)
+    await db.commit()
+
+    return {"ok": True, "message": "Password has been reset successfully"}

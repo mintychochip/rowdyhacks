@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
@@ -25,11 +26,16 @@ import ProjectGallery from './pages/ProjectGallery';
 import PublicLeaderboard from './pages/PublicLeaderboard';
 import TracksPage from './pages/TracksPage';
 import CrawledDataPage from './pages/CrawledDataPage';
+import TeamsPage from './pages/TeamsPage';
+import MentorsPage from './pages/MentorsPage';
+import ActivityPage from './pages/ActivityPage';
+import NotificationPrefsPage from './pages/NotificationPrefsPage';
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ThemeProvider>
         <ToastProvider>
         <Routes>
           <Route element={<Layout />}>
@@ -59,9 +65,14 @@ export default function App() {
             <Route path="/hackathons/:id" element={<HackathonDetailPage />} />
             <Route path="/judge" element={<JudgeRedirect />} />
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/hackathons/:hackathonId/teams" element={<TeamsPage />} />
+            <Route path="/hackathons/:hackathonId/mentors" element={<MentorsPage />} />
+            <Route path="/hackathons/:hackathonId/activity" element={<ActivityPage />} />
+            <Route path="/notifications" element={<NotificationPrefsPage />} />
           </Route>
         </Routes>
         </ToastProvider>
+        </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>
   );

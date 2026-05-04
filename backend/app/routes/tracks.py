@@ -6,10 +6,9 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import decode_token
 from app.cache import cache_delete_pattern, cached
 from app.database import get_db
-from app.models import Hackathon, Track, User, UserRole
+from app.models import Hackathon, Track, UserRole
 
 router = APIRouter(prefix="/api/hackathons", tags=["tracks"])
 
@@ -17,23 +16,7 @@ TRACKS_CACHE_TTL = 300  # 5 minutes
 CACHE_PFX = "tracks"
 
 
-def _get_current_user_payload(authorization: str | None):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authentication required")
-    token = authorization.removeprefix("Bearer ")
-    try:
-        return decode_token(token)
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-
-async def _get_current_user(db: AsyncSession, authorization: str | None) -> User:
-    payload = _get_current_user_payload(authorization)
-    result = await db.execute(select(User).where(User.id == payload["sub"]))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+from app.routes.deps import get_current_user as _get_current_user
 
 
 async def _require_organizer(hackathon_id: str, db: AsyncSession, authorization: str | None) -> Hackathon:

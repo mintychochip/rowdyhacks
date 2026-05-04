@@ -382,7 +382,7 @@ export default function HackathonSettings() {
             type="url"
             value={devpostUrl}
             onChange={(e) => setDevpostUrl(e.target.value)}
-            placeholder="https://csub-hacks.devpost.com"
+            placeholder="https://hack-the-valley.devpost.com"
             style={{
               width: '100%', padding: '10px 14px', background: INPUT_BG,
               border: `1px solid ${INPUT_BORDER}`, borderRadius: RADIUS.md,

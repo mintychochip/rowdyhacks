@@ -7,15 +7,15 @@ from sqlalchemy import text
 
 from app.background_jobs import shutdown_scheduler, start_scheduler
 from app.cache import close_redis
-
-# from apscheduler.schedulers.asyncio import AsyncIOScheduler  # disabled — requires Playwright
-# from app.crawler.scheduler import run_crawl
 from app.config import settings
 from app.database import engine
 from app.discord_bot import bot as discord_bot
 from app.discord_bot import start_bot
 from app.logging_config import configure_logging
 from app.models import Base
+
+# New feature routers
+from app.routes.activity import router as activity_router
 from app.routes.auth import router as auth_router
 from app.routes.checkin import router as checkin_router
 from app.routes.checks import router as checks_router
@@ -24,12 +24,15 @@ from app.routes.dashboard import router as dashboard_router
 from app.routes.hackathons import router as hackathons_router
 from app.routes.hacker_dashboard import router as hacker_dashboard_router
 from app.routes.judging import router as judging_router
+from app.routes.mentors import router as mentors_router
 from app.routes.monitoring import router as monitoring_router
 from app.routes.monitoring import track_request
+from app.routes.notifications import router as notifications_router
 from app.routes.oauth import router as oauth_router
 from app.routes.qr import router as qr_router
 from app.routes.registrations import router as registrations_router
 from app.routes.registrations_organizer import router as registrations_org_router
+from app.routes.teams import router as teams_router
 from app.routes.tracks import router as tracks_router
 from app.routes.websocket import router as websocket_router
 
@@ -71,21 +74,6 @@ async def lifespan(app: FastAPI):
         import traceback
 
         traceback.print_exc()
-
-    # Crawler scheduler disabled — requires Playwright chromium (not installed)
-    # scheduler = AsyncIOScheduler()
-    # cron_parts = settings.crawler_schedule.split()
-    # scheduler.add_job(
-    #     run_crawl,
-    #     trigger="cron",
-    #     minute=cron_parts[0],
-    #     hour=cron_parts[1],
-    #     day=cron_parts[2],
-    #     month=cron_parts[3],
-    #     day_of_week=cron_parts[4],
-    #     id="devpost_crawl",
-    # )
-    # scheduler.start()
 
     # Start Discord bot (if token configured, fails gracefully)
     await start_bot()
@@ -145,7 +133,12 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        settings.frontend_url,
+        "https://rowdyhackin.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -166,6 +159,10 @@ app.include_router(judging_router)
 app.include_router(oauth_router, prefix="/api/auth/oauth", tags=["oauth"])
 app.include_router(websocket_router)
 app.include_router(monitoring_router)
+app.include_router(teams_router)
+app.include_router(mentors_router)
+app.include_router(activity_router)
+app.include_router(notifications_router)
 
 
 # Add request tracking middleware

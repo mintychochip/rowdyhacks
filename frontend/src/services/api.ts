@@ -312,3 +312,60 @@ export const addOrganizer = (hackathonId: string, email: string) =>
 
 export const removeOrganizer = (hackathonId: string, userId: string) =>
   request(`/hackathons/${hackathonId}/organizers/${userId}`, { method: 'DELETE' });
+
+// Password Reset
+export const forgotPassword = (email: string) =>
+  request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+
+export const resetPassword = (token: string, password: string) =>
+  request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) });
+
+// Team Formation
+export const getTeamPosts = (hackathonId: string) =>
+  request(`/hackathons/${hackathonId}/teams`);
+
+export const createTeamPost = (hackathonId: string, data: { title: string; description?: string; looking_for?: string[]; offering?: string[]; max_members?: number }) =>
+  request(`/hackathons/${hackathonId}/teams`, { method: 'POST', body: JSON.stringify(data) });
+
+export const closeTeamPost = (hackathonId: string, postId: string) =>
+  request(`/hackathons/${hackathonId}/teams/${postId}`, { method: 'DELETE' });
+
+export const requestToJoinTeam = (hackathonId: string, postId: string, message?: string) =>
+  request(`/hackathons/${hackathonId}/teams/${postId}/requests`, { method: 'POST', body: JSON.stringify({ message }) });
+
+export const getTeamRequests = (hackathonId: string, postId: string) =>
+  request(`/hackathons/${hackathonId}/teams/${postId}/requests`);
+
+export const respondToTeamRequest = (hackathonId: string, postId: string, requestId: string, status: string) =>
+  request(`/hackathons/${hackathonId}/teams/${postId}/requests/${requestId}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+
+// Mentor Matching
+export const getMentors = (hackathonId: string) =>
+  request(`/hackathons/${hackathonId}/mentors`);
+
+export const registerMentor = (hackathonId: string, data: { name: string; expertise?: string[]; bio?: string; max_sessions?: number }) =>
+  request(`/hackathons/${hackathonId}/mentors`, { method: 'POST', body: JSON.stringify(data) });
+
+export const requestMentor = (hackathonId: string, mentorId: string, data: { topic: string; description?: string }) =>
+  request(`/hackathons/${hackathonId}/mentors/${mentorId}/requests`, { method: 'POST', body: JSON.stringify(data) });
+
+export const getMentorRequests = (hackathonId: string, mentorId: string) =>
+  request(`/hackathons/${hackathonId}/mentors/${mentorId}/requests`);
+
+export const updateMentorRequest = (hackathonId: string, mentorId: string, requestId: string, status: string) =>
+  request(`/hackathons/${hackathonId}/mentors/${mentorId}/requests/${requestId}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+
+// Activity Feed
+export const getActivity = (hackathonId: string, limit = 50, offset = 0) =>
+  request(`/hackathons/${hackathonId}/activity?limit=${limit}&offset=${offset}`);
+
+// Judging Export
+export const exportJudgingCSV = (hackathonId: string) =>
+  `${BASE}/hackathons/${hackathonId}/judging/export`;
+
+// Notification Preferences
+export const getNotificationPrefs = () =>
+  request('/me/notifications');
+
+export const updateNotificationPrefs = (data: Record<string, unknown>) =>
+  request('/me/notifications', { method: 'PATCH', body: JSON.stringify(data) });

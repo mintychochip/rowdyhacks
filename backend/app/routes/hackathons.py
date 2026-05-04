@@ -14,7 +14,6 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import decode_token
 from app.cache import cache_delete_pattern, cached
 from app.checks.similarity import run_similarity
 from app.database import get_db
@@ -46,43 +45,8 @@ HK_CACHE_TTL = 300  # 5 minutes
 HK_CACHE_PFX = "hackathons"
 
 
-def _get_current_user_payload(authorization: str | None):
-    """Extract and validate the current user from Bearer token."""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authentication required")
-    token = authorization.removeprefix("Bearer ")
-    try:
-        return decode_token(token)
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-
-async def _get_current_user(db: AsyncSession, authorization: str | None) -> User:
-    """Get the current authenticated user."""
-    payload = _get_current_user_payload(authorization)
-    result = await db.execute(select(User).where(User.id == payload["sub"]))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
-
-
-async def _ensure_organizer(user: User, hackathon: Hackathon, db: AsyncSession):
-    """Verify user is the organizer or a co-organizer of the hackathon."""
-    # Primary organizer check
-    if user.role == UserRole.organizer and hackathon.organizer_id == user.id:
-        return
-
-    # Co-organizer check
-    result = await db.execute(
-        select(HackathonOrganizer).where(
-            and_(HackathonOrganizer.hackathon_id == hackathon.id, HackathonOrganizer.user_id == user.id)
-        )
-    )
-    if result.scalar_one_or_none():
-        return
-
-    raise HTTPException(status_code=403, detail="Only the hackathon organizer can perform this action")
+from app.routes.deps import get_current_user as _get_current_user
+from app.routes.deps import require_organizer as _ensure_organizer
 
 
 @router.post("", status_code=201)

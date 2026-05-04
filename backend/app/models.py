@@ -615,3 +615,133 @@ class EmailLog(Base):
     updated_at = Column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(UTC))
 
     registration = relationship("Registration", back_populates="email_logs")
+
+
+# --- Password Reset ---
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    user_id = Column(Guid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token = Column(String(128), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+
+# --- Team Formation ---
+
+
+class TeamPost(Base):
+    """Hackers looking for teammates or teams looking for members."""
+
+    __tablename__ = "team_posts"
+    __table_args__ = (Index("ix_team_posts_hackathon", "hackathon_id"),)
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Guid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    looking_for = Column(ArrayOfStrings, nullable=True)  # skills wanted
+    offering = Column(ArrayOfStrings, nullable=True)  # skills offered
+    max_members = Column(Integer, nullable=True, default=4)
+    is_open = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    user = relationship("User")
+
+
+class TeamRequest(Base):
+    """Request to join a team."""
+
+    __tablename__ = "team_requests"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    team_post_id = Column(Guid, ForeignKey("team_posts.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Guid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    message = Column(Text, nullable=True)
+    status = Column(String(20), nullable=False, default="pending")  # pending, accepted, rejected
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    team_post = relationship("TeamPost")
+    user = relationship("User")
+
+
+# --- Mentor Matching ---
+
+
+class MentorProfile(Base):
+    """Mentors available for the hackathon."""
+
+    __tablename__ = "mentor_profiles"
+    __table_args__ = (Index("ix_mentor_profiles_hackathon", "hackathon_id"),)
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Guid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String(200), nullable=False)
+    expertise = Column(ArrayOfStrings, nullable=True)
+    bio = Column(Text, nullable=True)
+    max_sessions = Column(Integer, nullable=False, default=5)
+    is_available = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    user = relationship("User")
+
+
+class MentorRequest(Base):
+    """Request help from a mentor."""
+
+    __tablename__ = "mentor_requests"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    mentor_id = Column(Guid, ForeignKey("mentor_profiles.id", ondelete="CASCADE"), nullable=False)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Guid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    topic = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String(20), nullable=False, default="pending")  # pending, accepted, completed, cancelled
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    mentor = relationship("MentorProfile")
+    user = relationship("User")
+
+
+# --- Activity Feed ---
+
+
+class ActivityEvent(Base):
+    """Live activity feed events for organizer dashboard."""
+
+    __tablename__ = "activity_events"
+    __table_args__ = (Index("ix_activity_events_hackathon", "hackathon_id"),)
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id", ondelete="CASCADE"), nullable=False)
+    event_type = Column(String(50), nullable=False)  # registration, checkin, announcement, judging
+    title = Column(String(300), nullable=False)
+    detail = Column(Text, nullable=True)
+    actor_id = Column(Guid, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+
+# --- Notification Preferences ---
+
+
+class NotificationPreference(Base):
+    """User notification channel preferences."""
+
+    __tablename__ = "notification_preferences"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    user_id = Column(Guid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    channel = Column(String(20), nullable=False, default="email")  # email, discord, none
+    registration_updates = Column(Boolean, nullable=False, default=True)
+    announcements = Column(Boolean, nullable=False, default=True)
+    judging_updates = Column(Boolean, nullable=False, default=True)
+    team_requests = Column(Boolean, nullable=False, default=True)
+    mentor_requests = Column(Boolean, nullable=False, default=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)

@@ -1,9 +1,28 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import * as api from '../services/api';
 import { PRIMARY, GOLD, SUCCESS, STATUS_ACCEPTED, TEXT_PRIMARY, TEXT_MUTED, TEXT_DIM, TEXT_WHITE, PAGE_BG, NAV_BG, CARD_BG, INPUT_BG, BORDER, INPUT_BORDER, SPACE, RADIUS } from '../theme';
+
+function ThemeToggle() {
+  const { mode, toggle } = useTheme();
+  return (
+    <div style={{ padding: '8px 16px', borderTop: `1px solid ${BORDER}` }}>
+      <button onClick={toggle} style={{
+        display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+        padding: '8px 12px', background: 'transparent', border: `1px solid ${BORDER}`,
+        borderRadius: RADIUS.md, color: TEXT_MUTED, cursor: 'pointer', fontSize: 13,
+      }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+          {mode === 'dark' ? 'light_mode' : 'dark_mode'}
+        </span>
+        {mode === 'dark' ? 'Light Mode' : 'Dark Mode'}
+      </button>
+    </div>
+  );
+}
 
 const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   organizer: { label: 'Organizer', color: GOLD, bg: '#FFC72C20' },
@@ -77,6 +96,10 @@ export default function Layout() {
     { to: '/crawled-data', icon: 'database', label: 'Indexed Data', roles: ['organizer'] },
     { to: '/registrations', icon: 'badge', label: 'Your Application', roles: ['participant'] },
     { to: '/judge', icon: 'gavel', label: 'Judge Portal', roles: ['judge'] },
+    { to: hk('/teams'), icon: 'group_add', label: 'Find Team', roles: ['participant'] },
+    { to: hk('/mentors'), icon: 'school', label: 'Mentors', roles: ['participant', 'organizer', 'judge'] },
+    { to: hk('/activity'), icon: 'timeline', label: 'Activity', roles: ['organizer'] },
+    { to: '/notifications', icon: 'notifications', label: 'Notifications' },
   ];
 
   const visibleNav = NAV_ITEMS.filter(item => !item.roles || (role && item.roles.includes(role)));
@@ -155,6 +178,9 @@ export default function Layout() {
             );
           })}
         </nav>
+
+        {/* Theme toggle */}
+        <ThemeToggle />
 
         {/* User section */}
         <div style={{ padding: '16px', borderTop: `1px solid ${BORDER}` }}>
