@@ -3,17 +3,15 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "installCommand": "npm install --legacy-peer-deps",
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "https://rowdyhackin.duckdns.org/api/$1"
+      "source": "/api/:path*",
+      "destination": "https://rowdyhackin.duckdns.org/api/:path*",
+      "permanent": false
     },
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
