@@ -1,0 +1,35 @@
+name: OpenHands Agent
+
+on:
+  issues:
+    types: [opened, reopened, labeled]
+  pull_request:
+    types: [opened, reopened, labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  openhands-agent:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issue_comment' &&
+      contains(github.event.comment.body, '@openhands-agent') ||
+      contains(github.event.issue.labels.*.name, 'openhands') ||
+      contains(github.event.pull_request.labels.*.name, 'openhands')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run OpenHands Agent
+        uses: All-Hands-AI/OpenHands@v0.24
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number || github.event.pull_request.number }}
+          instruction: |
+            Please help with this issue/PR. Follow the project's
+            development guidelines in AGENTS.md and README.md.
