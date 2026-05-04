@@ -7,10 +7,10 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.assistant.embedder import embedder
-from backend.app.assistant.permissions import get_tools_for_role
-from backend.app.assistant.vector_store import vector_store
-from backend.app.models import Hackathon, Registration, Track, User
+from app.assistant.embedder import embedder
+from app.assistant.permissions import get_tools_for_role
+from app.assistant.vector_store import vector_store
+from app.models import Hackathon, Registration, Track, User
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ class ContextBuilder:
         limit: int = 10,
     ) -> List[Dict[str, str]]:
         """Build conversation history for context window."""
-        from backend.app.models_assistant import AssistantMessage
+        from app.models_assistant import AssistantMessage
 
         result = await self.db.execute(
             select(AssistantMessage)
@@ -198,4 +198,4 @@ class ContextBuilder:
 
 
 # Need to import this for the organizer query
-from backend.app.models import HackathonOrganizer
+from app.models import HackathonOrganizer

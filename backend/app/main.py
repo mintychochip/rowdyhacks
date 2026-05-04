@@ -13,6 +13,7 @@ from app.discord_bot import bot as discord_bot
 from app.discord_bot import start_bot
 from app.logging_config import configure_logging
 from app.models import Base
+from app.routes.assistant import router as assistant_router
 from app.routes.auth import router as auth_router
 from app.routes.checkin import router as checkin_router
 from app.routes.checks import router as checks_router
@@ -67,6 +68,14 @@ async def lifespan(app: FastAPI):
     except Exception:
         import traceback
         traceback.print_exc()
+
+    # Initialize vector store for assistant
+    try:
+        from app.assistant.indexer import initialize_vector_store
+        await initialize_vector_store()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Vector store init failed: {e}")
 
     # Start Discord bot (if token configured, fails gracefully)
     await start_bot()
@@ -133,6 +142,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(assistant_router, prefix="/api/assistant", tags=["assistant"])
 app.include_router(checks_router)
 app.include_router(dashboard_router)
 app.include_router(hackathons_router)

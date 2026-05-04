@@ -1,7 +1,7 @@
 """AI Assistant package for Hack the Valley."""
 
-from backend.app.assistant.embedder import embedder
-from backend.app.assistant.permissions import (
+from app.assistant.embedder import embedder
+from app.assistant.permissions import (
     ROLE_TOOLS,
     TOOL_DEFINITIONS,
     UserRole,
@@ -9,7 +9,7 @@ from backend.app.assistant.permissions import (
     get_tool_definition,
     get_tools_for_role,
 )
-from backend.app.assistant.vector_store import vector_store
+from app.assistant.vector_store import vector_store
 
 __all__ = [
     "vector_store",

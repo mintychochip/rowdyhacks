@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import AnalyzePage from './pages/AnalyzePage';
 import ReportPage from './pages/ReportPage';
+import AssistantPage from './pages/AssistantPage';
 import Dashboard from './pages/Dashboard';
 import AuthPage from './pages/AuthPage';
 import RegisterPage from './pages/RegisterPage';
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/analyze" element={<AnalyzePage />} />
             <Route path="/report/:id" element={<ReportPage />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/assistant" element={<AssistantPage />} />
             <Route path="/hackathons" element={<Navigate to="/" replace />} />
             <Route path="/apply" element={<ApplyPage />} />
             <Route path="/register" element={<RegisterPage />} />

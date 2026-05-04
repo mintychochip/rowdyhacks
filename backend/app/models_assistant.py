@@ -18,7 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
-from backend.app.database import Base
+from app.models import Base
 
 
 class ConversationRole(str, Enum):

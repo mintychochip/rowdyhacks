@@ -6,14 +6,14 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import httpx
 
-from backend.app.config import settings
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
 # Poolside API configuration
-POOLSIDE_API_URL = getattr(settings, "HACKVERIFY_POOLSIDE_API_URL", "https://inference.poolside.ai/v1")
-POOLSIDE_API_KEY = getattr(settings, "HACKVERIFY_POOLSIDE_API_KEY", "")
-DEFAULT_MODEL = getattr(settings, "HACKVERIFY_ASSISTANT_MODEL", "poolside/m.1")
+POOLSIDE_API_URL = settings.poolside_api_url
+POOLSIDE_API_KEY = settings.poolside_api_key
+DEFAULT_MODEL = settings.assistant_model
 
 
 class LLMClient:

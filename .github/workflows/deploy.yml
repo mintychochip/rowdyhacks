@@ -36,7 +36,12 @@ jobs:
             echo "==> Fetching and resetting to latest..."
             git fetch origin master
             git checkout -f origin/master -- .
-            echo '${{ secrets.SUDO_PASSWORD }}' | sudo -S git clean -fd || git clean -fd -e "nginx/ssl/*" -e "data/**"
+            
+            echo "==> Cleaning working directory (preserving SSL certs and data)..."
+            # SSL certs are owned by root from certbot - handle them specially
+            echo '${{ secrets.SUDO_PASSWORD }}' | sudo -S git clean -fdx -e "nginx/ssl" -e "data" 2>/dev/null || true
+            # Clean any remaining untracked files (excluding SSL and data)
+            git clean -fd -e "nginx/ssl" -e "data/**" 2>/dev/null || true
 
             echo "==> Stopping all containers before rebuild..."
             docker compose -f docker-compose.yml down --timeout 30 2>/dev/null || true

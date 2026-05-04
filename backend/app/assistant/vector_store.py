@@ -17,7 +17,7 @@ from qdrant_client.http.models import (
     VectorParams,
 )
 
-from backend.app.config import settings
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +44,7 @@ class VectorStore:
     def client(self) -> AsyncQdrantClient:
         """Get or create Qdrant client."""
         if self._client is None:
-            url = getattr(settings, "HACKVERIFY_QDRANT_URL", "http://localhost:6333")
-            self._client = AsyncQdrantClient(url=url)
+            self._client = AsyncQdrantClient(url=settings.qdrant_url)
         return self._client
 
     async def initialize(self) -> None:

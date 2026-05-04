@@ -38,7 +38,21 @@ class Settings(BaseSettings):
     )
     poolside_model: str = Field(
         default="poolside/laguna-xs.2",
-        description="Poolside model name",
+        description="Poolside model name for analysis checks",
+    )
+
+    # Assistant configuration
+    qdrant_url: str = Field(
+        default="http://localhost:6333",
+        description="Qdrant vector store URL",
+    )
+    assistant_model: str = Field(
+        default="poolside/m.1",
+        description="LLM model for assistant chat (poolside/m.1 is free)",
+    )
+    assistant_max_history: int = Field(
+        default=10,
+        description="Maximum conversation history messages to include in context",
     )
 
     discord_bot_token: str = Field(default="", description="Discord bot token for application management")

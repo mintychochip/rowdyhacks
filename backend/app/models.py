@@ -622,3 +622,8 @@ class EmailLog(Base):
     updated_at = Column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(UTC))
 
     registration = relationship("Registration", back_populates="email_logs")
+
+
+# Import assistant models to ensure they are registered with SQLAlchemy
+# This must be at the end to avoid circular imports
+from app.models_assistant import AssistantConversation, AssistantDocument, AssistantMessage  # noqa: E402, F401

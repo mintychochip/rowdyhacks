@@ -35,6 +35,19 @@ services:
       timeout: 3s
       retries: 5
 
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:6333/healthz | grep -q 'ok'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -49,12 +62,15 @@ services:
       HACKVERIFY_DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
       HACKVERIFY_BASE_URL: ${BASE_URL:-https://localhost}
       HACKVERIFY_REDIS_URL: redis://redis:6379/0
+      HACKVERIFY_QDRANT_URL: http://qdrant:6333
     volumes:
       - ./data:/app/data
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      qdrant:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/api/monitoring/health\")'"]
@@ -105,3 +121,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  qdrant_data:
