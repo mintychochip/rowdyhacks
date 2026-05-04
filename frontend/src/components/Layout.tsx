@@ -33,7 +33,7 @@ export default function Layout() {
     }).catch(() => {});
   }, [user]);
 
-  // Add CSS animation for float effect
+  // Add CSS animation for float effect and hide scrollbars
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
@@ -44,6 +44,15 @@ export default function Layout() {
       @keyframes pulse {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.5; }
+      }
+      /* Hide scrollbar for Chrome, Safari and Opera */
+      .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      /* Hide scrollbar for IE, Edge and Firefox */
+      .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
       }
     `;
     document.head.appendChild(style);
@@ -101,7 +110,7 @@ export default function Layout() {
       )}
 
       {/* Sidebar */}
-      <aside style={{
+      <aside className="hide-scrollbar" style={{
         position: 'fixed', left: 0, top: 0, bottom: 0, width: 240,
         background: NAV_BG, borderRight: `1px solid ${BORDER}`,
         display: 'flex', flexDirection: 'column', zIndex: 50,
