@@ -11,7 +11,7 @@ SCHEDULE = [
     {
         "datetime": "2026-05-30T09:00:00",
         "title": "Check-in and opening ceremony",
-        "description": "Welcome to RowdyHacks! Check in and get ready for the event.",
+        "description": "Welcome to Hack the Valley! Check in and get ready for the event.",
         "location": "Main Auditorium",
     },
     {

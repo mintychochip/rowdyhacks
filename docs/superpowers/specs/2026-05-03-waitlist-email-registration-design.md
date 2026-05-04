@@ -1,7 +1,7 @@
 # Design Specification: Waitlist, Email & Registration Data
 
 **Date:** 2026-05-03
-**Project:** RowdyHacks Hackathon Platform
+**Project:** Hack the Valley Hackathon Platform
 **Scope:** Waitlist management, email notifications, enhanced registration data
 
 ---

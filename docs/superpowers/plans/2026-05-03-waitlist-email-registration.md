@@ -249,7 +249,7 @@ SMTP_HOST: str = os.getenv("SMTP_HOST", "")
 SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER: str = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
-EMAIL_FROM: str = os.getenv("EMAIL_FROM", "noreply@rowdyhacks.io")
+EMAIL_FROM: str = os.getenv("EMAIL_FROM", "noreply@hackthevalley.io")
 ```
 
 - [ ] **Step 2: Create email_service.py**

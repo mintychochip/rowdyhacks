@@ -149,7 +149,7 @@ export default function ApplyPage() {
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <div style={{ fontSize: 13, color: GOLD, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
-          CSUB · April 29–30, 2026
+          Toronto · April 29–30, 2026
         </div>
         <h1 style={{ ...TYPO.h1, marginBottom: 8 }}>{hackathonName}</h1>
         <p style={{ color: TEXT_MUTED, fontSize: 15 }}>Submit your application to participate</p>

@@ -1,8 +1,8 @@
-# AGENTS.md — RowdyHacks Context for AI Agents
+# AGENTS.md — Hack the Valley Context for AI Agents
 
 ## Project Overview
 
-RowdyHacks is a hackathon management platform for CSUB (California State University, Bakersfield). It handles registration, check-in (QR + Apple/Google Wallet), judging (ELO-based), submission integrity analysis, and a Devpost crawler.
+Hack the Valley (HTV) is a hackathon management platform for Toronto's largest student-run hackathon. It handles registration, check-in (QR + Apple/Google Wallet), judging (ELO-based), submission integrity analysis, and a Devpost crawler.
 
 ## Deployment Architecture
 

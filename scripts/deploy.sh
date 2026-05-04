@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# deploy.sh — Deploy RowdyHacks to a Digital Ocean droplet
+# deploy.sh — Deploy Hack the Valley to a Digital Ocean droplet
 #
 # Usage:
 #   ./scripts/deploy.sh                    # deploys to host configured below
