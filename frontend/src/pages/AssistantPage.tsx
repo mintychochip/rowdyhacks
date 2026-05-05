@@ -8,13 +8,26 @@ import {
   streamChatResponse,
   type ChatMessage as ChatMessageType,
   type Conversation,
+  type ModelType,
 } from '../services/assistant';
-import { CARD_BG, PAGE_BG, PRIMARY, RADIUS, SPACE, TEXT_PRIMARY, TEXT_SECONDARY, TYPO } from '../theme';
-import ChatInput from '../components/assistant/ChatInput';
+import {
+  PAGE_BG,
+  CARD_BG,
+  PRIMARY,
+  RADIUS,
+  SPACE,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  TEXT_MUTED,
+  BORDER,
+  BORDER_LIGHT,
+  TYPO,
+} from '../theme';
+import LinearChatInput from '../components/assistant/LinearChatInput';
 import ChatMessageComponent from '../components/assistant/ChatMessage';
 import ConversationSidebar from '../components/assistant/ConversationSidebar';
 
-// Assistant AI chat page - auto-rebuild v2
+// Linear-style assistant page
 export default function AssistantPage() {
   const { isMobile } = useMediaQuery();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -26,13 +39,18 @@ export default function AssistantPage() {
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [backendReady, setBackendReady] = useState(true);
   const abortControllerRef = useRef<(() => void) | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Health check - verify backend is ready
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isStreaming]);
+
+  // Health check
   useEffect(() => {
     const checkHealth = async () => {
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/monitoring/health`, {
-          method: 'GET',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
           },
@@ -43,11 +61,11 @@ export default function AssistantPage() {
       }
     };
     checkHealth();
-    const interval = setInterval(checkHealth, 30000); // Check every 30s
+    const interval = setInterval(checkHealth, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  // Load conversations on mount
+  // Load conversations
   useEffect(() => {
     loadConversations();
   }, []);
@@ -97,6 +115,9 @@ export default function AssistantPage() {
     setMessages([]);
     setError(null);
     handleStop();
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
   };
 
   const handleSelectConversation = (id: string) => {
@@ -118,7 +139,7 @@ export default function AssistantPage() {
     }
   };
 
-  const handleSendMessage = useCallback(async (content: string) => {
+  const handleSendMessage = useCallback(async (content: string, model: ModelType) => {
     if (isStreaming) return;
 
     try {
@@ -135,17 +156,18 @@ export default function AssistantPage() {
       };
       setMessages((prev) => [...prev, userMessage]);
 
-      // Send to API
+      // Send to API with model
       const response = await sendChatMessage(
         content,
         activeConversationId,
-        undefined // hackathonId - auto-detect or let user select
+        undefined,
+        model
       );
 
       // Update active conversation
       if (!activeConversationId) {
         setActiveConversationId(response.conversation_id);
-        loadConversations(); // Refresh list to get new conversation
+        loadConversations();
       }
 
       // Create placeholder for assistant response
@@ -162,24 +184,18 @@ export default function AssistantPage() {
       abortControllerRef.current = streamChatResponse(
         response.message_id,
         (chunk) => {
-          // Append chunk to assistant message
           setMessages((prev) => {
             const last = prev[prev.length - 1];
             if (last.role === 'assistant' && last.id === response.message_id) {
-              return [
-                ...prev.slice(0, -1),
-                { ...last, content: last.content + chunk },
-              ];
+              return [...prev.slice(0, -1), { ...last, content: last.content + chunk }];
             }
             return prev;
           });
         },
         (tool, result) => {
-          // Handle tool call
           console.log('Tool called:', tool, result);
         },
         () => {
-          // Complete
           setIsStreaming(false);
           setMessages((prev) => {
             const last = prev[prev.length - 1];
@@ -190,7 +206,6 @@ export default function AssistantPage() {
           });
         },
         (err) => {
-          // Error
           setIsStreaming(false);
           setError(err);
           setMessages((prev) => {
@@ -212,13 +227,12 @@ export default function AssistantPage() {
     <div
       style={{
         display: 'flex',
-        height: 'calc(100vh - 80px)', // Account for header
+        height: '100vh',
         background: PAGE_BG,
-        padding: isMobile ? SPACE.sm : SPACE.md,
-        gap: SPACE.md,
+        overflow: 'hidden',
       }}
     >
-      {/* Sidebar */}
+      {/* Sidebar - Linear style */}
       {(!isMobile || sidebarOpen) && (
         <ConversationSidebar
           conversations={conversations}
@@ -226,28 +240,30 @@ export default function AssistantPage() {
           onSelect={handleSelectConversation}
           onNew={handleNewChat}
           onDelete={handleDeleteConversation}
+          onClose={() => setSidebarOpen(false)}
+          isOpen={sidebarOpen}
         />
       )}
 
-      {/* Main chat area */}
+      {/* Main Content */}
       <div
         style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          background: CARD_BG,
-          borderRadius: RADIUS.md,
-          overflow: 'hidden',
+          minWidth: 0,
+          position: 'relative',
         }}
       >
-        {/* Header */}
+        {/* Top Bar */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: `${SPACE.md}px ${SPACE.lg}px`,
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            borderBottom: `1px solid ${BORDER}`,
+            background: PAGE_BG,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm }}>
@@ -255,98 +271,156 @@ export default function AssistantPage() {
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 style={{
+                  width: 32,
+                  height: 32,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   background: 'transparent',
-                  border: 'none',
-                  color: TEXT_PRIMARY,
+                  border: `1px solid ${BORDER}`,
+                  borderRadius: RADIUS.md,
+                  color: TEXT_SECONDARY,
                   cursor: 'pointer',
-                  padding: SPACE.xs,
+                  fontSize: 16,
                 }}
               >
-                <span className="material-symbols-outlined">menu</span>
+                ☰
               </button>
             )}
-            <h1 style={{ ...TYPO.h2, margin: 0, color: TEXT_PRIMARY }}>
-              AI Assistant
+            <h1 style={{ ...TYPO.h3, margin: 0, color: TEXT_PRIMARY, fontWeight: 600 }}>
+              {activeConversationId
+                ? conversations.find((c) => c.id === activeConversationId)?.title || 'Conversation'
+                : 'New Chat'}
             </h1>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm }}>
-            <span
+            {/* Status indicator */}
+            <div
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: SPACE.xs,
                 padding: `${SPACE.xs}px ${SPACE.sm}px`,
-                background: isStreaming ? 'rgba(37, 99, 235, 0.2)' : 'transparent',
-                color: isStreaming ? PRIMARY : TEXT_SECONDARY,
+                background: isStreaming ? 'rgba(94, 106, 210, 0.1)' : 'transparent',
                 borderRadius: RADIUS.sm,
                 fontSize: 12,
+                color: isStreaming ? PRIMARY : TEXT_MUTED,
               }}
             >
-              {isStreaming ? '● Responding...' : 'Ready'}
-            </span>
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: isStreaming ? PRIMARY : backendReady ? '#22c55e' : '#ef4444',
+                  animation: isStreaming ? 'pulse 1.5s infinite' : undefined,
+                }}
+              />
+              {isStreaming ? 'Responding...' : backendReady ? 'Ready' : 'Offline'}
+            </div>
           </div>
         </div>
 
-        {/* Messages */}
+        {/* Messages Area */}
         <div
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: SPACE.lg,
+            padding: `${SPACE.lg}px ${SPACE.xl}px`,
             display: 'flex',
             flexDirection: 'column',
           }}
         >
+          {/* Empty State */}
           {messages.length === 0 && !isLoading && (
             <div
               style={{
-                textAlign: 'center',
-                color: TEXT_SECONDARY,
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
                 padding: SPACE.xl,
               }}
             >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: 64, marginBottom: SPACE.md, opacity: 0.5 }}
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: RADIUS.xl,
+                  background: 'linear-gradient(135deg, rgba(94, 106, 210, 0.2), rgba(94, 106, 210, 0.05))',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: SPACE.lg,
+                  fontSize: 32,
+                }}
               >
-                smart_toy
-              </span>
-              <h2 style={{ ...TYPO.h3, marginBottom: SPACE.sm }}>
-                How can I help you today?
+                🤖
+              </div>
+              <h2
+                style={{
+                  ...TYPO.h2,
+                  margin: 0,
+                  marginBottom: SPACE.sm,
+                  color: TEXT_PRIMARY,
+                  fontWeight: 600,
+                  textAlign: 'center',
+                }}
+              >
+                How can I help?
               </h2>
-              <p style={{ margin: 0, lineHeight: 1.6 }}>
-                Ask about hackathon details, tracks, submission guidance,
-                <br />
-                or anything else you need help with!
+              <p
+                style={{
+                  margin: 0,
+                  marginBottom: SPACE.xl,
+                  color: TEXT_SECONDARY,
+                  textAlign: 'center',
+                  maxWidth: 400,
+                  lineHeight: 1.6,
+                }}
+              >
+                Ask about hackathon details, tracks, submission guidance, or anything else you need help with.
               </p>
 
-              {/* Suggested prompts */}
+              {/* Quick Prompts */}
               <div
                 style={{
                   display: 'flex',
                   flexWrap: 'wrap',
                   justifyContent: 'center',
                   gap: SPACE.sm,
-                  marginTop: SPACE.lg,
+                  maxWidth: 500,
                 }}
               >
                 {[
                   'What tracks are available?',
                   'Help me brainstorm project ideas',
                   'What should I bring?',
-                  'When is the submission deadline?',
+                  'When is the deadline?',
                 ].map((prompt) => (
                   <button
                     key={prompt}
-                    onClick={() => handleSendMessage(prompt)}
+                    onClick={() => handleSendMessage(prompt, 'fast')}
                     disabled={isStreaming}
                     style={{
                       padding: `${SPACE.sm}px ${SPACE.md}px`,
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: RADIUS.sm,
-                      color: TEXT_PRIMARY,
+                      background: 'transparent',
+                      border: `1px solid ${BORDER}`,
+                      borderRadius: RADIUS.md,
+                      color: TEXT_SECONDARY,
                       cursor: isStreaming ? 'not-allowed' : 'pointer',
                       fontSize: 13,
-                      opacity: isStreaming ? 0.5 : 1,
+                      transition: 'all 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = BORDER_LIGHT;
+                      e.currentTarget.style.color = TEXT_PRIMARY;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = BORDER;
+                      e.currentTarget.style.color = TEXT_SECONDARY;
                     }}
                   >
                     {prompt}
@@ -356,47 +430,67 @@ export default function AssistantPage() {
             </div>
           )}
 
-          {messages.map((msg, i) => (
-            <ChatMessageComponent
-              key={msg.id || i}
-              role={msg.role}
-              content={msg.content}
-              isStreaming={msg.status === 'streaming'}
-              toolCalls={msg.tool_calls}
-            />
-          ))}
-
-          {isLoading && (
-            <div style={{ textAlign: 'center', padding: SPACE.lg, color: TEXT_SECONDARY }}>
-              Loading...
+          {/* Messages */}
+          {messages.length > 0 && (
+            <div style={{ maxWidth: 720, width: '100%', margin: '0 auto' }}>
+              {messages.map((msg, i) => (
+                <ChatMessageComponent
+                  key={msg.id || i}
+                  role={msg.role}
+                  content={msg.content}
+                  isStreaming={msg.status === 'streaming'}
+                  toolCalls={msg.tool_calls}
+                />
+              ))}
+              <div ref={messagesEndRef} />
             </div>
           )}
 
+          {/* Loading State */}
+          {isLoading && messages.length === 0 && (
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: TEXT_MUTED,
+              }}
+            >
+              Loading conversation...
+            </div>
+          )}
+
+          {/* Error */}
           {error && (
             <div
               style={{
+                maxWidth: 720,
+                margin: `${SPACE.md}px auto`,
                 padding: SPACE.md,
-                background: 'rgba(239, 68, 68, 0.2)',
-                borderRadius: RADIUS.sm,
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: RADIUS.md,
                 color: '#ef4444',
                 textAlign: 'center',
+                fontSize: 14,
               }}
             >
               {error}
             </div>
           )}
-        </div>
 
-        {/* Backend Status & Input */}
-        <div style={{ padding: SPACE.lg }}>
-          {!backendReady && (
+          {/* Backend Warning */}
+          {!backendReady && !error && (
             <div
               style={{
-                padding: SPACE.sm,
-                marginBottom: SPACE.sm,
-                background: 'rgba(239, 68, 68, 0.2)',
-                borderRadius: RADIUS.sm,
-                color: '#ef4444',
+                maxWidth: 720,
+                margin: `${SPACE.md}px auto`,
+                padding: `${SPACE.sm}px ${SPACE.md}px`,
+                background: 'rgba(245, 158, 11, 0.1)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+                borderRadius: RADIUS.md,
+                color: '#f59e0b',
                 textAlign: 'center',
                 fontSize: 13,
               }}
@@ -404,10 +498,20 @@ export default function AssistantPage() {
               ⚠️ Backend is not responding - messages may not work
             </div>
           )}
-          <ChatInput
+        </div>
+
+        {/* Input Area - Fixed at bottom */}
+        <div
+          style={{
+            padding: `${SPACE.md}px ${SPACE.lg}px ${SPACE.lg}px`,
+            borderTop: `1px solid ${messages.length > 0 ? BORDER : 'transparent'}`,
+            background: PAGE_BG,
+          }}
+        >
+          <LinearChatInput
             onSend={handleSendMessage}
             onStop={handleStop}
-            disabled={isStreaming || !backendReady}
+            disabled={!backendReady}
             isStreaming={isStreaming}
           />
         </div>

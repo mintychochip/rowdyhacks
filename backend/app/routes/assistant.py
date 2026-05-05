@@ -57,6 +57,7 @@ async def create_chat_message(
     message: str,
     conversation_id: Optional[UUID] = None,
     hackathon_id: Optional[UUID] = None,
+    model: str = "fast",
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -112,6 +113,7 @@ async def create_chat_message(
         role=ConversationRole.ASSISTANT,
         content="",
         status=AssistantMessageStatus.PENDING,
+        model_used=model,  # Store selected model for streaming
     )
     db.add(assistant_msg)
 
@@ -121,6 +123,7 @@ async def create_chat_message(
         "conversation_id": str(conversation.id),
         "message_id": str(assistant_msg.id),
         "status": "processing",
+        "model": model,
     }
 
 
@@ -128,31 +131,66 @@ async def get_current_user_sse(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Get current user from either Authorization header or query param (for SSE)."""
+    """Get current user from either Authorization header or query param (for SSE). Supports Clerk tokens."""
+    from app.clerk_auth import is_clerk_token, decode_clerk_token, extract_clerk_user_id
+    from app.auth import decode_token
+    from app.database import set_current_user_id
+
     # Try header first
     auth_header = request.headers.get("Authorization")
     token = None
-    
+
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header[7:]  # Remove "Bearer " prefix
     else:
         # Try query parameter (for EventSource which can't set headers)
         token = request.query_params.get("token")
-    
+
     if not token:
         raise HTTPException(status_code=401, detail="Missing authentication token")
-    
-    try:
-        from app.auth import decode_token
-        payload = decode_token(token)
-        user_id = payload.get("sub")
-        if not user_id:
+
+    user_id = None
+    user_email = None
+    user_name = None
+
+    # Try Clerk token first
+    if is_clerk_token(token):
+        try:
+            payload = await decode_clerk_token(token)
+            user_id = extract_clerk_user_id(payload)
+            user_email = payload.get("email") or payload.get("public_metadata", {}).get("email")
+            user_name = payload.get("name") or payload.get("public_metadata", {}).get("name")
+        except ValueError as e:
+            raise HTTPException(status_code=401, detail=f"Invalid Clerk token: {e}")
+    else:
+        # Fall back to internal JWT
+        try:
+            payload = decode_token(token)
+            user_id = payload.get("sub")
+        except ValueError:
             raise HTTPException(status_code=401, detail="Invalid token")
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token: no user ID")
+
+    # Set RLS context
+    set_current_user_id(user_id)
+
+    # Look up user
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
+
+    # Auto-create user for Clerk tokens
+    if not user and is_clerk_token(token) and user_email:
+        user = User(
+            id=user_id,
+            email=user_email,
+            name=user_name or user_email.split("@")[0],
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
@@ -248,6 +286,17 @@ async def stream_response(
             print(f"[DEBUG ASSISTANT] First message role: {messages[0]['role'] if messages else 'none'}")
             print(f"[DEBUG ASSISTANT] System prompt length: {len(system_prompt)}")
 
+            # Determine which model to use
+            from app.config import settings
+            selected_model = None
+            if message.model_used:
+                if message.model_used == "thinking":
+                    selected_model = settings.assistant_thinking_model
+                elif message.model_used == "fast":
+                    selected_model = settings.assistant_fast_model
+                else:
+                    selected_model = message.model_used  # Allow custom model names
+
             # Stream response
             full_content = []
             tool_calls = []
@@ -255,6 +304,7 @@ async def stream_response(
             async for chunk in llm_client.chat_completion_stream(
                 messages=messages,
                 tools=tools if tools else None,
+                model=selected_model,
             ):
                 # Check if chunk is an error from LLM
                 if chunk.startswith('{"error":'):
@@ -308,7 +358,7 @@ async def stream_response(
             # Update message with final content
             message.content = "".join(full_content)
             message.status = AssistantMessageStatus.COMPLETED
-            message.model_used = llm_client.model
+            message.model_used = selected_model or llm_client.model
             await db.commit()
 
             # Index message for semantic search

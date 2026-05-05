@@ -68,10 +68,11 @@ class LLMClient:
         tools: list[dict] | None = None,
         temperature: float = 0.7,
         max_tokens: int = 800,
+        model: str | None = None,
     ) -> AsyncGenerator[str, None]:
         """Stream chat completion response (SSE format)."""
         payload = {
-            "model": self.model,
+            "model": model or self.model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,

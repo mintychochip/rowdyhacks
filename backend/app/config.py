@@ -52,7 +52,15 @@ class Settings(BaseSettings):
     )
     assistant_model: str = Field(
         default="poolside/laguna-xs.2",
-        description="LLM model for assistant chat",
+        description="LLM model for assistant chat (deprecated, use assistant_models)",
+    )
+    assistant_fast_model: str = Field(
+        default="poolside/laguna-xs.2",
+        description="Fast/cheap model for quick responses",
+    )
+    assistant_thinking_model: str = Field(
+        default="poolside/m.1",
+        description="Thinking model for complex reasoning",
     )
     assistant_max_history: int = Field(
         default=10,
@@ -60,8 +68,17 @@ class Settings(BaseSettings):
     )
 
     discord_bot_token: str = Field(default="", description="Discord bot token for application management")
+    clerk_secret_key: str = Field(default="", description="Clerk secret key for JWT verification")
     base_url: str = Field(default="http://localhost:8000", description="Public base URL for QR code links")
     frontend_url: str = Field(default="http://localhost:8000", description="Frontend origin for OAuth redirects")
+
+    # S3/MinIO Blob Storage
+    s3_endpoint: str = Field(default="", description="S3-compatible endpoint URL (e.g., http://minio:9000)")
+    s3_access_key: str = Field(default="", description="S3 access key / MinIO root user")
+    s3_secret_key: str = Field(default="", description="S3 secret key / MinIO root password")
+    s3_bucket: str = Field(default="hackverify-files", description="Default S3 bucket for file storage")
+    s3_region: str = Field(default="us-east-1", description="S3 region (for AWS S3 compatibility)")
+    s3_use_ssl: bool = Field(default=False, description="Use SSL/TLS for S3 connections")
 
     crawler_schedule: str = Field(
         default="0 3 * * 0",  # Sunday 3 AM UTC

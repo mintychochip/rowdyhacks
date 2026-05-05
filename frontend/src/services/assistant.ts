@@ -28,14 +28,18 @@ export interface Tool {
   };
 }
 
+export type ModelType = 'fast' | 'thinking';
+
 // Send a new chat message
 export async function sendChatMessage(
   message: string,
   conversationId?: string,
-  hackathonId?: string
-): Promise<{ conversation_id: string; message_id: string; status: string }> {
+  hackathonId?: string,
+  model: ModelType = 'fast'
+): Promise<{ conversation_id: string; message_id: string; status: string; model?: string }> {
   const params = new URLSearchParams();
   params.append('message', message);
+  params.append('model', model);
   if (conversationId) params.append('conversation_id', conversationId);
   if (hackathonId) params.append('hackathon_id', hackathonId);
 
