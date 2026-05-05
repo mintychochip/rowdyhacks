@@ -716,6 +716,119 @@ Generated for RowdyHacks hackathon.
         }
 
 
+# ── Tool Execution + RAG + Chat Log ──────────────────────────────────
+
+
+class ExecuteToolRequest(BaseModel):
+    tool_name: str
+    parameters: dict = {}
+
+
+@router.post("/execute-tool")
+async def execute_tool(
+    request: ExecuteToolRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Execute a single tool. Auth and permission checked server-side."""
+    if not can_use_tool(current_user.role, request.tool_name):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Tool '{request.tool_name}' not allowed for your role",
+        )
+
+    try:
+        executor = ToolExecutor(db, current_user, None)
+        result = await executor.execute(request.tool_name, request.parameters)
+        return {"result": result}
+    except Exception as e:
+        logger.error(f"Tool execution error ({request.tool_name}): {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RAGSearchRequest(BaseModel):
+    query: str
+
+
+@router.post("/rag-search")
+async def rag_search(
+    request: RAGSearchRequest,
+    current_user: User = Depends(get_current_user),
+    hackathon: Optional[Hackathon] = Depends(get_hackathon),
+):
+    """Search Qdrant for relevant hackathon documents."""
+    embedding = embedder.embed_text(request.query)
+    results = await vector_store.search_documents(
+        query_embedding=embedding,
+        hackathon_id=str(hackathon.id) if hackathon else None,
+        role=current_user.role,
+        limit=5,
+        score_threshold=0.7,
+    )
+
+    return {
+        "documents": [
+            {
+                "content": r.get("content", ""),
+                "title": r.get("title", ""),
+                "doc_type": r.get("doc_type", ""),
+                "score": r.get("score", 0),
+            }
+            for r in results
+        ]
+    }
+
+
+class ChatLogRequest(BaseModel):
+    messages: list[dict]
+    conversation_id: Optional[str] = None
+
+
+@router.post("/chat-log")
+async def chat_log(
+    request: ChatLogRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Persist a conversation from the browser agent."""
+    conversation_id = request.conversation_id
+
+    if not conversation_id:
+        conv = AssistantConversation(
+            user_id=current_user.id,
+            title=(
+                request.messages[0].get("content", "")[:100]
+                if request.messages
+                else "New conversation"
+            ),
+        )
+        db.add(conv)
+        await db.flush()
+        conversation_id = str(conv.id)
+    else:
+        result = await db.execute(
+            select(AssistantConversation).where(
+                AssistantConversation.id == UUID(conversation_id),
+                AssistantConversation.user_id == current_user.id,
+            )
+        )
+        conv = result.scalar_one_or_none()
+        if not conv:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+    for msg in request.messages:
+        db_msg = AssistantMessage(
+            conversation_id=UUID(conversation_id),
+            role=ConversationRole(msg.get("role", "user")),
+            content=msg.get("content", ""),
+            status=AssistantMessageStatus.COMPLETED,
+        )
+        db.add(db_msg)
+
+    await db.commit()
+    return {"conversation_id": conversation_id, "status": "saved"}
+
+
 # ── LLM Proxy (mounted at /api/llm in main.py, not on the assistant router) ──
 
 class LLMChatRequest(BaseModel):
