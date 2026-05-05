@@ -60,101 +60,66 @@ def _track_to_response(t: Track) -> dict:
         "track_type": t.track_type,
         "criteria": t.criteria or [],
         "resources": t.resources or [],
+        "resources_markdown": t.resources_markdown,
     }
 
 
 DEFAULT_TRACKS = [
     {
-        "name": "Deep Space Exploration",
-        "description": "Push the boundaries of space technology. Build tools for satellite data analysis, mission planning, orbital mechanics simulations, or astronaut support systems.",
-        "challenge": "Your mission: create a working prototype that solves a real problem in space exploration. This could be a satellite trajectory planner, a telemetry dashboard, a radiation exposure calculator for astronauts, or an AI system that classifies celestial objects from telescope imagery.\n\nLooking for projects that demonstrate technical depth — bonus points for using real NASA/ESA datasets, simulating realistic physics, or building hardware prototypes with sensors.",
-        "icon": "\U0001f680",
-        "color": "#8b5cf6",
-        "prize": "$1,000 + SpaceX Tour",
+        "name": "Grand Prize",
+        "description": "Overall Winner - Best overall project wins the top honor based on impact, execution, and innovation.",
+        "challenge": "Build in any track and pitch your best project for the grand prize. The overall winner is selected based on impact, execution, and innovation across all submissions.",
+        "icon": "🏆",
+        "color": "#f59e0b",
+        "prize": "$500",
         "track_type": "prize",
-        "criteria": ["Innovation", "Technical Complexity", "Space Applicability", "Use of Real Data"],
-        "resources": [
-            {"name": "NASA Open APIs", "url": "https://api.nasa.gov/"},
-            {"name": "Space-Track.org", "url": "https://www.space-track.org/"},
-            {"name": "ESA Sky", "url": "https://sky.esa.int/"},
-            {"name": "Celestrak Satellite Data", "url": "https://celestrak.org/"},
-        ],
+        "criteria": ["Impact", "Execution", "Innovation"],
+        "resources": [],
     },
     {
-        "name": "Orbital Commerce",
-        "description": "Create the future of the space economy. Develop marketplace platforms, logistics coordination tools, supply chain trackers, or financial systems for the growing orbital industry.",
-        "challenge": "The commercialization of low Earth orbit is accelerating. Your challenge: build a tool, platform, or system that enables commerce in space. Ideas: a marketplace for satellite services, a launch logistics scheduler, a space debris cleanup bidding platform, or a DeFi protocol for satellite time-sharing.\n\nJudges are looking for viable business models and clean UX — this track rewards product thinking as much as technical execution.",
-        "icon": "\U0001f48e",
-        "color": "#06b6d4",
-        "prize": "$800 + Starlink Kit",
-        "track_type": "prize",
-        "criteria": ["Business Viability", "UX Design", "Market Potential", "Technical Execution"],
-        "resources": [
-            {"name": "Space Economy Report", "url": "https://spacefoundation.org/research/"},
-            {"name": "AWS Ground Station", "url": "https://aws.amazon.com/ground-station/"},
-            {"name": "Orbital Mechanics Docs", "url": "https://docs.astropy.org/"},
-        ],
-    },
-    {
-        "name": "Cosmic Commons",
-        "description": "Democratize access to space. Build educational platforms, citizen science tools, community-driven research initiatives, or accessibility solutions that bring space exploration to everyone.",
-        "challenge": "Space shouldn't just be for billionaires and government agencies. Your task: create something that makes space more accessible. A VR planetarium for schools, a mobile app that lets anyone contribute to astronomy research, a translation layer for scientific papers, or a platform connecting amateur astronomers with professional researchers.\n\nImpact matters here — judges weigh social good and accessibility as highly as technical complexity.",
-        "icon": "\U0001f30c",
-        "color": "#fbbf24",
-        "prize": "$600 + Celestron Telescope",
-        "track_type": "themed",
-        "criteria": ["Social Impact", "Accessibility", "Community Engagement", "Innovation"],
-        "resources": [
-            {"name": "Zooniverse Projects", "url": "https://www.zooniverse.org/"},
-            {"name": "NASA Citizen Science", "url": "https://science.nasa.gov/citizen-science/"},
-            {"name": "Stellarium Web", "url": "https://stellarium-web.org/"},
-        ],
-    },
-    {
-        "name": "Nebula Arts",
-        "description": "Where space meets creativity. Develop immersive visualizations, space-themed games, generative art from astronomical data, or interactive experiences inspired by the cosmos.",
-        "challenge": "Art and science are two sides of the same coin. For this track, create something beautiful that's grounded in real space data or physics. A WebGL nebula renderer, a procedural planet generator, a sonification of solar wind data, a space exploration game with realistic orbital mechanics, or a mixed reality stargazing app.\n\nWe're looking for aesthetic impact AND technical craft — make it gorgeous and make it work.",
-        "icon": "\u2728",
-        "color": "#ec4899",
-        "prize": "$500 + Wacom Tablet",
-        "track_type": "themed",
-        "criteria": ["Aesthetic Quality", "Technical Execution", "Concept Originality", "Emotional Impact"],
-        "resources": [
-            {"name": "Three.js Docs", "url": "https://threejs.org/"},
-            {"name": "ESA Image Archive", "url": "https://www.esa.int/ESA_Multimedia/Images"},
-            {"name": "Hubble Gallery", "url": "https://hubblesite.org/resource-gallery/images"},
-            {"name": "OpenGL Shader Resources", "url": "https://www.shadertoy.com/"},
-        ],
-    },
-    {
-        "name": "Mission Control AI",
-        "description": "Apply artificial intelligence to space operations. Build ML models for anomaly detection, predictive maintenance, autonomous navigation, mission scheduling, or spacecraft health monitoring.",
-        "challenge": "AI is transforming how we operate in space. Your challenge: apply machine learning to a real space operations problem. Train a model to detect anomalies in telemetry data, build a reinforcement learning agent for autonomous docking, create an LLM-powered mission planning assistant, or develop a computer vision system for satellite inspection.\n\nUse any ML framework. Bonus for live demos, real datasets, or creative model architectures suited to edge deployment.",
-        "icon": "\U0001f916",
+        "name": "AI and Machine Learning",
+        "description": "Create intelligent products using models, data pipelines, and automation.",
+        "challenge": "Build a project that leverages artificial intelligence or machine learning to solve a problem. This could be anything from a predictive model to a natural language processing app, computer vision project, or automation tool. Judges will look for practical application of AI/ML concepts, model performance, and real-world utility.",
+        "icon": "🤖",
         "color": "#10b981",
-        "prize": "$1,200 + NVIDIA Jetson Kit",
-        "track_type": "prize",
-        "criteria": ["AI Innovation", "Model Performance", "Problem Relevance", "Presentation Clarity"],
+        "prize": "Track Prize",
+        "track_type": "themed",
+        "criteria": ["Innovation", "Technical Implementation", "Real-world Utility", "Presentation"],
         "resources": [
-            {"name": "NASA Telemetry Datasets", "url": "https://data.nasa.gov/"},
-            {"name": "ESA Gaia Archive", "url": "https://gea.esac.esa.int/archive/"},
-            {"name": "TensorFlow Docs", "url": "https://www.tensorflow.org/"},
-            {"name": "PyTorch Documentation", "url": "https://pytorch.org/docs/"},
+            {"name": "OpenAI API", "url": "https://platform.openai.com/"},
+            {"name": "Hugging Face", "url": "https://huggingface.co/"},
+            {"name": "TensorFlow", "url": "https://www.tensorflow.org/"},
+            {"name": "PyTorch", "url": "https://pytorch.org/"},
         ],
     },
     {
-        "name": "Lunar Settlements",
-        "description": "Design for life beyond Earth. Create habitat concepts, life support system simulations, resource utilization tools, agricultural tech for microgravity, or urban planning for off-world colonies.",
-        "challenge": "If we're going to stay on the Moon (and eventually Mars), we need to figure out how to live there. Your mission: design and prototype a system for sustaining human life off-world. A hydroponics controller for microgravity, a 3D habitat layout tool using ISRU (in-situ resource utilization), a water recycling system simulator, or a crew psychology dashboard.\n\nThis track values systems thinking — how does your solution fit into the bigger picture of a self-sustaining settlement?",
-        "icon": "\U0001f315",
-        "color": "#f97316",
-        "prize": "$900 + 3D Printer",
+        "name": "Social Impact",
+        "description": "Develop solutions that support communities and improve quality of life.",
+        "challenge": "Create a project that addresses a social or community challenge. Focus on issues like sustainability, accessibility, public health, civic engagement, or community support. Judges will evaluate the potential community benefit, feasibility, and scalability of your solution.",
+        "icon": "🌍",
+        "color": "#8b5cf6",
+        "prize": "Track Prize",
         "track_type": "themed",
-        "criteria": ["Systems Thinking", "Feasibility", "Innovation", "Sustainability"],
+        "criteria": ["Social Impact", "Feasibility", "Innovation", "Scalability"],
         "resources": [
-            {"name": "NASA Artemis Program", "url": "https://www.nasa.gov/artemis/"},
-            {"name": "Lunar ISRU Papers", "url": "https://www.lpi.usra.edu/"},
-            {"name": "Mars Habitat Research", "url": "https://www.nasa.gov/hrp/"},
+            {"name": "UN Sustainable Development Goals", "url": "https://sdgs.un.org/goals"},
+            {"name": "Data.gov", "url": "https://www.data.gov/"},
+            {"name": "Code for America", "url": "https://www.codeforamerica.org/"},
+        ],
+    },
+    {
+        "name": "Education",
+        "description": "Build tools that enhance learning, accessibility, and educational outcomes.",
+        "challenge": "Develop a project that improves education or learning outcomes. This could be an educational game, a study tool, an accessibility solution for learners with disabilities, a platform for sharing educational resources, or any tool that helps people learn more effectively.",
+        "icon": "📚",
+        "color": "#06b6d4",
+        "prize": "Track Prize",
+        "track_type": "themed",
+        "criteria": ["Educational Value", "Accessibility", "User Experience", "Innovation"],
+        "resources": [
+            {"name": "Khan Academy API", "url": "https://api-explorer.khanacademy.org/"},
+            {"name": "Google for Education", "url": "https://edu.google.com/"},
+            {"name": "EdTech Resources", "url": "https://www.iste.org/"},
         ],
     },
 ]
@@ -209,6 +174,21 @@ async def create_track(
     db.add(track)
     await db.commit()
     await db.refresh(track)
+
+    # Reindex hackathon data (tracks changed)
+    try:
+        from app.assistant.indexer import DocumentIndexer
+        from app.models import Hackathon
+
+        result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
+        hackathon = result.scalar_one_or_none()
+        if hackathon:
+            indexer = DocumentIndexer(db)
+            await indexer.index_hackathon(hackathon)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to reindex after track creation: {e}")
+
     await _bust_tracks_cache(hackathon_id)
     return _track_to_response(track)
 
@@ -227,11 +207,26 @@ async def update_track(
     if not track:
         raise HTTPException(status_code=404, detail="Track not found")
 
-    for field in ("name", "description", "challenge", "icon", "color", "prize", "track_type", "criteria", "resources"):
+    for field in ("name", "description", "challenge", "icon", "color", "prize", "track_type", "criteria", "resources", "resources_markdown"):
         if field in body:
             setattr(track, field, body[field])
     await db.commit()
     await db.refresh(track)
+
+    # Reindex hackathon data (tracks changed)
+    try:
+        from app.assistant.indexer import DocumentIndexer
+        from app.models import Hackathon
+
+        result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
+        hackathon = result.scalar_one_or_none()
+        if hackathon:
+            indexer = DocumentIndexer(db)
+            await indexer.index_hackathon(hackathon)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to reindex after track update: {e}")
+
     await _bust_tracks_cache(hackathon_id)
     return _track_to_response(track)
 
@@ -250,6 +245,21 @@ async def delete_track(
         raise HTTPException(status_code=404, detail="Track not found")
     await db.delete(track)
     await db.commit()
+
+    # Reindex hackathon data (tracks changed)
+    try:
+        from app.assistant.indexer import DocumentIndexer
+        from app.models import Hackathon
+
+        result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
+        hackathon = result.scalar_one_or_none()
+        if hackathon:
+            indexer = DocumentIndexer(db)
+            await indexer.index_hackathon(hackathon)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to reindex after track deletion: {e}")
+
     await _bust_tracks_cache(hackathon_id)
     return {"detail": "ok"}
 
