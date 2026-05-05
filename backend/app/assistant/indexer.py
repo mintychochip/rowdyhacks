@@ -48,11 +48,8 @@ class DocumentIndexer:
         if hackathon.application_deadline:
             content_parts.append(f"Application Deadline: {hackathon.application_deadline}")
 
-        if hackathon.venue:
-            content_parts.append(f"Venue: {hackathon.venue}")
-
-        if hackathon.address:
-            content_parts.append(f"Address: {hackathon.address}")
+        if hackathon.venue_address:
+            content_parts.append(f"Venue: {hackathon.venue_address}")
 
         if hackathon.wifi_ssid:
             content_parts.append(f"WiFi: {hackathon.wifi_ssid} / {hackathon.wifi_password or 'Ask at check-in'}")
@@ -79,25 +76,27 @@ class DocumentIndexer:
 
         # Create metadata record
         doc_id = str(uuid4())
-        qdrant_id = f"hackathon_{hackathon.id}_info"
+        qdrant_point_id = str(uuid4())
 
         # Check if exists
         result = await self.db.execute(
             select(AssistantDocument)
-            .where(AssistantDocument.qdrant_id == qdrant_id)
+            .where(AssistantDocument.hackathon_id == hackathon.id)
+            .where(AssistantDocument.doc_type == DocumentType.HACKATHON_INFO)
         )
         existing = result.scalar_one_or_none()
 
         if existing:
-            # Update existing
+            # Update existing - use stored Qdrant point ID
             existing.version += 1
-            existing.metadata["content"] = content
+            existing.doc_metadata["content"] = content
+            qdrant_point_id = existing.qdrant_id
         else:
             # Create new
             doc = AssistantDocument(
                 id=uuid4(),
                 hackathon_id=hackathon.id,
-                qdrant_id=qdrant_id,
+                qdrant_id=qdrant_point_id,
                 doc_type=DocumentType.HACKATHON_INFO,
                 title=f"{hackathon.name} - General Information",
                 doc_metadata={"content": content},
@@ -106,13 +105,13 @@ class DocumentIndexer:
 
         # Index in vector store
         await vector_store.index_document(
-            doc_id=qdrant_id,
+            doc_id=qdrant_point_id,
             embedding=embedding,
             content=content,
             hackathon_id=str(hackathon.id),
             doc_type=DocumentType.HACKATHON_INFO.value,
             title=f"{hackathon.name} - Information",
-            doc_metadata={"source": "hackathon"},
+            metadata={"source": "hackathon"},
             role_access=["participant", "judge", "organizer"],
         )
 
@@ -147,23 +146,25 @@ class DocumentIndexer:
             content = "\n".join(content_parts)
             embedding = embedder.embed_text(content)
 
-            qdrant_id = f"hackathon_{hackathon.id}_track_{track.id}"
+            qdrant_point_id = str(uuid4())
 
             # Check if exists
             result = await self.db.execute(
                 select(AssistantDocument)
-                .where(AssistantDocument.qdrant_id == qdrant_id)
+                .where(AssistantDocument.source_id == track.id)
+                .where(AssistantDocument.doc_type == DocumentType.TRACK_INFO)
             )
             existing = result.scalar_one_or_none()
 
             if existing:
                 existing.version += 1
-                existing.metadata["content"] = content
+                existing.doc_metadata["content"] = content
+                qdrant_point_id = existing.qdrant_id
             else:
                 doc = AssistantDocument(
                     id=uuid4(),
                     hackathon_id=hackathon.id,
-                    qdrant_id=qdrant_id,
+                    qdrant_id=qdrant_point_id,
                     doc_type=DocumentType.TRACK_INFO,
                     title=track.name,
                     source_id=track.id,
@@ -173,13 +174,13 @@ class DocumentIndexer:
 
             # Index in vector store
             await vector_store.index_document(
-                doc_id=qdrant_id,
+                doc_id=qdrant_point_id,
                 embedding=embedding,
                 content=content,
                 hackathon_id=str(hackathon.id),
                 doc_type=DocumentType.TRACK_INFO.value,
                 title=track.name,
-                doc_metadata={"track_id": str(track.id)},
+                metadata={"track_id": str(track.id)},
                 role_access=["participant", "judge", "organizer"],
             )
 
@@ -215,20 +216,26 @@ class DocumentIndexer:
             content = f"Q: {faq['question']}\nA: {faq['answer']}"
             embedding = embedder.embed_text(content)
 
-            qdrant_id = f"hackathon_{hackathon.id}_faq_{i}"
+            qdrant_point_id = str(uuid4())
 
-            # Check if exists
+            # Check if this FAQ already exists (skip if any FAQ exists for this hackathon)
             result = await self.db.execute(
                 select(AssistantDocument)
-                .where(AssistantDocument.qdrant_id == qdrant_id)
+                .where(AssistantDocument.hackathon_id == hackathon.id)
+                .where(AssistantDocument.doc_type == DocumentType.FAQ)
+                .limit(1)
             )
-            existing = result.scalar_one_or_none()
+            any_existing = result.scalar_one_or_none()
 
-            if not existing:
+            if any_existing:
+                # Already indexed FAQs for this hackathon, skip
+                break
+
+            # Create new
                 doc = AssistantDocument(
                     id=uuid4(),
                     hackathon_id=hackathon.id,
-                    qdrant_id=qdrant_id,
+                    qdrant_id=qdrant_point_id,
                     doc_type=DocumentType.FAQ,
                     title=f"FAQ: {faq['question'][:50]}...",
                     doc_metadata={"question": faq["question"], "answer": faq["answer"]},
@@ -237,13 +244,13 @@ class DocumentIndexer:
 
                 # Index in vector store
                 await vector_store.index_document(
-                    doc_id=qdrant_id,
+                    doc_id=qdrant_point_id,
                     embedding=embedding,
                     content=content,
                     hackathon_id=str(hackathon.id),
                     doc_type=DocumentType.FAQ.value,
                     title=faq["question"],
-                    doc_metadata={"question": faq["question"]},
+                    metadata={"question": faq["question"]},
                     role_access=["participant", "judge", "organizer"],
                 )
 
@@ -281,7 +288,7 @@ class DocumentIndexer:
             hackathon_id=str(hackathon.id),
             doc_type=DocumentType.FAQ.value,
             title=question,
-            doc_metadata={"question": question},
+            metadata={"question": question},
             role_access=["participant", "judge", "organizer"],
         )
 
