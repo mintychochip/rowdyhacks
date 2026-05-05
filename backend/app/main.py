@@ -1,10 +1,7 @@
 from contextlib import asynccontextmanager
 
-import logging
 import sentry_sdk
 from fastapi import FastAPI
-
-logger = logging.getLogger(__name__)
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
@@ -20,7 +17,6 @@ from app.routes.auth import router as auth_router
 from app.routes.assistant import router as assistant_router
 from app.routes.checkin import router as checkin_router
 from app.routes.checks import router as checks_router
-from app.routes import content_router
 from app.routes.crawler import router as crawler_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.hackathons import router as hackathons_router
@@ -28,7 +24,6 @@ from app.routes.hacker_dashboard import router as hacker_dashboard_router
 from app.routes.judging import router as judging_router
 from app.routes.monitoring import router as monitoring_router
 from app.routes.monitoring import track_request
-from app.routes.oauth import router as oauth_router
 from app.routes.qr import router as qr_router
 from app.routes.registrations import router as registrations_router
 from app.routes.registrations_organizer import router as registrations_org_router
@@ -71,25 +66,18 @@ async def lifespan(app: FastAPI):
         await _seed_demo_data()
     except Exception:
         import traceback
+
         traceback.print_exc()
 
     # Initialize vector store for assistant
     try:
         from app.assistant.indexer import initialize_vector_store
+
         await initialize_vector_store()
     except Exception as e:
-        logging.getLogger(__name__).error(f"Vector store init failed: {e}")
+        import logging
 
-    # Preload embedding model to prevent first-request timeouts
-    try:
-        from app.assistant.embedder import embedder
-        import asyncio
-        # Run in thread pool since sentence-transformers is CPU-bound
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, embedder._load_model)
-        logging.getLogger(__name__).info("Embedding model preloaded successfully")
-    except Exception as e:
-        logging.getLogger(__name__).error(f"Failed to preload embedding model: {e}")
+        logging.getLogger(__name__).error(f"Vector store init failed: {e}")
 
     # Start Discord bot (if token configured, fails gracefully)
     await start_bot()
@@ -114,10 +102,13 @@ async def lifespan(app: FastAPI):
 
 
 async def _seed_demo_data():
-    """Create or update demo accounts on startup so they always work."""
+    """Create demo accounts on startup if they don't exist.
+
+    Note: With Auth0, demo accounts need to be created in Auth0 first,
+    then linked here. This function only creates local DB records.
+    """
     from sqlalchemy import select
 
-    from app.auth import hash_password
     from app.database import async_session
     from app.models import User, UserRole
 
@@ -131,12 +122,12 @@ async def _seed_demo_data():
             result = await db.execute(select(User).where(User.email == email))
             user = result.scalar_one_or_none()
             if user:
-                # Update existing demo account — reset password and role
+                # Update existing demo account
                 user.name = name
                 user.role = role
-                user.password_hash = hash_password("demo1234")
             else:
-                db.add(User(email=email, name=name, role=role, password_hash=hash_password("demo1234")))
+                # Create local DB record - Auth0 auth0_id will be linked on first login
+                db.add(User(email=email, name=name, role=role))
         await db.commit()
 
 
@@ -158,7 +149,6 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(assistant_router, prefix="/api/assistant", tags=["assistant"])
 app.include_router(checks_router)
-app.include_router(content_router)
 app.include_router(dashboard_router)
 app.include_router(hackathons_router)
 app.include_router(tracks_router)
@@ -169,7 +159,6 @@ app.include_router(checkin_router)
 app.include_router(qr_router)
 app.include_router(crawler_router, prefix="/api/crawler", tags=["crawler"])
 app.include_router(judging_router)
-app.include_router(oauth_router, prefix="/api/auth/oauth", tags=["oauth"])
 app.include_router(websocket_router)
 app.include_router(monitoring_router)
 

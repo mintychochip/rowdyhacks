@@ -12,6 +12,7 @@
   "dependencies": {
     "@chakra-ui/icons": "^2.2.4",
     "@chakra-ui/react": "^3.35.0",
+    "@clerk/clerk-react": "^5.61.6",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@fontsource/dm-sans": "^5.2.8",
@@ -19,9 +20,7 @@
     "framer-motion": "^12.38.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "react-markdown": "^10.1.0",
-    "react-router-dom": "^7.14.2",
-    "react-syntax-highlighter": "^16.1.1"
+    "react-router-dom": "^7.14.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
