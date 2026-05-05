@@ -85,6 +85,7 @@ export default function Layout() {
     { to: hk('/projects'), icon: 'inventory_2', label: 'Projects', roles: ['organizer'] },
     { to: '/tracks', icon: 'route', label: 'Tracks' },
     { to: '/resources', icon: 'menu_book', label: 'Resources' },
+    { to: '/admin/content', icon: 'edit_document', label: 'Edit Content', roles: ['organizer'] },
     { to: '/check-in', icon: 'qr_code_scanner', label: 'Check-In', roles: ['organizer'] },
     { to: '/dashboard', icon: 'monitoring', label: 'Submissions', roles: ['organizer'] },
     { to: '/crawled-data', icon: 'database', label: 'Indexed Data', roles: ['organizer'] },
