@@ -3,6 +3,9 @@
 // ============================================================
 
 import { useState } from 'react';
+import { useBuilderStore } from '../../../stores/builderStore';
+import { generateProject } from '../../../services/builder';
+import type { ProjectPlan, ProjectFile } from '../../../types/builder';
 import {
   CARD_BG,
   PRIMARY,
@@ -25,19 +28,24 @@ import type { GeneratedPlan, PlanTask } from './PlanGenerator';
 
 interface PlanDisplayProps {
   plan: GeneratedPlan;
-  onAccept: () => void;
+  projectPlan: ProjectPlan;
+  onAccept?: () => void;
   onEdit: () => void;
   onBackToChat: () => void;
 }
 
 export default function PlanDisplay({
   plan,
+  projectPlan,
   onAccept,
   onEdit,
   onBackToChat,
 }: PlanDisplayProps) {
+  const { setMode, project, setProject, setOpenFiles, setCurrentFileId } = useBuilderStore();
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   const toggleTaskComplete = (taskId: string) => {
     setCompletedTasks((prev) => {
@@ -68,6 +76,61 @@ export default function PlanDisplay({
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  };
+
+  const handleAccept = async () => {
+    setIsGenerating(true);
+    setGenerationError(null);
+
+    try {
+      const { files, readme } = await generateProject(projectPlan);
+
+      // Create README file
+      const readmeFile: ProjectFile = {
+        id: `readme-${Date.now()}`,
+        path: 'README.md',
+        content: readme,
+        language: 'markdown',
+        isModified: false,
+        isOpen: true,
+      };
+
+      // Combine all files with README
+      const allFiles = [...files, readmeFile];
+
+      // Update project with files
+      if (project) {
+        setProject({
+          ...project,
+          files: allFiles,
+          currentFileId: allFiles[0]?.id || null,
+          plan: projectPlan,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      // Set open files (first 3 files or all if less)
+      const filesToOpen = allFiles.slice(0, 3).map((f) => f.id);
+      setOpenFiles(filesToOpen);
+      setCurrentFileId(filesToOpen[0] || null);
+
+      // Switch to build mode
+      setMode('build');
+
+      // Call optional onAccept callback
+      if (onAccept) {
+        onAccept();
+      }
+    } catch (error) {
+      console.error('Failed to generate project:', error);
+      setGenerationError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to generate project. Please try again.'
+      );
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const completedCount = completedTasks.size;
@@ -302,6 +365,22 @@ export default function PlanDisplay({
         )}
       </div>
 
+      {/* Error message */}
+      {generationError && (
+        <div
+          style={{
+            padding: SPACE.md,
+            margin: `${SPACE.md}px ${SPACE.lg}px 0`,
+            background: 'rgba(239, 68, 68, 0.2)',
+            borderRadius: RADIUS.md,
+            color: '#ef4444',
+            fontSize: 14,
+          }}
+        >
+          {generationError}
+        </div>
+      )}
+
       {/* Action buttons footer */}
       <div
         style={{
@@ -315,32 +394,46 @@ export default function PlanDisplay({
         }}
       >
         <button
-          onClick={onAccept}
+          onClick={handleAccept}
+          disabled={isGenerating}
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: SPACE.xs,
             padding: `${SPACE.sm}px ${SPACE.lg}px`,
-            background: PRIMARY,
+            background: isGenerating ? '#475569' : PRIMARY,
             color: '#fff',
             border: 'none',
             borderRadius: RADIUS.md,
-            cursor: 'pointer',
+            cursor: isGenerating ? 'not-allowed' : 'pointer',
             fontSize: 14,
             fontWeight: 600,
             transition: 'all 0.2s ease',
             boxShadow: SHADOW.elevated,
+            opacity: isGenerating ? 0.7 : 1,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = PRIMARY_HOVER;
-            e.currentTarget.style.transform = 'translateY(-2px)';
+            if (!isGenerating) {
+              e.currentTarget.style.background = PRIMARY_HOVER;
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = PRIMARY;
-            e.currentTarget.style.transform = 'translateY(0)';
+            if (!isGenerating) {
+              e.currentTarget.style.background = PRIMARY;
+              e.currentTarget.style.transform = 'translateY(0)';
+            }
           }}
         >
-          <span>🚀</span> Accept & Start Building
+          {isGenerating ? (
+            <>
+              <span>⏳</span> Generating...
+            </>
+          ) : (
+            <>
+              <span>🚀</span> Accept & Start Building
+            </>
+          )}
         </button>
 
         <button

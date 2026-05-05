@@ -42,6 +42,8 @@ services:
       - qdrant_data:/qdrant/storage
     environment:
       - QDRANT__SERVICE__GRPC_PORT=6334
+    ports:
+      - "127.0.0.1:6333:6333"
 
   backend:
     build: ./backend
@@ -56,6 +58,7 @@ services:
       HACKVERIFY_REDIS_URL: redis://redis:6379/0
       HACKVERIFY_QDRANT_URL: http://qdrant:6333
     volumes:
+      - ./backend:/app
       - ./data:/app/data
     depends_on:
       db:
@@ -70,6 +73,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     ports:
       - "127.0.0.1:8000:8000"
 

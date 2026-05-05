@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { useBuilderStore } from '../../../stores/builderStore';
-import type { BuilderMode } from '../../../types/builder';
+import type { BuilderMode, ProjectType } from '../../../types/builder';
 import PlanGenerator, { type GeneratedPlan } from '../plan/PlanGenerator';
 import PlanDisplay from '../plan/PlanDisplay';
 import {
@@ -23,7 +23,7 @@ interface PlanModeProps {
 type PlanState = 'input' | 'generating' | 'display' | 'editing';
 
 export default function PlanMode({ hackathonId, onModeChange }: PlanModeProps) {
-  const { project, setCurrentPlan, setMode } = useBuilderStore();
+  const { project, setCurrentPlan, setMode, currentPlan } = useBuilderStore();
   const [planState, setPlanState] = useState<PlanState>(() => {
     // If we already have a project, go straight to generating
     if (project?.name) return 'generating';
@@ -94,7 +94,7 @@ export default function PlanMode({ hackathonId, onModeChange }: PlanModeProps) {
   };
 
   // Helper to infer project type from tech stack
-  const inferProjectType = (techStack: string[]): string => {
+  const inferProjectType = (techStack: string[]): ProjectType => {
     const techs = techStack.map((t) => t.toLowerCase());
     if (techs.some((t) => ['react', 'vue', 'angular', 'svelte'].includes(t))) {
       return 'web-app';
@@ -281,10 +281,11 @@ export default function PlanMode({ hackathonId, onModeChange }: PlanModeProps) {
   }
 
   // Display view
-  if (planState === 'display' && generatedPlan) {
+  if (planState === 'display' && generatedPlan && currentPlan) {
     return (
       <PlanDisplay
         plan={generatedPlan}
+        projectPlan={currentPlan}
         onAccept={handleAcceptPlan}
         onEdit={handleEditPlan}
         onBackToChat={handleBackToChat}

@@ -31,7 +31,7 @@ export interface GeneratedPlan {
   stretchGoals: string[];
 }
 
-interface PlanTask {
+export interface PlanTask {
   id: string;
   description: string;
   estimatedMinutes: number;

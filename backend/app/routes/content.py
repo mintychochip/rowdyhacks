@@ -4,7 +4,7 @@ import re
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from fastapi_limiter.depends import RateLimiter
+# from fastapi_limiter.depends import RateLimiter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -99,7 +99,7 @@ async def get_page(slug: str, db: AsyncSession = Depends(get_db)):
 @router.post(
     "/pages",
     status_code=201,
-    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+    # dependencies=[Depends(RateLimiter(times=30, seconds=60))],
 )
 async def create_page(
     request: Request,
@@ -146,7 +146,7 @@ async def create_page(
 
 @router.put(
     "/pages/{slug}",
-    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+    # dependencies=[Depends(RateLimiter(times=30, seconds=60))],
 )
 async def update_page(
     request: Request,
@@ -190,7 +190,7 @@ async def update_page(
 @router.delete(
     "/pages/{slug}",
     status_code=200,
-    dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+    # dependencies=[Depends(RateLimiter(times=30, seconds=60))],
 )
 async def delete_page(
     request: Request,

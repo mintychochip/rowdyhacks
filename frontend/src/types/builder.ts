@@ -84,6 +84,9 @@ export interface BuilderState {
   isFilePanelOpen: boolean;
   setIsFilePanelOpen: (isOpen: boolean) => void;
 
+  // Project Files
+  setProjectFiles: (files: ProjectFile[]) => void;
+
   // Actions
   createProject: (
     name: string,

@@ -25,49 +25,49 @@ const lightColors = {
   prompt: '#22c55e',
 } as const;
 
-// Color tokens for dark mode - softer dark gray (not jet black)
+// Color tokens for dark mode - Hack the Valley brand colors
 const darkColors = {
-  bg: '#1a1a1a',
-  bgSubtle: '#262626',
-  bgElevated: '#2a2a2a',
-  textPrimary: '#ffffff',
-  textSecondary: '#a0a0a0',
-  textMuted: '#737373',
-  border: '#404040',
-  borderStrong: '#555555',
-  link: '#66b3ff',
+  bg: '#0f172a',
+  bgSubtle: '#1e293b',
+  bgElevated: '#1e293b',
+  textPrimary: '#f8fafc',
+  textSecondary: '#94a3b8',
+  textMuted: '#64748b',
+  border: '#334155',
+  borderStrong: '#475569',
+  link: '#06b6d4',
   success: '#22c55e',
-  warning: '#fbbf24',
+  warning: '#f59e0b',
   error: '#ef4444',
-  codeBg: '#1f1f1f',
-  codeText: '#a0a0a0',
-  prompt: '#22c55e',
+  codeBg: '#1e293b',
+  codeText: '#94a3b8',
+  prompt: '#06b6d4',
 } as const;
 
 // Export color getters based on theme
 export const getColors = (mode: ThemeMode) => mode === 'light' ? lightColors : darkColors;
 
 // Legacy exports for backward compatibility during migration
-export const PAGE_BG = '#1a1a1a';
-export const CARD_BG = '#262626';
-export const INPUT_BG = '#2a2a2a';
-export const NAV_BG = '#1a1a1a';
+export const PAGE_BG = '#0f172a';
+export const CARD_BG = '#1e293b';
+export const INPUT_BG = '#334155';
+export const NAV_BG = '#0f172a';
 export const EXPANDED_BG = '#1a1a1a';
 export const TABLE_HOVER = '#1a1a1a';
-export const PRIMARY = '#ffffff';
-export const PRIMARY_HOVER = '#e0e0e0';
+export const PRIMARY = '#2563eb';
+export const PRIMARY_HOVER = '#1d4ed8';
 export const PRIMARY_DISABLED = '#555555';
 export const PRIMARY_BG20 = '#ffffff20';
 export const CYAN = '#999999';
 export const CYAN_BG20 = '#99999920';
 export const CYAN_BG10 = '#99999910';
-export const TEXT_PRIMARY = '#ffffff';
-export const TEXT_SECONDARY = '#a0a0a0';
-export const TEXT_MUTED = '#737373';
+export const TEXT_PRIMARY = '#f8fafc';
+export const TEXT_SECONDARY = '#94a3b8';
+export const TEXT_MUTED = '#64748b';
 export const TEXT_DIM = '#444444';
 export const TEXT_WHITE = '#ffffff';
-export const BORDER = '#404040';
-export const BORDER_LIGHT = '#444444';
+export const BORDER = '#334155';
+export const BORDER_LIGHT = '#475569';
 export const INPUT_BORDER = '#333333';
 export const RADIUS = { sm: 4, md: 4, lg: 4, full: 4 };
 export const SPACE = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 };
@@ -95,7 +95,7 @@ export const STATUS_PENDING = '#f59e0b';
 export const STATUS_ACCEPTED = '#22c55e';
 export const STATUS_REJECTED = '#ef4444';
 export const STATUS_CHECKED_IN = '#3b82f6';
-export const GOLD = '#fbbf24';
+export const GOLD = '#f59e0b';
 export const GOLD_BG20 = '#fbbf2420';
 export const GOLD_BG10 = '#fbbf2410';
 

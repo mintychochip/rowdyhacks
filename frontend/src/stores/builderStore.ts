@@ -11,6 +11,7 @@ import type {
   ProjectPlan,
   ProjectType,
   PlanTask,
+  ProjectFile,
 } from '../types/builder';
 
 const generateId = () =>
@@ -81,6 +82,36 @@ export const useBuilderStore = create<BuilderState>()(
       // UI State
       setIsPlanPanelOpen: (isPlanPanelOpen) => set({ isPlanPanelOpen }),
       setIsFilePanelOpen: (isFilePanelOpen) => set({ isFilePanelOpen }),
+
+      // Project Files
+      setProjectFiles: (files) => {
+        const { project } = get();
+        if (!project) return;
+
+        // Add README as a file if provided separately
+        const readmeFile = files.find((f) => f.path === 'README.md');
+        const allFiles = readmeFile
+          ? files
+          : [
+              ...files,
+              {
+                id: `readme-${Date.now()}`,
+                path: 'README.md',
+                content: '', // README content will be set by the caller if needed
+                language: 'markdown',
+                isModified: false,
+                isOpen: false,
+              },
+            ];
+
+        set({
+          project: {
+            ...project,
+            files: allFiles,
+            updatedAt: new Date().toISOString(),
+          },
+        });
+      },
 
       // Actions
       createProject: (name, description, projectType) => {

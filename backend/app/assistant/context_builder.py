@@ -13,118 +13,166 @@ from app.assistant.permissions import get_tools_for_role
 from app.assistant.vector_store import vector_store
 from app.models import Hackathon, Registration, Track, User
 
-# Build intent detection patterns
-BUILD_INTENT_PATTERNS = [
-    # Direct "I want to" patterns
-    r"i\s+want\s+to\s+(build|create|make|develop|start)\s+(a|an|my|the)",
-    r"i\s+want\s+to\s+(build|create|make|develop|start)\s+\w+",
-    # Active building patterns
-    r"i['']?m\s+(building|creating|making|developing|starting)\s+(a|an|my|the)",
-    r"i['']?m\s+(building|creating|making|developing)\s+\w+",
-    r"i\s+am\s+(building|creating|making|developing|starting)\s+(a|an|my|the)",
-    r"i\s+am\s+(building|creating|making|developing)\s+\w+",
-    # "Let's" collaborative patterns
-    r"let['']?s\s+(build|create|make|develop|start)\s+(a|an|my|the)",
-    r"let['']?s\s+(build|create|make|develop)\s+\w+",
-    r"lets\s+(build|create|make|develop|start)\s+(a|an|my|the)",
-    r"lets\s+(build|create|make|develop)\s+\w+",
-    # Help/request patterns
-    r"help\s+me\s+(build|create|make|develop|start)\s+(a|an|my|the)",
-    r"help\s+me\s+(build|create|make|develop)\s+\w+",
-    r"i\s+need\s+to\s+(build|create|make|develop|start)\s+(a|an|my|the)",
-    r"i\s+need\s+to\s+(build|create|make|develop)\s+\w+",
-    r"i\s+would\s+like\s+to\s+(build|create|make|develop|start)",
-    # Planning/intention patterns
-    r"(plan|planning)\s+to\s+(build|create|make|develop|start)",
-    r"thinking\s+about\s+(building|creating|making|developing|starting)",
-    # Project/hackathon specific patterns
-    r"starting\s+(a|an|my|the)\s+(new\s+)?project",
-    r"new\s+project\s+(idea|concept|plan)",
-    r"hackathon\s+project\s+(idea|concept|plan|for)",
-    r"app\s+(idea|concept|for)",
-    r"website\s+(idea|concept|for)",
-    r"(build|create|make)\s+(an?|my)\s+(app|website|tool|bot|game|service|platform)",
-    r"(build|create|make)\s+(an?|my)\s+\w+\s+(app|website|tool|bot|game|service|platform)",
-    # Question patterns
-    r"how\s+(can|do|should)\s+i\s+(build|create|make|develop|start)",
-    r"what\s+should\s+i\s+(build|create|make|develop)",
-    r"any\s+ideas\s+for\s+(a|an)\s+\w+\s+(project|app|website)",
-    # Technical implementation patterns
-    r"implement\s+(a|an|my)\s+",
-    r"code\s+(a|an|my)\s+",
-    r"prototype\s+(a|an|my)\s+",
-    r"mvp\s+for\s+(a|an|my)\s+",
-    r"demo\s+(for|of)\s+",
-]
-
 logger = logging.getLogger(__name__)
 
+# Build intent detection patterns
+BUILD_INTENT_PATTERNS = [
+    # Direct build statements
+    r"i want to build\b",
+    r"i wanna build\b",
+    r"i want to create\b",
+    r"i wanna make\b",
+    r"i want to make\b",
+    r"i'm building\b",
+    r"i am building\b",
+    r"i'm creating\b",
+    r"i am creating\b",
+    r"i'm making\b",
+    r"help me build\b",
+    r"help me create\b",
+    r"help me make\b",
+    r"generate a prototype\b",
+    r"create a prototype\b",
+    r"build a prototype\b",
+    r"help me code\b",
+    r"i have an idea for\b",
+    r"i have an idea\b",
+    r"can you help me with\s+(?:react|vue|angular|python|flask|django|node|javascript|typescript|html|css|arduino|raspberry pi|iot)",
+    # Project type indicators
+    r"(?:web app|website|mobile app|chrome extension|discord bot|slack bot|api|dashboard|game|hack|project)\b",
+    r"(?:arduino|raspberry pi|sensor|hardware|iot|embedded)\b",
+    r"(?:react|vue|angular|svelte|next\.?js|nuxt)\b",
+    r"(?:flask|django|fastapi|express|nodejs)\b",
+    # Planning phrases
+    r"plan (?:out|for|my)?\s+(?:a|an|the)?\s*(?:project|hack|app|website)",
+    r"create a plan\b",
+    r"generate a plan\b",
+    r"roadmap for\b",
+    r"step.?by.?step (?:guide|plan|tutorial)",
+    # Hackathon-specific
+    r"(?:submit|demo|present)\s+(?:this|my|our|the)?\s*(?:project|hack|app)",
+    r"prize track\b",
+    r"what (?:track|prize)\s+(?:should|could)",
+]
 
-def detect_build_intent(message: str) -> dict[str, Any]:
-    """
-    Detect if a user message contains intent to build something.
 
-    Args:
-        message: The user's message text
+def detect_build_intent(message: str) -> tuple[bool, float]:
+    """Detect if user message indicates intent to build a project.
 
     Returns:
-        Dict with:
-        - hasBuildIntent: bool indicating if build intent was detected
-        - suggestedMode: str ('plan', 'build', or 'chat')
-        - confidence: float (0.0-1.0) indicating confidence level
-        - matchedPattern: str | None - the pattern that matched, if any
+        Tuple of (has_intent, confidence_score)
     """
-    if not message or not message.strip():
-        return {
-            "hasBuildIntent": False,
-            "suggestedMode": "chat",
-            "confidence": 0.0,
-            "matchedPattern": None,
-        }
+    message_lower = message.lower()
 
-    message_lower = message.lower().strip()
-
-    # Check against all patterns
-    matched_pattern = None
+    matches = 0
     for pattern in BUILD_INTENT_PATTERNS:
         if re.search(pattern, message_lower):
-            matched_pattern = pattern
-            break
+            matches += 1
 
-    # Determine suggested mode based on context
-    if matched_pattern:
-        # Check for planning keywords to suggest 'plan' mode
-        planning_keywords = ["plan", "planning", "idea", "concept", "strategy", "roadmap"]
-        has_planning_keywords = any(kw in message_lower for kw in planning_keywords)
+    # Calculate confidence based on number of matches
+    if matches >= 3:
+        return True, 0.9
+    elif matches >= 2:
+        return True, 0.75
+    elif matches >= 1:
+        return True, 0.6
 
-        # Check for immediate action keywords to suggest 'build' mode
-        action_keywords = ["start", "begin", "now", "immediately", "let's", "lets"]
-        has_action_keywords = any(kw in message_lower for kw in action_keywords)
+    return False, 0.0
 
-        if has_planning_keywords:
-            suggested_mode = "plan"
-            confidence = 0.9
-        elif has_action_keywords:
-            suggested_mode = "build"
-            confidence = 0.85
-        else:
-            # Default to plan for build intent (safer starting point)
-            suggested_mode = "plan"
-            confidence = 0.8
 
-        return {
-            "hasBuildIntent": True,
-            "suggestedMode": suggested_mode,
-            "confidence": confidence,
-            "matchedPattern": matched_pattern,
-        }
+def build_plan_generation_prompt(
+    user_description: str,
+    hackathon_name: str | None = None,
+    tracks: list[dict] | None = None,
+) -> str:
+    """Build a prompt for the AI to generate a project plan."""
+    parts = []
 
-    return {
-        "hasBuildIntent": False,
-        "suggestedMode": "chat",
-        "confidence": 0.0,
-        "matchedPattern": None,
-    }
+    parts.append("You are an AI hackathon mentor. Create a detailed project plan based on the user's description.")
+    parts.append("The plan should be realistic for a 6-hour hackathon.")
+    parts.append("")
+    parts.append("User's project description:")
+    parts.append(f'"""{user_description}"""')
+    parts.append("")
+
+    if hackathon_name:
+        parts.append(f"Hackathon: {hackathon_name}")
+        parts.append("")
+
+    if tracks:
+        parts.append("Available prize tracks:")
+        for track in tracks:
+            parts.append(f"- {track['name']}: {track.get('description', 'No description')}")
+        parts.append("")
+
+    parts.append("Generate a project plan with the following structure:")
+    parts.append("")
+    parts.append("1. Project Name: A catchy, descriptive name (1-4 words)")
+    parts.append("2. Target Track: Which prize track this project best fits")
+    parts.append("3. Estimated Hours: Realistic time estimate (2-6 hours)")
+    parts.append("4. Tech Stack: List of recommended technologies (3-6 items)")
+    parts.append("5. MVP Tasks: 4-6 specific tasks to complete the MVP, each with:")
+    parts.append("   - Task description")
+    parts.append("   - Estimated minutes (15-120)")
+    parts.append("   - Dependencies (task IDs that must complete first)")
+    parts.append("6. Stretch Goals: 2-4 additional features if time permits")
+    parts.append("")
+    parts.append("Format the response as a JSON object matching this structure:")
+    parts.append('{"name": "...", "targetTrack": "...", "estimatedHours": 4, "techStack": [...], "tasks": [...], "stretchGoals": [...]}')
+    parts.append("")
+    parts.append("Make the plan specific and actionable, not generic.")
+
+    return "\n".join(parts)
+
+
+def build_project_generation_prompt(
+    plan: dict,
+    project_type: str,
+) -> str:
+    """Build a prompt for the AI to generate project code."""
+    parts = []
+
+    parts.append("You are an AI code generator. Create starter code for a hackathon project.")
+    parts.append("")
+    parts.append("Project Plan:")
+    parts.append(f"- Name: {plan.get('name', 'Untitled')}")
+    parts.append(f"- Type: {project_type}")
+    parts.append(f"- Tech Stack: {', '.join(plan.get('techStack', []))}")
+    parts.append("")
+    parts.append("Tasks to implement:")
+    for i, task in enumerate(plan.get('tasks', []), 1):
+        parts.append(f"{i}. {task.get('description', 'Task')}")
+    parts.append("")
+    parts.append("Generate the following files:")
+    parts.append("")
+
+    if project_type == "web":
+        parts.append("1. index.html - Main HTML file with basic structure")
+        parts.append("2. style.css - CSS styling (modern, clean design)")
+        parts.append("3. script.js - JavaScript functionality")
+        parts.append("4. README.md - Setup and usage instructions")
+    elif project_type == "python":
+        parts.append("1. app.py - Main Python application")
+        parts.append("2. requirements.txt - Python dependencies")
+        parts.append("3. README.md - Setup and usage instructions")
+    elif project_type == "fullstack":
+        parts.append("1. index.html - Frontend HTML")
+        parts.append("2. style.css - Frontend styling")
+        parts.append("3. app.py - Flask backend")
+        parts.append("4. requirements.txt - Python dependencies")
+        parts.append("5. README.md - Setup and usage instructions")
+    else:
+        parts.append("1. Main code file(s) appropriate for the project type")
+        parts.append("2. README.md - Setup and usage instructions")
+
+    parts.append("")
+    parts.append("Format the response as a JSON object with a 'files' array.")
+    parts.append('Each file should have: {"path": "...", "name": "...", "content": "...", "language": "..."}')
+    parts.append("")
+    parts.append("Make the code functional, well-commented, and ready to run.")
+    parts.append("Include placeholder comments where the user should add their own logic.")
+
+    return "\n".join(parts)
 
 
 class ContextBuilder:
@@ -309,82 +357,6 @@ class ContextBuilder:
                 })
 
         return hackathons
-
-    def build_plan_generation_prompt(
-        self,
-        project_name: str,
-        project_description: str,
-        hackathon: Hackathon | None = None,
-        tracks: list[Any] | None = None,
-    ) -> str:
-        """Build a system prompt for generating a project plan."""
-        parts = []
-
-        # Identity
-        parts.append("You are an expert hackathon project planner. Your task is to create detailed, actionable project plans for hackathon participants.")
-        parts.append(f"Current date: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-
-        # Hackathon context
-        if hackathon:
-            parts.append(f"\nHackathon: {hackathon.name}")
-            parts.append(f"Dates: {hackathon.start_date} to {hackathon.end_date}")
-
-        # Available tracks
-        if tracks:
-            parts.append("\nAvailable tracks for this hackathon:")
-            for track in tracks:
-                parts.append(f"- {track.name}: {track.description or 'No description'}")
-
-        # Plan requirements
-        parts.append("\n" + "=" * 50)
-        parts.append("PLAN GENERATION REQUIREMENTS")
-        parts.append("=" * 50)
-        parts.append("\nGenerate a detailed project plan in JSON format with the following structure:")
-        parts.append("""
-{
-  "name": "Project name (refined from user input)",
-  "description": "Clear, concise project description (2-3 sentences)",
-  "targetTrack": "Best matching track name from available tracks, or 'General' if none match",
-  "estimatedHours": integer estimate (1-48 for hackathon scope),
-  "techStack": ["Technology 1", "Technology 2", ...],
-  "tasks": [
-    {
-      "id": "task-1",
-      "description": "Clear task description",
-      "estimatedMinutes": integer (in minutes, 15-480),
-      "dependencies": ["task-1"] // IDs of tasks that must complete before this one
-    }
-  ],
-  "stretchGoals": [
-    "Optional feature or enhancement 1",
-    "Optional feature or enhancement 2"
-  ]
-}
-""")
-
-        # Guidelines
-        parts.append("\n" + "=" * 50)
-        parts.append("GUIDELINES")
-        parts.append("=" * 50)
-        parts.append("1. Tasks should be ordered logically (dependencies first)")
-        parts.append("2. Keep tasks concrete and actionable (not vague like 'work on frontend')")
-        parts.append("3. Each task should be completable in 15-480 minutes (30 min - 8 hours)")
-        parts.append("4. Tech stack should be practical for the hackathon timeframe")
-        parts.append("5. Estimated hours should be realistic for a hackathon (typically 4-24 hours)")
-        parts.append("6. Stretch goals should be features that enhance but aren't essential to the core demo")
-        parts.append("7. If tracks are provided, recommend the best-matching track")
-        parts.append("8. Use modern, beginner-friendly technologies when possible")
-        parts.append("9. Include setup/deployment tasks in the plan")
-
-        # Response format reminder
-        parts.append("\n" + "=" * 50)
-        parts.append("OUTPUT FORMAT")
-        parts.append("=" * 50)
-        parts.append("Return ONLY valid JSON matching the structure above.")
-        parts.append("Do not include markdown formatting, explanations, or any other text.")
-        parts.append("The JSON must be parseable by a standard JSON parser.")
-
-        return "\n".join(parts)
 
 
 # Need to import this for the organizer query

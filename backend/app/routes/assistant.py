@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.assistant.context_builder import ContextBuilder, detect_build_intent
+from app.assistant.context_builder import ContextBuilder
 from app.assistant.embedder import embedder
 from app.assistant.llm import llm_client
 from app.assistant.permissions import can_use_tool, get_tools_for_role
@@ -445,130 +445,6 @@ async def delete_conversation(
     return {"success": True}
 
 
-@router.post("/generate-plan")
-async def generate_plan(
-    request: dict,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Generate an AI project plan based on user input.
-
-    Request body:
-    - project_name: str - The name of the project
-    - project_description: str - Description of what the user wants to build
-    - hackathon_id: Optional[str] - The hackathon context for track matching
-
-    Returns:
-    - name: str - Project name
-    - description: str - Project description
-    - targetTrack: str - Suggested hackathon track
-    - estimatedHours: int - Estimated hours to complete
-    - techStack: List[str] - Recommended technologies
-    - tasks: List[PlanTask] - List of tasks to complete
-    - stretchGoals: List[str] - Optional stretch goals
-    """
-    project_name = request.get("project_name", "").strip()
-    project_description = request.get("project_description", "").strip()
-    hackathon_id = request.get("hackathon_id")
-
-    if not project_name:
-        raise HTTPException(status_code=400, detail="Project name is required")
-
-    # Get hackathon context if provided
-    hackathon = None
-    tracks = []
-    if hackathon_id:
-        result = await db.execute(
-            select(Hackathon).where(Hackathon.id == hackathon_id)
-        )
-        hackathon = result.scalar_one_or_none()
-
-        if hackathon:
-            # Get tracks for this hackathon
-            result = await db.execute(
-                select(Track)
-                .where(Track.hackathon_id == hackathon_id)
-                .order_by(Track.name)
-            )
-            tracks = result.scalars().all()
-
-    # Build the plan generation prompt
-    builder = ContextBuilder(db)
-    system_prompt = builder.build_plan_generation_prompt(
-        project_name=project_name,
-        project_description=project_description,
-        hackathon=hackathon,
-        tracks=tracks,
-    )
-
-    try:
-        # Call LLM to generate plan
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Generate a detailed project plan for: {project_name}\n\nDescription: {project_description}"},
-        ]
-
-        response = await llm_client.chat_completion(
-            messages=messages,
-            temperature=0.7,
-            max_tokens=2000,
-        )
-
-        # Parse the JSON response
-        content = response.get("choices", [{}])[0].get("message", {}).get("content", "")
-
-        # Extract JSON from the response (handle markdown code blocks)
-        import json
-        import re
-
-        # Try to find JSON in code blocks
-        json_match = re.search(r'```(?:json)?\s*({[\s\S]*?})\s*```', content)
-        if json_match:
-            content = json_match.group(1)
-
-        # Try to parse as JSON
-        try:
-            plan_data = json.loads(content)
-        except json.JSONDecodeError:
-            # If that fails, try to find JSON-like structure
-            json_match = re.search(r'({[\s\S]*"name"[\s\S]*"tasks"[\s\S]*})', content)
-            if json_match:
-                try:
-                    plan_data = json.loads(json_match.group(1))
-                except json.JSONDecodeError:
-                    raise HTTPException(status_code=500, detail="Failed to parse AI response as JSON")
-            else:
-                raise HTTPException(status_code=500, detail="Failed to parse AI response as JSON")
-
-        # Validate required fields
-        required_fields = ["name", "description", "targetTrack", "estimatedHours", "techStack", "tasks"]
-        for field in required_fields:
-            if field not in plan_data:
-                plan_data[field] = [] if field in ["techStack", "tasks"] else ""
-
-        # Ensure tasks have required fields
-        for i, task in enumerate(plan_data.get("tasks", [])):
-            if "id" not in task:
-                task["id"] = f"task-{i+1}"
-            if "description" not in task:
-                task["description"] = "Task description"
-            if "estimatedMinutes" not in task:
-                task["estimatedMinutes"] = 60
-            if "dependencies" not in task:
-                task["dependencies"] = []
-
-        # Ensure stretchGoals exists
-        if "stretchGoals" not in plan_data:
-            plan_data["stretchGoals"] = []
-
-        return plan_data
-
-    except Exception as e:
-        logger.error(f"Plan generation error: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate plan: {str(e)}")
-
-
 @router.get("/tools")
 async def list_available_tools(
     current_user: User = Depends(get_current_user),
@@ -576,33 +452,3 @@ async def list_available_tools(
     """List tools available to the current user."""
     tools = get_tools_for_role(current_user.role)
     return {"role": current_user.role, "tools": tools}
-
-
-@router.post("/detect-intent")
-async def detect_intent(
-    request: dict,
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Detect build intent in a user message.
-
-    Request body:
-    - message: str - The user's message to analyze
-
-    Returns:
-    - hasBuildIntent: bool - Whether build intent was detected
-    - suggestedMode: str - Suggested mode ('plan', 'build', or 'chat')
-    - confidence: float - Confidence level (0.0-1.0)
-    """
-    message = request.get("message", "")
-
-    if not message or not message.strip():
-        raise HTTPException(status_code=400, detail="Message is required")
-
-    result = detect_build_intent(message)
-
-    return {
-        "hasBuildIntent": result["hasBuildIntent"],
-        "suggestedMode": result["suggestedMode"],
-        "confidence": result["confidence"],
-    }

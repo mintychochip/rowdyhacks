@@ -67,7 +67,16 @@ async def lifespan(app: FastAPI):
         await _seed_demo_data()
     except Exception:
         import traceback
+        traceback.print_exc()
 
+    # Seed default content pages
+    try:
+        from app.database import async_session
+        from app.seed_content import seed_default_content
+        async with async_session() as db:
+            await seed_default_content(db)
+    except Exception:
+        import traceback
         traceback.print_exc()
 
     # Initialize vector store for assistant
