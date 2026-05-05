@@ -253,6 +253,7 @@ class Track(Base):
     track_type = Column(String(50), nullable=True)  # "prize", "themed", "sponsor", or null
     criteria = Column(JsonType, nullable=True)
     resources = Column(JsonType, nullable=True)
+    resources_markdown = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     hackathon = relationship("Hackathon", back_populates="tracks")
@@ -618,6 +619,30 @@ class EmailLog(Base):
     updated_at = Column(DateTime(timezone=True), nullable=True, onupdate=lambda: datetime.now(UTC))
 
     registration = relationship("Registration", back_populates="email_logs")
+
+
+class ContentPage(Base):
+    """Organizer-editable markdown content pages."""
+
+    __tablename__ = "content_pages"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    slug = Column(String(100), unique=True, nullable=False, index=True)
+    title = Column(String(200), nullable=False)
+    content = Column(Text, nullable=False)
+    tab_group = Column(String(50), nullable=False, default="resources")
+    sort_order = Column(Integer, default=0, nullable=False)
+    tab_group_order = Column(Integer, default=0, nullable=False)
+    is_published = Column(Boolean, default=True, nullable=False)
+    created_by = Column(Guid, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=lambda: datetime.now(UTC), nullable=True)
+
+    __table_args__ = (
+        Index("ix_content_pages_slug", "slug"),
+        Index("ix_content_pages_tab_group", "tab_group", "sort_order"),
+        Index("ix_content_pages_published", "is_published"),
+    )
 
 
 # Import assistant models to ensure they are registered with SQLAlchemy
