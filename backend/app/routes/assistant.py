@@ -52,6 +52,8 @@ async def get_hackathon(
     return result.scalar_one_or_none()
 
 
+# DEPRECATED: Replaced by client-side AgentLoop + POST /api/llm/chat.
+# Kept for backward compat; remove after verifying new harness in production.
 @router.post("/chat")
 async def create_chat_message(
     request: Request,
@@ -197,6 +199,7 @@ async def get_current_user_sse(
     return user
 
 
+# DEPRECATED: Replaced by client-side AgentLoop. Remove after verifying new harness.
 @router.get("/stream/{message_id}")
 async def stream_response(
     message_id: UUID,
