@@ -11,7 +11,7 @@ const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> 
   participant: { label: 'Participant', color: STATUS_ACCEPTED, bg: '#10b98120' },
 };
 
-type NavItem = { to: string; icon: string; label: string; roles?: string[]; getTo?: (hkId: string) => string };
+type NavItem = { to: string | null; icon: string; label: string; roles?: string[]; getTo?: (hkId: string) => string; requiresHackathon?: boolean };
 
 // Hackathon context to share the ID across pages
 export const HackathonContext = createContext<string | null>(null);
@@ -62,7 +62,8 @@ export default function Layout() {
   const closeSidebar = () => setSidebarOpen(false);
   const toggleSidebar = () => setSidebarOpen(prev => !prev);
 
-  const isActive = (to: string) => {
+  const isActive = (to: string | null) => {
+    if (!to) return false;
     if (to === '/') return location.pathname === '/' || location.pathname.startsWith('/report');
     // For hackathon-scoped links, match the pattern
     if (hackathonId && to.includes(hackathonId)) {
@@ -71,27 +72,32 @@ export default function Layout() {
     return location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
   };
 
-  // Generate hackathon-scoped paths; fall back to /hackathons list when none exists
-const hk = (path: string) => hackathonId ? `/hackathons/${hackathonId}${path}` : '/hackathons';
+  // Generate hackathon-scoped paths; return null if no hackathon exists (item will be hidden)
+  const hk = (path: string) => hackathonId ? `/hackathons/${hackathonId}${path}` : null;
 
-  const NAV_ITEMS: NavItem[] = [
+  const rawNav: NavItem[] = [
     { to: '/', icon: 'home', label: 'Home' },
-    { to: '/assistant', icon: 'smart_toy', label: 'AI Assistant' },
+    { to: '/assistant', icon: 'smart_toy', label: 'AI Assistant', roles: ['organizer', 'participant', 'judge'] },
     { to: '/analyze', icon: 'science', label: 'Analyze', roles: ['organizer'] },
-    { to: hk('/registrations'), icon: 'group', label: 'Registrations' },
-    { to: hk('/judging/setup'), icon: 'gavel', label: 'Judging' },
+    { to: hk('/registrations'), icon: 'group', label: 'Registrations', roles: ['organizer'] },
+    { to: hk('/judging/setup'), icon: 'gavel', label: 'Judging', roles: ['organizer'] },
     { to: hk('/leaderboard'), icon: 'leaderboard', label: 'Leaderboard' },
-    { to: hk('/projects'), icon: 'inventory_2', label: 'Projects' },
+    { to: hk('/projects'), icon: 'inventory_2', label: 'Projects', roles: ['organizer'] },
     { to: '/tracks', icon: 'route', label: 'Tracks' },
-    { to: '/check-in', icon: 'qr_code_scanner', label: 'Check-In' },
+    { to: '/resources', icon: 'menu_book', label: 'Resources' },
+    { to: '/check-in', icon: 'qr_code_scanner', label: 'Check-In', roles: ['organizer'] },
     { to: '/dashboard', icon: 'monitoring', label: 'Submissions', roles: ['organizer'] },
     { to: '/crawled-data', icon: 'database', label: 'Indexed Data', roles: ['organizer'] },
     { to: '/registrations', icon: 'badge', label: 'Your Application', roles: ['participant'] },
     { to: '/judge', icon: 'gavel', label: 'Judge Portal', roles: ['judge'] },
   ];
 
+  // Filter out nav items that require a hackathon but have no valid link (no hackathon exists)
+  // This prevents showing disabled links when there's no hackathon in the database
+  const NAV_ITEMS = rawNav
+    .filter((item): item is { to: string; icon: string; label: string; roles?: string[] } => item.to !== null);
+
   const visibleNav = NAV_ITEMS.filter(item => !item.roles || (role && item.roles.includes(role)));
-  const needsHackathon = (to: string) => to.startsWith('/hackathons/') || (to !== '/' && to !== '/assistant' && to !== '/analyze' && to !== '/tracks' && to !== '/check-in' && to !== '/dashboard' && to !== '/crawled-data' && to !== '/registrations' && to !== '/judge' && to !== '/auth');
 
   const handleLogout = () => {
     closeSidebar();
