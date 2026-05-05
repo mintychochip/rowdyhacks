@@ -39,3 +39,5 @@ sentry-sdk==2.24.1
 alembic==1.18.4
 psycopg2-binary==2.9.10
 faker>=22.0.0
+markdown>=3.5
+bleach>=6.1
