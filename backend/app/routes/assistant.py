@@ -26,6 +26,11 @@ from app.models_assistant import (
     ConversationRole,
 )
 from app.routes.auth import get_current_user
+from app.schemas.builder import (
+    GenerateProjectRequest,
+    GenerateProjectResponse,
+    ProjectPlanSchema,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -407,6 +412,7 @@ async def get_conversation(
                 "tool_calls": m.tool_calls,
                 "tool_results": m.tool_results,
                 "status": m.status.value,
+                "model": m.model_used,
                 "created_at": m.created_at.isoformat() if m.created_at else None,
             }
             for m in messages
@@ -452,3 +458,208 @@ async def list_available_tools(
     """List tools available to the current user."""
     tools = get_tools_for_role(current_user.role)
     return {"role": current_user.role, "tools": tools}
+
+
+# =============================================================================
+# Builder Mode Endpoints
+# =============================================================================
+
+from app.assistant.context_builder import (
+    build_plan_generation_prompt,
+    build_project_generation_prompt,
+    detect_build_intent,
+)
+
+
+@router.post("/detect-intent")
+async def detect_intent(
+    message: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Detect if user message indicates intent to build a project."""
+    has_intent, confidence = detect_build_intent(message)
+
+    return {
+        "has_build_intent": has_intent,
+        "confidence": confidence,
+        "message": message,
+    }
+
+
+@router.post("/generate-plan")
+async def generate_plan(
+    description: str,
+    hackathon_id: Optional[UUID] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate a project plan from user description."""
+    import json
+
+    # Get hackathon context
+    hackathon = None
+    tracks = []
+    if hackathon_id:
+        result = await db.execute(
+            select(Hackathon).where(Hackathon.id == hackathon_id)
+        )
+        hackathon = result.scalar_one_or_none()
+
+        if hackathon:
+            # Get tracks
+            from app.models import Track
+            result = await db.execute(
+                select(Track).where(Track.hackathon_id == hackathon_id)
+            )
+            track_rows = result.scalars().all()
+            tracks = [
+                {"name": t.name, "description": t.description or ""}
+                for t in track_rows
+            ]
+
+    # Build prompt
+    prompt = build_plan_generation_prompt(
+        user_description=description,
+        hackathon_name=hackathon.name if hackathon else None,
+        tracks=tracks if tracks else None,
+    )
+
+    # Call LLM
+    messages = [
+        {"role": "system", "content": "You are a helpful AI that generates project plans. Always respond with valid JSON."},
+        {"role": "user", "content": prompt},
+    ]
+
+    try:
+        response = await llm_client.chat_completion(
+            messages=messages,
+            temperature=0.7,
+        )
+
+        # Try to parse JSON from response
+        content = response.get("content", "")
+
+        # Extract JSON if wrapped in markdown
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+
+        plan_data = json.loads(content)
+
+        # Add generated ID
+        from uuid import uuid4
+        plan_data["id"] = str(uuid4())
+
+        return {
+            "plan": plan_data,
+            "success": True,
+        }
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse plan JSON: {e}")
+        return {
+            "success": False,
+            "error": "Failed to generate valid plan",
+            "raw_response": content if 'content' in locals() else None,
+        }
+    except Exception as e:
+        logger.error(f"Error generating plan: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+        }
+
+
+@router.post("/generate-project")
+async def generate_project(
+    request: GenerateProjectRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Generate project files from a plan."""
+    import json
+
+    # Convert plan to dict
+    plan_dict = request.plan.model_dump()
+
+    # Build prompt
+    prompt = build_project_generation_prompt(
+        plan=plan_dict,
+        project_type=request.projectType,
+    )
+
+    # Call LLM
+    messages = [
+        {"role": "system", "content": "You are a helpful AI that generates code. Always respond with valid JSON containing a 'files' array."},
+        {"role": "user", "content": prompt},
+    ]
+
+    try:
+        response = await llm_client.chat_completion(
+            messages=messages,
+            temperature=0.7,
+        )
+
+        # Try to parse JSON from response
+        content = response.get("content", "")
+
+        # Extract JSON if wrapped in markdown
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+
+        project_data = json.loads(content)
+
+        # Ensure files array exists
+        if "files" not in project_data:
+            return {
+                "success": False,
+                "error": "Invalid response format: missing 'files' array",
+            }
+
+        # Generate README if not present
+        has_readme = any(f.get("name") == "README.md" for f in project_data["files"])
+        if not has_readme:
+            readme_content = f"""# {plan_dict.get('name', 'Project')}
+
+Generated for RowdyHacks hackathon.
+
+## Quick Start
+
+1. Open the files in your code editor
+2. Follow the setup instructions below
+3. Start hacking!
+
+## Files
+
+"""
+            for f in project_data["files"]:
+                readme_content += f"- {f.get('name', 'file')} - {f.get('description', 'Project file')}\n"
+
+            project_data["files"].append({
+                "path": "README.md",
+                "name": "README.md",
+                "content": readme_content,
+                "language": "markdown",
+            })
+
+        return {
+            "files": project_data["files"],
+            "readme": next((f["content"] for f in project_data["files"] if f["name"] == "README.md"), ""),
+            "success": True,
+        }
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse project JSON: {e}")
+        return {
+            "success": False,
+            "error": "Failed to generate valid project files",
+            "raw_response": content if 'content' in locals() else None,
+        }
+    except Exception as e:
+        logger.error(f"Error generating project: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+        }
