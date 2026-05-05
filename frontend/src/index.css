@@ -1,20 +1,119 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0B1120; color: #f1f5f9; }
-input, button, textarea, select { font-family: inherit; }
-a { color: inherit; }
+/* ============================================================
+   Hack the Valley — Global Styles
+   Raw Hacker Aesthetic: IBM Plex, Monochrome, Minimal
+   ============================================================ */
 
-/* Hide scrollbar globally for webkit browsers */
-::-webkit-scrollbar { display: none !important; }
-* { scrollbar-width: none !important; -ms-overflow-style: none !important; }
-
-@keyframes slideDown {
-  from { max-height: 0; opacity: 0; }
-  to { max-height: 400px; opacity: 1; }
+/* Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
+/* Base styles */
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0a0a0a;
+  color: #ffffff;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* Form elements inherit font */
+input, button, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Links */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Code and mono elements */
+code, pre, kbd, samp {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* Selection */
+::selection {
+  background: rgba(255, 255, 255, 0.2);
+  color: inherit;
+}
+
+/* Scrollbar (minimal, functional) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+}
+
+/* Animations */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+@keyframes slideDown {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: 400px;
+    opacity: 1;
+  }
+}
+
+/* Utility classes */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
-  h1, [data-mobile-h1] { font-size: 22px !important; }
-  h2, [data-mobile-h2] { font-size: 18px !important; }
-  body { font-size: 14px; }
-  th, td { padding: 8px 10px !important; }
+  html {
+    font-size: 15px;
+  }
+
+  h1, .h1 {
+    font-size: 32px !important;
+  }
+
+  h2, .h2 {
+    font-size: 24px !important;
+  }
 }
