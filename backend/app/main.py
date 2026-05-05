@@ -1,7 +1,10 @@
 from contextlib import asynccontextmanager
 
+import logging
 import sentry_sdk
 from fastapi import FastAPI
+
+logger = logging.getLogger(__name__)
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
@@ -17,6 +20,7 @@ from app.routes.auth import router as auth_router
 from app.routes.assistant import router as assistant_router
 from app.routes.checkin import router as checkin_router
 from app.routes.checks import router as checks_router
+from app.routes.content import router as content_router
 from app.routes.crawler import router as crawler_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.hackathons import router as hackathons_router
@@ -74,8 +78,18 @@ async def lifespan(app: FastAPI):
         from app.assistant.indexer import initialize_vector_store
         await initialize_vector_store()
     except Exception as e:
-        import logging
         logging.getLogger(__name__).error(f"Vector store init failed: {e}")
+
+    # Preload embedding model to prevent first-request timeouts
+    try:
+        from app.assistant.embedder import embedder
+        import asyncio
+        # Run in thread pool since sentence-transformers is CPU-bound
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, embedder._load_model)
+        logging.getLogger(__name__).info("Embedding model preloaded successfully")
+    except Exception as e:
+        logging.getLogger(__name__).error(f"Failed to preload embedding model: {e}")
 
     # Start Discord bot (if token configured, fails gracefully)
     await start_bot()
@@ -144,6 +158,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(assistant_router, prefix="/api/assistant", tags=["assistant"])
 app.include_router(checks_router)
+app.include_router(content_router)
 app.include_router(dashboard_router)
 app.include_router(hackathons_router)
 app.include_router(tracks_router)
