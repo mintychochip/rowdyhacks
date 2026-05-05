@@ -1,7 +1,6 @@
 """Content page management routes for organizer-editable markdown pages."""
 
 import re
-import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
@@ -182,9 +181,8 @@ async def update_page(
     await db.commit()
     await db.refresh(page)
 
-    # Invalidate caches
+    # Invalidate caches - clear all content cache to be safe
     await _bust_content_cache()
-    await cache_delete_pattern(f"{CACHE_PFX}:get_page:{slug}")
 
     return _page_to_response(page)
 
@@ -211,13 +209,12 @@ async def delete_page(
     await db.delete(page)
     await db.commit()
 
-    # Invalidate caches
+    # Invalidate caches - clear all content cache to be safe
     await _bust_content_cache()
-    await cache_delete_pattern(f"{CACHE_PFX}:get_page:{slug}")
 
     return {"detail": "ok"}
 
 
 async def _bust_content_cache():
     """Invalidate all content page caches after mutations."""
-    await cache_delete_pattern(f"{CACHE_PFX}:list_pages:*")
+    await cache_delete_pattern(f"{CACHE_PFX}:*")

@@ -20,7 +20,7 @@ from app.routes.auth import router as auth_router
 from app.routes.assistant import router as assistant_router
 from app.routes.checkin import router as checkin_router
 from app.routes.checks import router as checks_router
-from app.routes.content import router as content_router
+from app.routes import content_router
 from app.routes.crawler import router as crawler_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.hackathons import router as hackathons_router
