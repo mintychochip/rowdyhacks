@@ -25,22 +25,22 @@ const lightColors = {
   prompt: '#22c55e',
 } as const;
 
-// Color tokens for dark mode
+// Color tokens for dark mode - softer dark gray (not jet black)
 const darkColors = {
-  bg: '#0a0a0a',
-  bgSubtle: '#141414',
-  bgElevated: '#1a1a1a',
+  bg: '#1a1a1a',
+  bgSubtle: '#262626',
+  bgElevated: '#2a2a2a',
   textPrimary: '#ffffff',
-  textSecondary: '#999999',
-  textMuted: '#666666',
-  border: '#333333',
+  textSecondary: '#a0a0a0',
+  textMuted: '#737373',
+  border: '#404040',
   borderStrong: '#555555',
   link: '#66b3ff',
   success: '#22c55e',
   warning: '#fbbf24',
   error: '#ef4444',
-  codeBg: '#111111',
-  codeText: '#999999',
+  codeBg: '#1f1f1f',
+  codeText: '#a0a0a0',
   prompt: '#22c55e',
 } as const;
 
@@ -48,10 +48,10 @@ const darkColors = {
 export const getColors = (mode: ThemeMode) => mode === 'light' ? lightColors : darkColors;
 
 // Legacy exports for backward compatibility during migration
-export const PAGE_BG = '#0a0a0a';
-export const CARD_BG = '#141414';
-export const INPUT_BG = '#1a1a1a';
-export const NAV_BG = '#0a0a0a';
+export const PAGE_BG = '#1a1a1a';
+export const CARD_BG = '#262626';
+export const INPUT_BG = '#2a2a2a';
+export const NAV_BG = '#1a1a1a';
 export const EXPANDED_BG = '#1a1a1a';
 export const TABLE_HOVER = '#1a1a1a';
 export const PRIMARY = '#ffffff';
@@ -62,11 +62,11 @@ export const CYAN = '#999999';
 export const CYAN_BG20 = '#99999920';
 export const CYAN_BG10 = '#99999910';
 export const TEXT_PRIMARY = '#ffffff';
-export const TEXT_SECONDARY = '#999999';
-export const TEXT_MUTED = '#666666';
+export const TEXT_SECONDARY = '#a0a0a0';
+export const TEXT_MUTED = '#737373';
 export const TEXT_DIM = '#444444';
 export const TEXT_WHITE = '#ffffff';
-export const BORDER = '#333333';
+export const BORDER = '#404040';
 export const BORDER_LIGHT = '#444444';
 export const INPUT_BORDER = '#333333';
 export const RADIUS = { sm: 4, md: 4, lg: 4, full: 4 };
