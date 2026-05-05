@@ -1,125 +1,128 @@
 // ============================================================
 // Hack the Valley Design System
-// Clean, modern hackathon aesthetic: Dark Navy + Blue Energy
-//
-// Brand: Deep Navy (#0f172a) + Electric Blue (#2563eb) + Cyan (#06b6d4)
+// Raw Hacker Aesthetic: Monochrome, IBM Plex, Minimal
 // ============================================================
 
-// ── Color Tokens (surface layering, deep navy → card surfaces) ─────
-export const PAGE_BG = '#0f172a';
-export const CARD_BG = '#1e293b';
-export const INPUT_BG = '#334155';
-export const NAV_BG = '#0f172a';
-export const EXPANDED_BG = '#1e293b';
-export const TABLE_HOVER = '#334155';
+// Theme type definition
+export type ThemeMode = 'light' | 'dark';
 
-// Primary accent (Electric Blue — the "Hack" energy)
-export const PRIMARY = '#2563eb';
-export const PRIMARY_HOVER = '#1d4ed8';
-export const PRIMARY_DISABLED = '#3b82f6';
-export const PRIMARY_BG20 = '#2563eb20';
+// Color tokens for light mode
+const lightColors = {
+  bg: '#ffffff',
+  bgSubtle: '#f7f7f7',
+  bgElevated: '#ffffff',
+  textPrimary: '#000000',
+  textSecondary: '#444444',
+  textMuted: '#666666',
+  border: '#e0e0e0',
+  borderStrong: '#000000',
+  link: '#0066cc',
+  success: '#22c55e',
+  warning: '#f59e0b',
+  error: '#dc2626',
+  codeBg: '#f5f5f5',
+  codeText: '#444444',
+  prompt: '#22c55e',
+} as const;
 
-// Secondary accent (Cyan for gradients)
-export const CYAN = '#06b6d4';
-export const CYAN_BG20 = '#06b6d420';
-export const CYAN_BG10 = '#06b6d410';
+// Color tokens for dark mode
+const darkColors = {
+  bg: '#0a0a0a',
+  bgSubtle: '#141414',
+  bgElevated: '#1a1a1a',
+  textPrimary: '#ffffff',
+  textSecondary: '#999999',
+  textMuted: '#666666',
+  border: '#333333',
+  borderStrong: '#555555',
+  link: '#66b3ff',
+  success: '#22c55e',
+  warning: '#fbbf24',
+  error: '#ef4444',
+  codeBg: '#111111',
+  codeText: '#999999',
+  prompt: '#22c55e',
+} as const;
 
-// Accent Gold (for highlights and prizes)
+// Export color getters based on theme
+export const getColors = (mode: ThemeMode) => mode === 'light' ? lightColors : darkColors;
+
+// Legacy exports for backward compatibility during migration
+export const PAGE_BG = '#0a0a0a';
+export const CARD_BG = '#141414';
+export const INPUT_BG = '#1a1a1a';
+export const NAV_BG = '#0a0a0a';
+export const EXPANDED_BG = '#1a1a1a';
+export const TABLE_HOVER = '#1a1a1a';
+export const PRIMARY = '#ffffff';
+export const PRIMARY_HOVER = '#e0e0e0';
+export const PRIMARY_DISABLED = '#555555';
+export const PRIMARY_BG20 = '#ffffff20';
+export const CYAN = '#999999';
+export const CYAN_BG20 = '#99999920';
+export const CYAN_BG10 = '#99999910';
+export const TEXT_PRIMARY = '#ffffff';
+export const TEXT_SECONDARY = '#999999';
+export const TEXT_MUTED = '#666666';
+export const TEXT_DIM = '#444444';
+export const TEXT_WHITE = '#ffffff';
+export const BORDER = '#333333';
+export const BORDER_LIGHT = '#444444';
+export const INPUT_BORDER = '#333333';
+export const RADIUS = { sm: 4, md: 4, lg: 4, full: 4 };
+export const SPACE = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 };
+
+// Status/Semantic colors (legacy compatibility)
+export const SUCCESS = '#22c55e';
+export const SUCCESS_BG20 = '#22c55e20';
+export const SUCCESS_BG10 = '#22c55e10';
+export const WARNING = '#fbbf24';
+export const WARNING_BG20 = '#fbbf2420';
+export const WARNING_BG10 = '#fbbf2410';
+export const WARNING_BORDER30 = '#fbbf2430';
+export const ERROR = '#ef4444';
+export const ERROR_TEXT = '#ef4444';
+export const ERROR_BG20 = '#ef444420';
+export const ERROR_BG10 = '#ef444410';
+export const ERROR_BORDER30 = '#ef444430';
+export const INFO = '#3b82f6';
+export const INFO_BG20 = '#3b82f620';
+export const INFO_BG10 = '#3b82f610';
+export const ORANGE = '#f97316';
+
+// Status badge colors
+export const STATUS_PENDING = '#f59e0b';
+export const STATUS_ACCEPTED = '#22c55e';
+export const STATUS_REJECTED = '#ef4444';
+export const STATUS_CHECKED_IN = '#3b82f6';
 export const GOLD = '#fbbf24';
 export const GOLD_BG20 = '#fbbf2420';
 export const GOLD_BG10 = '#fbbf2410';
 
-// Text hierarchy
-export const TEXT_PRIMARY = '#f1f5f9';
-export const TEXT_SECONDARY = '#94a3b8';
-export const TEXT_MUTED = '#64748b';
-export const TEXT_DIM = '#475569';
-export const TEXT_WHITE = '#fff';
-
-// Borders (subtle navy divisions)
-export const BORDER = '#1e293b';
-export const BORDER_LIGHT = '#334155';
-export const INPUT_BORDER = '#475569';
-
-// Semantic
-export const SUCCESS = '#00c853';
-export const SUCCESS_BG20 = '#00c85320';
-export const SUCCESS_BG10 = '#00c85310';
-export const WARNING = '#FFC72C';
-export const WARNING_BG20 = '#FFC72C20';
-export const WARNING_BG10 = '#FFC72C10';
-export const WARNING_BORDER30 = '#FFC72C30';
-export const ERROR = '#ff4444';
-export const ERROR_TEXT = '#ff6b6b';
-export const ERROR_BG20 = '#ff444420';
-export const ERROR_BG10 = '#ff444410';
-export const ERROR_BORDER30 = '#ff444430';
-export const INFO = '#3b82f6';
-export const INFO_BG20 = '#3b82f620';
-export const INFO_BG10 = '#3b82f610';
-export const ORANGE = '#ff9800';
-
-// Status badge colors
-export const STATUS_PENDING = '#f59e0b';
-export const STATUS_ACCEPTED = '#10b981';
-export const STATUS_REJECTED = '#ef4444';
-export const STATUS_CHECKED_IN = '#3b82f6';
-
-// ── Typography Tokens ───────────────────────────────────────
-// Font family: Inter (system fallback)
-const font = (size: number, weight: number, lineHeight: number, letterSpacing = 'normal') => ({
-  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  fontSize: size,
-  fontWeight: weight,
-  lineHeight,
-  letterSpacing,
-});
-
+// Typography tokens
 export const TYPO = {
-  h1: font(32, 700, 1.2, '-0.02em'),
-  h2: font(24, 600, 1.3, '-0.01em'),
-  h3: font(20, 600, 1.4),
-  'body-lg': font(16, 400, 1.6),
-  'body-sm': font(14, 400, 1.5),
-  'mono-data': {
-    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-    fontSize: 13,
-    fontWeight: 500,
-    lineHeight: 1.0,
-    letterSpacing: '0.05em',
-    fontVariantNumeric: 'tabular-nums' as const,
-  },
-  'label-caps': font(12, 700, 1.0, '0.08em'),
-  'score-lg': font(32, 700, 1, '-0.02em'),
-};
+  h1: { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 42, fontWeight: 600, lineHeight: 1.1, letterSpacing: '-0.02em' },
+  h2: { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 32, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' },
+  h3: { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 20, fontWeight: 600, lineHeight: 1.3 },
+  body: { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 16, fontWeight: 400, lineHeight: 1.6 },
+  small: { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 14, fontWeight: 400, lineHeight: 1.5 },
+  label: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, lineHeight: 1.0, textTransform: 'uppercase' as const, letterSpacing: '0.05em' },
+  mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 400, lineHeight: 1.5 },
+  'mono-lg': { fontFamily: "'IBM Plex Mono', monospace", fontSize: 24, fontWeight: 400, lineHeight: 1.2, letterSpacing: '-0.02em' },
+  // Legacy typography exports for backward compatibility
+  'body-lg': { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 16, fontWeight: 400, lineHeight: 1.6 },
+  'body-sm': { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 14, fontWeight: 400, lineHeight: 1.5 },
+  'mono-data': { fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 500, lineHeight: 1.0, letterSpacing: '0.05em', fontVariantNumeric: 'tabular-nums' as const },
+  'label-caps': { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 12, fontWeight: 700, lineHeight: 1.0, letterSpacing: '0.08em' },
+  'score-lg': { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 32, fontWeight: 700, lineHeight: 1, letterSpacing: '-0.02em' },
+} as const;
 
-// ── Spacing Scale (4px base) ────────────────────────────────
-export const SPACE = {
-  xs: 4,
-  sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 48,
-};
-
-// ── Radius Tokens ───────────────────────────────────────────
-export const RADIUS = {
-  sm: 4,
-  md: 8,
-  lg: 12,
-  full: 9999,
-};
-
-// ── Responsive Breakpoints ─────────────────────────────────
-export const BREAKPOINTS = { mobile: 768, tablet: 1024 };
-
-// ── Shadow Tokens ───────────────────────────────────────────
+// Shadow tokens (flat design - minimal shadows)
 export const SHADOW = {
-  card: '0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)',
-  elevated: '0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3)',
-  modal: '0 8px 32px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.4)',
+  card: 'none',
+  elevated: '0 1px 3px rgba(0,0,0,0.1)',
+  modal: '0 4px 12px rgba(0,0,0,0.15)',
 };
 
-// Test lint error
-const unusedVariable = 'this should trigger ESLint';
-console.log(unusedVariable);
+// Breakpoints
+export const BREAKPOINTS = { mobile: 768, tablet: 1024 };
