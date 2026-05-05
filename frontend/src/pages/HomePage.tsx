@@ -12,7 +12,7 @@ import {
   PRIMARY, PRIMARY_BG20, CYAN, SUCCESS, SUCCESS_BG10, WARNING, WARNING_BG10,
   ERROR, ERROR_TEXT, ERROR_BG20,
   TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_WHITE,
-  INPUT_BG, INPUT_BORDER, CARD_BG, BORDER, BORDER_LIGHT,
+  INPUT_BG, INPUT_BORDER, CARD_BG, BORDER,
   STATUS_ACCEPTED, STATUS_PENDING, STATUS_REJECTED, STATUS_CHECKED_IN,
   GOLD, GOLD_BG10,
   SPACE, RADIUS,
@@ -121,41 +121,95 @@ export default function HomePage() {
 
   if (loading) return <p style={{ color: TEXT_MUTED, textAlign: 'center', padding: SPACE.xl }}>Loading...</p>;
 
-  // ── Not logged in ──
+    // Not logged in - minimal hero
   if (!user) {
     return (
-      <div style={{ textAlign: 'center', padding: isMobile ? SPACE.xl : 80 }}>
-        <div style={{ marginBottom: SPACE.lg }}>
-          <span style={{ fontSize: 56, fontWeight: 800, color: TEXT_WHITE, letterSpacing: '-0.02em' }}>Hack. Build. </span>
-          <span style={{ fontSize: 56, fontWeight: 800, color: PRIMARY, letterSpacing: '-0.02em' }}>Create.</span>
+      <div style={{ maxWidth: 640, padding: isMobile ? '40px 24px' : '80px 24px' }}>
+        <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, color: '#666', marginBottom: 16 }}>
+          Feb 15-17, 2026 - Toronto
         </div>
-        <p style={{ color: TEXT_SECONDARY, fontSize: 18, marginBottom: SPACE.lg, maxWidth: 520, margin: '0 auto ' + SPACE.lg + 'px', lineHeight: 1.6 }}>
-          Join 800+ hackers for 36 hours of innovation, mentorship, and breakthrough projects at Hack the Valley — Canada's largest student-run hackathon.
+        <h1 style={{ fontSize: isMobile ? 32 : 42, fontWeight: 600, lineHeight: 1.1, letterSpacing: '-0.02em', marginBottom: 20, color: '#fff' }}>
+          Build something worth showing off.
+        </h1>
+        <p style={{ fontSize: 17, color: '#999', lineHeight: 1.6, marginBottom: 32 }}>
+          36 hours, 800+ hackers, real prizes. No pitch decks required.
         </p>
-        <Link to="/auth" style={{ display: 'inline-block', padding: '16px 40px', background: PRIMARY, borderRadius: RADIUS.md, color: '#0B1120', textDecoration: 'none', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>
-          Apply Now
-        </Link>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: SPACE.xl, marginTop: SPACE.xl }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 36, fontWeight: 800, color: PRIMARY, fontFamily: 'JetBrains Mono, monospace' }}>800+</div>
-            <div style={{ fontSize: 12, color: TEXT_MUTED, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Hackers</div>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Link to="/auth" style={{
+            padding: '12px 24px',
+            background: '#fff',
+            color: '#000',
+            fontSize: 14,
+            fontWeight: 500,
+            textDecoration: 'none',
+            borderRadius: 4,
+          }}>
+            Get Ticket
+          <Link to="/tracks" style={{ color:             View tracks -
+            View tracks ->
+          </Link>
+        </div>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+          gap: 32,
+          marginTop: 64,
+          paddingTop: 32,
+          borderTop: '1px solid #333'
+        }}>
+          <div>
+            <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, color: '#666', marginBottom: 8 }}>ATTENDEES</div>
+            <div style={{ fontSize: 32, fontWeight: 600, color: '#fff' }}>800+</div>
+            <div style={{ fontSize: 14, color: '#666' }}>University hackers</div>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 36, fontWeight: 800, color: PRIMARY, fontFamily: 'JetBrains Mono, monospace' }}>36h</div>
-            <div style={{ fontSize: 12, color: TEXT_MUTED, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Of Hacking</div>
+          <div>
+            <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, color: '#666', marginBottom: 8 }}>DURATION</div>
+            <div style={{ fontSize: 32, fontWeight: 600, color: '#fff' }}>36h</div>
+            <div style={{ fontSize: 14, color: '#666' }}>Non-stop building</div>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 36, fontWeight: 800, color: PRIMARY, fontFamily: 'JetBrains Mono, monospace' }}>$50k+</div>
-            <div style={{ fontSize: 12, color: TEXT_MUTED, textTransform: 'uppercase', letterSpacing: '0.1em' }}>In Prizes</div>
+          <div>
+            <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, color: '#666', marginBottom: 8 }}>PRIZES</div>
+            <div style={{ fontSize: 32, fontWeight: 600, color: '#fff' }}>$50K</div>
+            <div style={{ fontSize: 14, color: '#666' }}>Cash + internships</div>
           </div>
         </div>
       </div>
     );
   }
 
-  // ── No hackathon ──
+  // No hackathon
   if (!hackathon) {
     const isOrganizer = user.role === 'organizer';
+    return (
+      <div style={{ maxWidth: 640, padding: isMobile ? '40px 24px' : '80px 24px' }}>
+        <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, color: '#666', marginBottom: 16 }}>
+          Hack the Valley
+        </div>
+        <h1 style={{ fontSize: isMobile ? 28 : 32, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.02em', marginBottom: 16, color: '#fff' }}>
+          Welcome
+        </h1>
+        <p style={{ fontSize: 16, color: '#999', lineHeight: 1.6, marginBottom: 32 }}>
+          {isOrganizer ? 'Set up your first hackathon event.' : 'No active events right now.'}
+        </p>
+        {isOrganizer && (
+          <Link to="/hackathons" style={{
+            display: 'inline-block',
+            padding: '12px 24px',
+            background: '#fff',
+            color: '#000',
+            fontSize: 14,
+            fontWeight: 500,
+            textDecoration: 'none',
+            borderRadius: 4,
+          }}>
+            Create Event
+          </Link>
+        )}
+      </div>
+    );
+  }
+
+  const isOrganizer = user.role === 'organizer';const isOrganizer = user.role === 'organizer';
     return (
       <div style={{ textAlign: 'center', padding: isMobile ? SPACE.xl : 80 }}>
         <div style={{ marginBottom: SPACE.lg }}>
