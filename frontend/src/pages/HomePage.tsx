@@ -145,8 +145,9 @@ export default function HomePage() {
             borderRadius: 4,
           }}>
             Get Ticket
-          <Link to="/tracks" style={{ color:             View tracks -
-            View tracks ->
+          </Link>
+          <Link to="/tracks" style={{ color: '#66b3ff', fontSize: 14, textDecoration: 'none' }}>
+            View tracks -&gt;
           </Link>
         </div>
         <div style={{
@@ -209,25 +210,6 @@ export default function HomePage() {
     );
   }
 
-  const isOrganizer = user.role === 'organizer';const isOrganizer = user.role === 'organizer';
-    return (
-      <div style={{ textAlign: 'center', padding: isMobile ? SPACE.xl : 80 }}>
-        <div style={{ marginBottom: SPACE.lg }}>
-          <span style={{ fontSize: 40, fontWeight: 800, color: TEXT_WHITE, letterSpacing: '-0.02em' }}>Hack. Build. </span>
-          <span style={{ fontSize: 40, fontWeight: 800, color: PRIMARY, letterSpacing: '-0.02em' }}>Create.</span>
-        </div>
-        <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: SPACE.sm, color: TEXT_PRIMARY }}>Welcome to Hack the Valley</h1>
-        <p style={{ color: TEXT_SECONDARY, fontSize: 16, marginBottom: SPACE.lg }}>
-          {isOrganizer ? 'Set up your first hackathon event.' : 'No active events right now.'}
-        </p>
-        {isOrganizer && (
-          <Link to="/hackathons" style={{ display: 'inline-block', padding: '14px 36px', background: PRIMARY, borderRadius: RADIUS.md, color: '#0B1120', textDecoration: 'none', fontSize: 16, fontWeight: 700 }}>
-            Create Event
-          </Link>
-        )}
-      </div>
-    );
-  }
 
   const isOrganizer = user.role === 'organizer';
   const isAccepted = registration && (registration.status === 'accepted' || registration.status === 'checked_in');
