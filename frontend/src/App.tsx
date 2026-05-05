@@ -26,6 +26,7 @@ import ProjectGallery from './pages/ProjectGallery';
 import PublicLeaderboard from './pages/PublicLeaderboard';
 import TracksPage from './pages/TracksPage';
 import CrawledDataPage from './pages/CrawledDataPage';
+import ResourcesPage from './pages/ResourcesPage';
 
 export default function App() {
   return (
@@ -55,6 +56,7 @@ export default function App() {
             <Route path="/hackathons/:id/tracks" element={<TracksPage />} />
             <Route path="/hackathons/:id/tracks/edit" element={<TracksEditorPage />} />
             <Route path="/tracks" element={<TracksPage />} />
+            <Route path="/resources" element={<ResourcesPage />} />
             <Route path="/crawled-data" element={<CrawledDataPage />} />
             <Route path="/hackathons/:id/hacker-dashboard" element={<HackerDashboard />} />
             <Route path="/hackathons/:id/settings" element={<HackathonSettings />} />

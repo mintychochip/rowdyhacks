@@ -312,3 +312,73 @@ export const addOrganizer = (hackathonId: string, email: string) =>
 
 export const removeOrganizer = (hackathonId: string, userId: string) =>
   request(`/hackathons/${hackathonId}/organizers/${userId}`, { method: 'DELETE' });
+
+// Content Pages
+export async function getContentPages(tabGroup?: string) {
+  const params = tabGroup ? `?tab_group=${tabGroup}` : '';
+  const res = await fetch(`${BASE}/content/pages${params}`);
+  if (!res.ok) throw new Error('Failed to load content pages');
+  return res.json();
+}
+
+export async function getContentPage(slug: string) {
+  const res = await fetch(`${BASE}/content/pages/${slug}`);
+  if (!res.ok) throw new Error('Failed to load content page');
+  return res.json();
+}
+
+export async function createContentPage(data: {
+  title: string;
+  slug?: string;
+  content: string;
+  tab_group?: string;
+  sort_order?: number;
+  tab_group_order?: number;
+  is_published?: boolean;
+}, token: string) {
+  const res = await fetch(`${BASE}/content/pages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to create content page');
+  return res.json();
+}
+
+export async function updateContentPage(
+  slug: string,
+  data: Partial<{
+    title: string;
+    content: string;
+    tab_group: string;
+    sort_order: number;
+    tab_group_order: number;
+    is_published: boolean;
+  }>,
+  token: string
+) {
+  const res = await fetch(`${BASE}/content/pages/${slug}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to update content page');
+  return res.json();
+}
+
+export async function deleteContentPage(slug: string, token: string) {
+  const res = await fetch(`${BASE}/content/pages/${slug}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error('Failed to delete content page');
+  return res.json();
+}

@@ -139,3 +139,136 @@ export default function ResourcesPage() {
         </div>
       )}
 
+      {!loading && error && (
+        <div style={{
+          background: '#ff444420',
+          border: '1px solid #ff444440',
+          borderRadius: RADIUS.lg,
+          padding: SPACE.lg,
+          textAlign: 'center',
+          color: '#ff6b6b',
+        }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 48, marginBottom: SPACE.md }}>error_outline</span>
+          <p>{error}</p>
+          <button
+            onClick={loadPages}
+            style={{
+              marginTop: SPACE.md,
+              padding: '10px 20px',
+              background: PRIMARY,
+              border: 'none',
+              borderRadius: RADIUS.md,
+              color: TEXT_PRIMARY,
+              cursor: 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && pages.length === 0 && (
+        <div style={{ textAlign: 'center', padding: SPACE.xl + ' ' + SPACE.md, color: TEXT_MUTED }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 64, marginBottom: SPACE.md, opacity: 0.5 }}>folder_open</span>
+          <p style={{ fontSize: 16 }}>No resources available yet.</p>
+          <p style={{ fontSize: 14, marginTop: SPACE.sm }}>Check back soon for guides and reference materials!</p>
+        </div>
+      )}
+
+      {!loading && !error && pages.length > 0 && (
+        <>
+          {tabGroups.length > 1 && (
+            <div style={{
+              display: 'flex',
+              gap: SPACE.sm,
+              marginBottom: SPACE.lg,
+              flexWrap: 'wrap',
+              borderBottom: '1px solid ' + BORDER,
+              paddingBottom: SPACE.md,
+            }}>
+              {tabGroups.map((group) => (
+                <button
+                  key={group}
+                  onClick={() => setActiveTab(group)}
+                  style={{
+                    padding: SPACE.sm + 'px ' + SPACE.md + 'px',
+                    background: activeTab === group ? PRIMARY + '20' : 'transparent',
+                    border: '1px solid ' + (activeTab === group ? PRIMARY : BORDER),
+                    borderRadius: RADIUS.md,
+                    color: activeTab === group ? PRIMARY : TEXT_SECONDARY,
+                    cursor: 'pointer',
+                    fontWeight: activeTab === group ? 600 : 500,
+                    fontSize: 14,
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: SPACE.sm,
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                    {group === 'General' ? 'article' : 'folder'}
+                  </span>
+                  {group}
+                  <span style={{
+                    background: activeTab === group ? PRIMARY : BORDER,
+                    color: activeTab === group ? TEXT_PRIMARY : TEXT_MUTED,
+                    padding: '2px 8px',
+                    borderRadius: RADIUS.full,
+                    fontSize: 12,
+                    fontWeight: 700,
+                  }}>
+                    {groupedPages[group]?.length || 0}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
+            {currentPages.map((page) => (
+              <div
+                key={page.id}
+                style={{
+                  background: CARD_BG,
+                  border: '1px solid ' + BORDER,
+                  borderRadius: RADIUS.lg,
+                  padding: isMobile ? SPACE.lg : SPACE.lg + 'px ' + SPACE.xl + 'px',
+                }}
+              >
+                <h2 style={{
+                  ...TYPO.h2,
+                  fontSize: isMobile ? 20 : 24,
+                  marginBottom: SPACE.lg,
+                  color: TEXT_PRIMARY,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: SPACE.sm,
+                }}>
+                  <span className="material-symbols-outlined" style={{ color: CYAN }}>description</span>
+                  {page.title}
+                </h2>
+
+                <MarkdownRenderer content={page.content} />
+
+                <div style={{
+                  marginTop: SPACE.lg,
+                  paddingTop: SPACE.md,
+                  borderTop: '1px solid ' + BORDER,
+                  fontSize: 12,
+                  color: TEXT_MUTED,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: SPACE.sm,
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>schedule</span>
+                  Last updated: {new Date(page.updated_at).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
