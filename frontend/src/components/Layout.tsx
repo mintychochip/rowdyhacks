@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import * as api from '../services/api';
-import { PRIMARY, GOLD, SUCCESS, STATUS_ACCEPTED, TEXT_PRIMARY, TEXT_MUTED, TEXT_DIM, TEXT_WHITE, PAGE_BG, NAV_BG, CARD_BG, INPUT_BG, BORDER, INPUT_BORDER, SPACE, RADIUS } from '../theme';
+import { GOLD, SUCCESS, STATUS_ACCEPTED, TEXT_PRIMARY, TEXT_MUTED, TEXT_DIM, PAGE_BG, NAV_BG, INPUT_BG, BORDER, INPUT_BORDER, SPACE, RADIUS } from '../theme';
 
 const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   organizer: { label: 'Organizer', color: GOLD, bg: '#FFC72C20' },
@@ -11,7 +11,7 @@ const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> 
   participant: { label: 'Participant', color: STATUS_ACCEPTED, bg: '#10b98120' },
 };
 
-type NavItem = { to: string | null; icon: string; label: string; roles?: string[]; getTo?: (hkId: string) => string; requiresHackathon?: boolean };
+type NavItem = { to: string | null; label: string; roles?: string[]; getTo?: (hkId: string) => string; requiresHackathon?: boolean };
 
 // Hackathon context to share the ID across pages
 export const HackathonContext = createContext<string | null>(null);
@@ -76,27 +76,27 @@ export default function Layout() {
   const hk = (path: string) => hackathonId ? `/hackathons/${hackathonId}${path}` : null;
 
   const rawNav: NavItem[] = [
-    { to: '/', icon: 'home', label: 'Home' },
-    { to: '/assistant', icon: 'smart_toy', label: 'AI Assistant', roles: ['organizer', 'participant', 'judge'] },
-    { to: '/analyze', icon: 'science', label: 'Analyze', roles: ['organizer'] },
-    { to: hk('/registrations'), icon: 'group', label: 'Registrations', roles: ['organizer'] },
-    { to: hk('/judging/setup'), icon: 'gavel', label: 'Judging', roles: ['organizer'] },
-    { to: hk('/leaderboard'), icon: 'leaderboard', label: 'Leaderboard' },
-    { to: hk('/projects'), icon: 'inventory_2', label: 'Projects', roles: ['organizer'] },
-    { to: '/tracks', icon: 'route', label: 'Tracks' },
-    { to: '/resources', icon: 'menu_book', label: 'Resources' },
-    { to: '/admin/content', icon: 'edit_document', label: 'Edit Content', roles: ['organizer'] },
-    { to: '/check-in', icon: 'qr_code_scanner', label: 'Check-In', roles: ['organizer'] },
-    { to: '/dashboard', icon: 'monitoring', label: 'Submissions', roles: ['organizer'] },
-    { to: '/crawled-data', icon: 'database', label: 'Indexed Data', roles: ['organizer'] },
-    { to: '/registrations', icon: 'badge', label: 'Your Application', roles: ['participant'] },
-    { to: '/judge', icon: 'gavel', label: 'Judge Portal', roles: ['judge'] },
+
+    { to: '/', label: 'Home' },
+    { to: '/assistant', label: 'AI Assistant', roles: ['organizer', 'participant', 'judge'] },
+    { to: '/analyze', label: 'Analyze', roles: ['organizer'] },
+    { to: hk('/registrations'), label: 'Registrations', roles: ['organizer'] },
+    { to: hk('/judging/setup'), label: 'Judging', roles: ['organizer'] },
+    { to: hk('/leaderboard'), label: 'Leaderboard' },
+    { to: hk('/projects'), label: 'Projects', roles: ['organizer'] },
+    { to: '/tracks', label: 'Tracks' },
+    { to: '/resources', label: 'Resources' },
+    { to: '/check-in', label: 'Check-In', roles: ['organizer'] },
+    { to: '/dashboard', label: 'Submissions', roles: ['organizer'] },
+    { to: '/crawled-data', label: 'Indexed Data', roles: ['organizer'] },
+    { to: '/registrations', label: 'Your Application', roles: ['participant'] },
+    { to: '/judge', label: 'Judge Portal', roles: ['judge'] },
   ];
 
   // Filter out nav items that require a hackathon but have no valid link (no hackathon exists)
   // This prevents showing disabled links when there's no hackathon in the database
   const NAV_ITEMS = rawNav
-    .filter((item): item is { to: string; icon: string; label: string; roles?: string[] } => item.to !== null);
+    .filter((item): item is { to: string; label: string; roles?: string[] } => item.to !== null);
 
   const visibleNav = NAV_ITEMS.filter(item => !item.roles || (role && item.roles.includes(role)));
 
@@ -133,17 +133,11 @@ export default function Layout() {
           zIndex: 60,
         } : {}),
       }}>
-        {/* Logo */}
+{/* Logo */}
         <div style={{ padding: '16px 16px 12px' }}>
-          <Link to="/" onClick={closeSidebar} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-            <img src="/rowdy-mascot.png" alt="Hack the Valley" style={{ width: 120, height: 'auto', borderRadius: 8 }} />
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color: TEXT_WHITE, letterSpacing: -0.5, fontFamily: 'Inter, sans-serif' }}>
-                Hack the Valley
-              </div>
-              <div style={{ fontSize: 10, color: PRIMARY, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600, marginTop: 2 }}>
-                Canada's largest student-run hackathon
-              </div>
+          <Link to="/" onClick={closeSidebar} style={{ textDecoration: 'none' }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: TEXT_PRIMARY }}>
+              &#9670; Hack the Valley
             </div>
           </Link>
         </div>
@@ -158,20 +152,18 @@ export default function Layout() {
                 to={item.to}
                 onClick={closeSidebar}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px 12px', borderRadius: RADIUS.md,
-                  color: active ? PRIMARY : TEXT_MUTED,
-                  background: active ? 'rgba(0,212,255,0.08)' : 'transparent',
-                  borderLeft: active ? `3px solid ${PRIMARY}` : '3px solid transparent',
+                  display: 'flex', alignItems: 'center',
+                  padding: '10px 12px',
+                  color: active ? '#ffffff' : '#666666',
+                  borderBottom: active ? '1px solid #ffffff' : '1px solid transparent',
                   textDecoration: 'none',
                   fontSize: 14,
                   fontWeight: active ? 600 : 400,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: "IBM Plex Sans, -apple-system, sans-serif",
                   transition: 'all 0.15s',
                   cursor: 'pointer',
                 }}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: 20, color: active ? PRIMARY : 'inherit' }}>{item.icon}</span>
                 {item.label}
               </Link>
             );
@@ -183,9 +175,10 @@ export default function Layout() {
           {user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
-                width: 32, height: 32, borderRadius: RADIUS.md,
-                background: PRIMARY, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#0B1120', fontSize: 13, fontWeight: 700,
+                width: 28, height: 28, borderRadius: 4,
+                background: '#333333', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#ffffff', fontSize: 12, fontWeight: 500,
+                fontFamily: "IBM Plex Mono, monospace",
               }}>
                 {(user.name || user.email || '?')[0].toUpperCase()}
               </div>
@@ -210,19 +203,19 @@ export default function Layout() {
                 title="Logout"
                 style={{
                   background: 'none', border: 'none', color: TEXT_MUTED, cursor: 'pointer',
-                  padding: 4, display: 'flex', alignItems: 'center',
+                  padding: 4, fontSize: 12, fontFamily: "IBM Plex Mono, monospace",
                 }}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>logout</span>
+                out
               </button>
             </div>
           ) : (
             <Link to="/auth" onClick={closeSidebar} style={{
               display: 'block', textAlign: 'center',
-              background: PRIMARY, border: 'none', borderRadius: RADIUS.md,
-              padding: '8px 16px', color: '#0B1120',
+              background: '#ffffff', border: 'none', borderRadius: RADIUS.md,
+              padding: '8px 16px', color: '#0a0a0a',
               textDecoration: 'none', fontSize: 14, fontWeight: 600,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: "IBM Plex Sans, -apple-system, sans-serif",
             }}>
               Sign In
             </Link>
@@ -233,7 +226,7 @@ export default function Layout() {
       {/* Top bar */}
       <header style={{
         position: 'fixed', top: 0, right: 0, left: isMobile ? 0 : 240, height: 56,
-        background: 'rgba(11,17,32,0.85)', backdropFilter: 'blur(12px)',
+        background: 'rgba(10,10,10,0.85)', backdropFilter: 'blur(12px)',
         borderBottom: `1px solid ${BORDER}`,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: isMobile ? '0 14px' : '0 24px', zIndex: 40,
@@ -267,23 +260,25 @@ export default function Layout() {
               }} />
             </button>
           )}
-          <span style={{ fontSize: 14, color: TEXT_PRIMARY, fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>
+          <span style={{ fontSize: 14, color: TEXT_PRIMARY, fontWeight: 600, fontFamily: "IBM Plex Sans, -apple-system, sans-serif" }}>
             Hack the Valley 2026
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <span className="material-symbols-outlined" style={{
-              position: 'absolute', left: 10, fontSize: 16, color: TEXT_DIM, pointerEvents: 'none',
-            }}>search</span>
+            <span style={{
+              position: 'absolute', left: 10, fontSize: 12, color: TEXT_DIM, pointerEvents: 'none',
+              fontFamily: "IBM Plex Mono, monospace",
+            }}>/</span>
             <input
               type="text"
-              placeholder="Search submissions..."
+              placeholder="Search..."
               style={{
-                width: isMobile ? 140 : 200, padding: '6px 12px 6px 32px',
+                width: isMobile ? 140 : 200, padding: '6px 12px 6px 28px',
                 background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`,
                 borderRadius: RADIUS.sm, color: TEXT_PRIMARY,
                 fontSize: 12, outline: 'none',
+                fontFamily: "IBM Plex Sans, -apple-system, sans-serif",
               }}
             />
           </div>
