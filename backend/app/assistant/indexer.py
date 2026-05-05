@@ -100,7 +100,7 @@ class DocumentIndexer:
                 qdrant_id=qdrant_id,
                 doc_type=DocumentType.HACKATHON_INFO,
                 title=f"{hackathon.name} - General Information",
-                doc_doc_metadata={"content": content},
+                doc_metadata={"content": content},
             )
             self.db.add(doc)
 
@@ -112,7 +112,7 @@ class DocumentIndexer:
             hackathon_id=str(hackathon.id),
             doc_type=DocumentType.HACKATHON_INFO.value,
             title=f"{hackathon.name} - Information",
-            doc_doc_metadata={"source": "hackathon"},
+            doc_metadata={"source": "hackathon"},
             role_access=["participant", "judge", "organizer"],
         )
 

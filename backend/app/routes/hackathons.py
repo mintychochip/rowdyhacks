@@ -125,6 +125,15 @@ async def create_hackathon(
         db.add(track)
     await db.commit()
 
+    # Index hackathon data for assistant
+    try:
+        from app.assistant.indexer import DocumentIndexer
+        indexer = DocumentIndexer(db)
+        await indexer.index_hackathon(hackathon)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to index hackathon: {e}")
+
     await _bust_hackathon_list_cache()
 
     return {
