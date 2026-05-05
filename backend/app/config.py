@@ -59,7 +59,7 @@ class Settings(BaseSettings):
         description="Fast/cheap model for quick responses",
     )
     assistant_thinking_model: str = Field(
-        default="poolside/m.1",
+        default="poolside/laguna-m.1",
         description="Thinking model for complex reasoning",
     )
     assistant_max_history: int = Field(
@@ -69,6 +69,7 @@ class Settings(BaseSettings):
 
     discord_bot_token: str = Field(default="", description="Discord bot token for application management")
     clerk_secret_key: str = Field(default="", description="Clerk secret key for JWT verification")
+    clerk_webhook_secret: str = Field(default="", description="Clerk webhook signing secret (Svix)")
     base_url: str = Field(default="http://localhost:8000", description="Public base URL for QR code links")
     frontend_url: str = Field(default="http://localhost:8000", description="Frontend origin for OAuth redirects")
 

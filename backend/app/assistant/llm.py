@@ -102,7 +102,7 @@ class LLMClient:
                         error_body = await response.aread()
                         error_text = error_body.decode()
                         print(f"[ERROR] Poolside API {response.status_code}: {error_text[:1000]}")
-                        yield f'{{"error": "Poolside API error {response.status_code}: {error_text[:200]}"}}'
+                        yield json.dumps({"error": f"Poolside API error {response.status_code}: {error_text[:200]}"})
                         return
                     async for line in response.aiter_lines():
                         if line.startswith("data: "):
