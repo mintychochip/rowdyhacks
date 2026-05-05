@@ -273,3 +273,20 @@ def get_all_tools() -> list[str]:
 def get_tool_definition(tool_name: str) -> Optional[dict]:
     """Get definition for a specific tool."""
     return TOOL_DEFINITIONS.get(tool_name)
+
+
+def tools_to_flat_format(tools: list) -> list:
+    """Return tools as flat dicts {name, description, parameters}.
+
+    get_tools_for_role() returns OpenAI format:
+      {"type": "function", "function": {"name": ..., "description": ..., "parameters": ...}}
+    This unwraps to:
+      {"name": ..., "description": ..., "parameters": ...}
+    """
+    result = []
+    for t in tools:
+        if isinstance(t, dict) and "function" in t:
+            result.append(t["function"])
+        else:
+            result.append(t)
+    return result

@@ -262,3 +262,78 @@ export async function getAvailableTools(): Promise<{
   if (!res.ok) throw new Error('Failed to load tools');
   return res.json();
 }
+
+// ── New: Browser Agent Harness API ──────────────────────────────────
+
+const TOKEN = () => localStorage.getItem('auth_token') || '';
+
+// LLM proxy chat (replaces sendChatMessage + streamChatResponse)
+export async function llmChat(
+  messages: Array<{ role: string; content: string; tool_calls?: any[]; tool_call_id?: string }>,
+  model: 'fast' | 'thinking' = 'fast',
+  signal?: AbortSignal
+): Promise<{
+  choices?: Array<{ message: { content: string; tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }> } }>;
+}> {
+  const res = await fetch(`/api/llm/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${TOKEN()}`,
+    },
+    body: JSON.stringify({ messages, model }),
+    signal,
+  });
+
+  if (!res.ok) {
+    if (res.status === 401) throw new Error('Session expired. Please refresh.');
+    const text = await res.text();
+    throw new Error(`LLM error: ${text}`);
+  }
+
+  return res.json();
+}
+
+// RAG search (used in Task 6)
+export async function ragSearch(query: string): Promise<{
+  documents: Array<{ content: string; title: string; doc_type: string; score: number }>;
+}> {
+  const res = await fetch(`${BASE}/assistant/rag-search`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${TOKEN()}`,
+    },
+    body: JSON.stringify({ query }),
+  });
+
+  if (!res.ok) throw new Error('Failed to search documents');
+  return res.json();
+}
+
+// Chat log sync (used in Phase 4)
+export async function chatLog(
+  messages: Array<{ role: string; content: string }>,
+  conversationId?: string
+): Promise<void> {
+  await fetch(`${BASE}/assistant/chat-log`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${TOKEN()}`,
+    },
+    body: JSON.stringify({ messages, conversation_id: conversationId }),
+  });
+}
+
+// Unwrap tool definitions from server (nested OpenAI format → flat AgentTool format)
+// Server returns: {type:"function", function:{name, description, parameters}}
+// AgentTool needs: {name, description, parameters}
+export function unwrapTool(def: Tool): { name: string; description: string; parameters: Tool['parameters'] } {
+  const inner = (def as any).function ?? def;
+  return {
+    name: inner.name,
+    description: inner.description,
+    parameters: inner.parameters,
+  };
+}

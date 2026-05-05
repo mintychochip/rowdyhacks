@@ -4,12 +4,16 @@ import {
   deleteConversation,
   getConversation,
   getConversations,
-  sendChatMessage,
-  streamChatResponse,
+  getAvailableTools,
+  unwrapTool,
   type ChatMessage as ChatMessageType,
   type Conversation,
   type ModelType,
 } from '../services/assistant';
+import { AgentLoop } from '../agent/AgentLoop';
+import { buildSystemPrompt } from '../agent/context';
+import type { AgentMessage } from '../agent/types';
+import { sandbox } from '../agent/WebContainer';
 import {
   PAGE_BG,
   CARD_BG,
@@ -32,13 +36,15 @@ export default function AssistantPage() {
   const { isMobile } = useMediaQuery();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>();
-  const [messages, setMessages] = useState<ChatMessageType[]>([]);
+  const [messages, setMessages] = useState<AgentMessage[]>([]);
+  const [streamingContent, setStreamingContent] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const [backendReady, setBackendReady] = useState(true);
-  const abortControllerRef = useRef<(() => void) | null>(null);
+  const [selectedModel, setSelectedModel] = useState<ModelType>('fast');
+  const agentRef = useRef<AgentLoop | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
@@ -64,6 +70,48 @@ export default function AssistantPage() {
     const interval = setInterval(checkHealth, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Initialize agent harness on mount
+  useEffect(() => {
+    initAgent();
+    return () => { agentRef.current?.stop(); };
+  }, []);
+
+  async function initAgent() {
+    try {
+      const { tools } = await getAvailableTools();
+      const systemPrompt = await buildSystemPrompt(tools);
+
+      const agent = new AgentLoop({
+        model: selectedModel,
+        systemPrompt,
+        tools: tools.map(t => ({
+          ...unwrapTool(t),
+          execute: async (params) => {
+            const name = (t as any).function?.name ?? (t as any).name;
+            const token = localStorage.getItem('auth_token') || '';
+            const res = await fetch(`/api/assistant/execute-tool`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify({ tool_name: name, parameters: params }),
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            return JSON.stringify(data.result);
+          },
+        })),
+        maxIterations: 5,
+        onEvent: () => {}, // set per-send in handleSendMessage
+      });
+
+      agentRef.current = agent;
+    } catch (err: any) {
+      console.error('Failed to initialize agent:', err);
+    }
+  }
 
   // Load conversations
   useEffect(() => {
@@ -102,12 +150,10 @@ export default function AssistantPage() {
   };
 
   const handleStop = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current();
-      abortControllerRef.current = null;
-    }
+    agentRef.current?.stop();
     setIsStreaming(false);
     setIsLoading(false);
+    setStreamingContent('');
   };
 
   const handleNewChat = () => {
@@ -145,83 +191,114 @@ export default function AssistantPage() {
     try {
       setIsStreaming(true);
       setError(null);
+      setStreamingContent('');
+      setSelectedModel(model);
 
       // Add user message to UI immediately
-      const userMessage: ChatMessageType = {
-        id: 'temp-' + Date.now(),
+      const userMsg: AgentMessage = {
+        id: crypto.randomUUID(),
         role: 'user',
         content,
-        status: 'completed',
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       };
-      setMessages((prev) => [...prev, userMessage]);
+      setMessages(prev => [...prev, userMsg]);
 
-      // Send to API with model
-      const response = await sendChatMessage(
-        content,
-        activeConversationId,
-        undefined,
-        model
-      );
+      // Get tools and build fresh system prompt for this query
+      const { tools } = await getAvailableTools();
+      const systemPrompt = await buildSystemPrompt(tools, content);
 
-      // Update active conversation
-      if (!activeConversationId) {
-        setActiveConversationId(response.conversation_id);
-        loadConversations();
-      }
-
-      // Create placeholder for assistant response
-      const assistantMessage: ChatMessageType = {
-        id: response.message_id,
-        role: 'assistant',
-        content: '',
-        status: 'streaming',
-        created_at: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      // Stream response
-      abortControllerRef.current = streamChatResponse(
-        response.message_id,
-        (chunk) => {
-          setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            if (last.role === 'assistant' && last.id === response.message_id) {
-              return [...prev.slice(0, -1), { ...last, content: last.content + chunk }];
-            }
-            return prev;
-          });
+      // Create agent with updated system prompt (has RAG context for this query)
+      const agent = new AgentLoop({
+        model,
+        systemPrompt,
+        tools: tools.map(t => ({
+          ...unwrapTool(t),
+          execute: async (params) => {
+            const name = (t as any).function?.name ?? (t as any).name;
+            const token = localStorage.getItem('auth_token') || '';
+            const res = await fetch(`/api/assistant/execute-tool`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify({ tool_name: name, parameters: params }),
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            return JSON.stringify(data.result);
+          },
+        })),
+        maxIterations: 5,
+        onEvent: (event) => {
+          switch (event.type) {
+            case 'content':
+              setStreamingContent(prev => prev + event.text);
+              break;
+            case 'tool_call':
+              setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.role === 'assistant' && !last.toolCalls) last.toolCalls = [];
+                if (last?.role === 'assistant') {
+                  last.toolCalls = [...(last.toolCalls || []), event.tool];
+                  return [...prev];
+                }
+                return [...prev, {
+                  id: crypto.randomUUID(),
+                  role: 'assistant',
+                  content: '',
+                  toolCalls: [event.tool],
+                  createdAt: new Date().toISOString(),
+                }];
+              });
+              break;
+            case 'tool_result':
+              setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.role === 'assistant') {
+                  last.tool_results = [...(last.tool_results || []), event.result];
+                  return [...prev];
+                }
+                return prev;
+              });
+              break;
+            case 'done':
+              setIsStreaming(false);
+              setMessages(prev => {
+                const content = streamingContent;
+                // Find the last assistant message (from tool calls) and update it
+                const reversed = [...prev].reverse();
+                const idx = reversed.findIndex(m => m.role === 'assistant');
+                if (idx >= 0) {
+                  reversed[idx] = { ...reversed[idx], content };
+                  return reversed.reverse();
+                }
+                return [...prev, {
+                  id: event.messageId,
+                  role: 'assistant',
+                  content,
+                  createdAt: new Date().toISOString(),
+                }];
+              });
+              setStreamingContent('');
+              break;
+            case 'error':
+              setIsStreaming(false);
+              setError(event.message);
+              setStreamingContent('');
+              break;
+          }
         },
-        (tool, result) => {
-          console.log('Tool called:', tool, result);
-        },
-        () => {
-          setIsStreaming(false);
-          setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            if (last.role === 'assistant') {
-              return [...prev.slice(0, -1), { ...last, status: 'completed' }];
-            }
-            return prev;
-          });
-        },
-        (err) => {
-          setIsStreaming(false);
-          setError(err);
-          setMessages((prev) => {
-            const last = prev[prev.length - 1];
-            if (last.role === 'assistant') {
-              return [...prev.slice(0, -1), { ...last, status: 'error' }];
-            }
-            return prev;
-          });
-        }
-      );
+      });
+
+      agentRef.current = agent;
+      await agent.send(content);
     } catch (err: any) {
       setError(err.message || 'Failed to send message');
       setIsStreaming(false);
+      setStreamingContent('');
     }
-  }, [activeConversationId, isStreaming]);
+  }, [isStreaming]);
 
   return (
     <div
@@ -437,9 +514,11 @@ export default function AssistantPage() {
                 <ChatMessageComponent
                   key={msg.id || i}
                   role={msg.role}
-                  content={msg.content}
-                  isStreaming={msg.status === 'streaming'}
-                  toolCalls={msg.tool_calls}
+                  content={msg.role === 'assistant' && isStreaming && i === messages.length - 1
+                    ? msg.content + streamingContent
+                    : msg.content}
+                  isStreaming={isStreaming && i === messages.length - 1 && msg.role === 'assistant'}
+                  toolCalls={(msg as any).toolCalls}
                 />
               ))}
               <div ref={messagesEndRef} />

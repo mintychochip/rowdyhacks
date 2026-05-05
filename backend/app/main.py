@@ -158,6 +158,13 @@ app.add_middleware(
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(assistant_router, prefix="/api/assistant", tags=["assistant"])
+
+# LLM proxy — separate router at /api/llm (not nested under /api/assistant)
+from app.routes.assistant import llm_chat_proxy, LLMChatRequest  # noqa: E402
+llm_router = APIRouter(prefix="/api/llm", tags=["llm"])
+llm_router.add_api_route("/chat", llm_chat_proxy, methods=["POST"])
+app.include_router(llm_router)
+
 app.include_router(checks_router)
 app.include_router(dashboard_router)
 app.include_router(hackathons_router)

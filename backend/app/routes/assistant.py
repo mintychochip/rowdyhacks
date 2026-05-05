@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -713,3 +714,41 @@ Generated for RowdyHacks hackathon.
             "success": False,
             "error": str(e),
         }
+
+
+# ── LLM Proxy (mounted at /api/llm in main.py, not on the assistant router) ──
+
+class LLMChatRequest(BaseModel):
+    messages: list[dict]
+    model: str = "fast"
+
+
+async def llm_chat_proxy(
+    request: LLMChatRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Proxy LLM chat requests to Poolside.
+
+    Strips client tool defs, injects server-authorized ones.
+    Validates Clerk JWT.
+    """
+    # Inject server-authorized tools — strip whatever client sent.
+    # get_tools_for_role() returns OpenAI format:
+    #   [{"type":"function","function":{"name":...,"description":...,"parameters":...}}]
+    tool_defs = get_tools_for_role(current_user.role)
+
+    # Determine model
+    model = "poolside/m.1" if request.model == "thinking" else "poolside/laguna-xs.2"
+
+    try:
+        response = await llm_client.chat_completion(
+            messages=request.messages,
+            tools=tool_defs if tool_defs else None,
+            temperature=0.7,
+            max_tokens=1500,
+            stream=False,
+        )
+        return response
+    except Exception as e:
+        logger.error(f"LLM proxy error: {e}")
+        raise HTTPException(status_code=502, detail=f"LLM service error: {str(e)}")
