@@ -44,7 +44,7 @@ services:
       - QDRANT__SERVICE__GRPC_PORT=6334
 
   backend:
-    image: ghcr.io/mintychochip/rowdyhacks/backend:latest
+    build: ./backend
     restart: unless-stopped
     environment:
       HACKVERIFY_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-hackverify}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-hackverify}
