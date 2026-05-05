@@ -13,6 +13,7 @@ from app.discord_bot import bot as discord_bot
 from app.discord_bot import start_bot
 from app.logging_config import configure_logging
 from app.models import Base
+from app.routes import content_router
 from app.routes.auth import router as auth_router
 from app.routes.assistant import router as assistant_router
 from app.routes.checkin import router as checkin_router
@@ -161,6 +162,7 @@ app.include_router(crawler_router, prefix="/api/crawler", tags=["crawler"])
 app.include_router(judging_router)
 app.include_router(websocket_router)
 app.include_router(monitoring_router)
+app.include_router(content_router)
 
 
 # Add request tracking middleware
