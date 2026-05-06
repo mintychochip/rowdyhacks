@@ -4,12 +4,11 @@ import re
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-# from fastapi_limiter.depends import RateLimiter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import decode_token
 from app.cache import cache_delete_pattern, cached
+from app.clerk_auth import require_clerk_user, require_organizer
 from app.database import get_db
 from app.models import ContentPage, User, UserRole
 
@@ -26,29 +25,7 @@ def _slugify(title: str) -> str:
     return slug.strip("-")[:100]
 
 
-def _get_current_user_payload(authorization: str | None):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authentication required")
-    token = authorization.removeprefix("Bearer ")
-    try:
-        return decode_token(token)
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-
-async def _require_organizer(db: AsyncSession, authorization: str | None) -> User:
-    """Verify user is an organizer."""
-    payload = _get_current_user_payload(authorization)
-    result = await db.execute(select(User).where(User.id == payload["sub"]))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    if user.role != UserRole.organizer:
-        raise HTTPException(status_code=403, detail="Only organizers can manage content")
-    return user
-
-
-def _page_to_response(page: ContentPage) -> dict:
+def _page_to_response(page: ContentPage, author_name: str | None = None) -> dict:
     return {
         "id": str(page.id),
         "slug": page.slug,
@@ -59,6 +36,7 @@ def _page_to_response(page: ContentPage) -> dict:
         "tab_group_order": page.tab_group_order,
         "is_published": page.is_published,
         "created_by": str(page.created_by),
+        "author_name": author_name or "Unknown",
         "created_at": page.created_at.isoformat() if page.created_at else None,
         "updated_at": page.updated_at.isoformat() if page.updated_at else None,
     }
@@ -71,15 +49,20 @@ async def list_pages(
     db: AsyncSession = Depends(get_db),
 ):
     """List content pages, optionally filtered by tab_group."""
-    query = select(ContentPage).where(ContentPage.is_published == True)
+    query = (
+        select(ContentPage, User.name)
+        .outerjoin(User, ContentPage.created_by == User.id)
+        .where(ContentPage.is_published == True)
+    )
     if tab_group:
         query = query.where(ContentPage.tab_group == tab_group)
     query = query.order_by(ContentPage.tab_group_order, ContentPage.sort_order)
     result = await db.execute(query)
-    pages = result.scalars().all()
+    rows = result.all()
+    pages = [_page_to_response(page, author_name=name) for page, name in rows]
     return {
-        "pages": [_page_to_response(p) for p in pages],
-        "tab_groups": list(set(p.tab_group for p in pages)),
+        "pages": pages,
+        "tab_groups": list(set(p.tab_group for p in [r[0] for r in rows])),
     }
 
 
@@ -88,27 +71,26 @@ async def list_pages(
 async def get_page(slug: str, db: AsyncSession = Depends(get_db)):
     """Get a single content page by slug."""
     result = await db.execute(
-        select(ContentPage).where(ContentPage.slug == slug, ContentPage.is_published == True)
+        select(ContentPage, User.name)
+        .outerjoin(User, ContentPage.created_by == User.id)
+        .where(ContentPage.slug == slug, ContentPage.is_published == True)
     )
-    page = result.scalar_one_or_none()
-    if not page:
+    row = result.one_or_none()
+    if not row:
         raise HTTPException(status_code=404, detail="Page not found")
-    return _page_to_response(page)
+    page, author_name = row
+    return _page_to_response(page, author_name=author_name)
 
 
-@router.post(
-    "/pages",
-    status_code=201,
-    # dependencies=[Depends(RateLimiter(times=30, seconds=60))],
-)
+@router.post("/pages", status_code=201)
 async def create_page(
     request: Request,
     body: dict,
-    authorization: str = Header(alias="Authorization"),
+    user_payload: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new content page (organizer only)."""
-    user = await _require_organizer(db, authorization)
+    user = user_payload["user"]
 
     # Validate slug or generate from title
     title = body.get("title", "").strip()
@@ -144,20 +126,15 @@ async def create_page(
     return _page_to_response(page)
 
 
-@router.put(
-    "/pages/{slug}",
-    # dependencies=[Depends(RateLimiter(times=30, seconds=60))],
-)
+@router.put("/pages/{slug}")
 async def update_page(
     request: Request,
     slug: str,
     body: dict,
-    authorization: str = Header(alias="Authorization"),
+    user_payload: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Update a content page (organizer only)."""
-    await _require_organizer(db, authorization)
-
     result = await db.execute(select(ContentPage).where(ContentPage.slug == slug))
     page = result.scalar_one_or_none()
     if not page:
@@ -181,26 +158,18 @@ async def update_page(
     await db.commit()
     await db.refresh(page)
 
-    # Invalidate caches - clear all content cache to be safe
     await _bust_content_cache()
-
     return _page_to_response(page)
 
 
-@router.delete(
-    "/pages/{slug}",
-    status_code=200,
-    # dependencies=[Depends(RateLimiter(times=30, seconds=60))],
-)
+@router.delete("/pages/{slug}", status_code=200)
 async def delete_page(
     request: Request,
     slug: str,
-    authorization: str = Header(alias="Authorization"),
+    user_payload: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a content page (organizer only)."""
-    await _require_organizer(db, authorization)
-
     result = await db.execute(select(ContentPage).where(ContentPage.slug == slug))
     page = result.scalar_one_or_none()
     if not page:
@@ -209,9 +178,7 @@ async def delete_page(
     await db.delete(page)
     await db.commit()
 
-    # Invalidate caches - clear all content cache to be safe
     await _bust_content_cache()
-
     return {"detail": "ok"}
 
 

@@ -9,6 +9,7 @@ import ReportPage from './pages/ReportPage';
 import AssistantPage from './pages/AssistantPage';
 import Dashboard from './pages/Dashboard';
 import AuthPage from './pages/AuthPage';
+import SignUpPage from './pages/SignUpPage';
 import RegisterPage from './pages/RegisterPage';
 import ApplyPage from './pages/ApplyPage';
 import RegistrationsPage from './pages/RegistrationsPage';
@@ -28,6 +29,7 @@ import PublicLeaderboard from './pages/PublicLeaderboard';
 import TracksPage from './pages/TracksPage';
 import CrawledDataPage from './pages/CrawledDataPage';
 import ResourcesPage from './pages/ResourcesPage';
+import ResourceDetailPage from './pages/ResourceDetailPage';
 import ContentEditorPage from './pages/ContentEditorPage';
 
 export default function App() {
@@ -60,13 +62,15 @@ export default function App() {
                 <Route path="/hackathons/:id/tracks/edit" element={<TracksEditorPage />} />
                 <Route path="/tracks" element={<TracksPage />} />
                 <Route path="/resources" element={<ResourcesPage />} />
+                <Route path="/resources/:slug" element={<ResourceDetailPage />} />
                 <Route path="/admin/content" element={<ContentEditorPage />} />
                 <Route path="/crawled-data" element={<CrawledDataPage />} />
                 <Route path="/hackathons/:id/hacker-dashboard" element={<HackerDashboard />} />
                 <Route path="/hackathons/:id/settings" element={<HackathonSettings />} />
                 <Route path="/hackathons/:id" element={<HackathonDetailPage />} />
                 <Route path="/judge" element={<JudgeRedirect />} />
-                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/auth/*" element={<AuthPage />} />
+                <Route path="/sign-up/*" element={<SignUpPage />} />
               </Route>
             </Routes>
           </ToastProvider>

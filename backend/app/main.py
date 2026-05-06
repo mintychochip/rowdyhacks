@@ -29,6 +29,7 @@ from app.routes.qr import router as qr_router
 from app.routes.registrations import router as registrations_router
 from app.routes.registrations_organizer import router as registrations_org_router
 from app.routes.tracks import router as tracks_router
+from app.routes.webhooks import router as webhooks_router
 from app.routes.websocket import router as websocket_router
 
 # Configure structured logging
@@ -45,23 +46,8 @@ if settings.sentry_dsn:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Create database tables on startup and start the crawler scheduler."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        # Add track_type column if missing (on existing DBs without this column)
-        try:
-            await conn.execute(text("ALTER TABLE tracks ADD COLUMN IF NOT EXISTS track_type VARCHAR(50)"))
-            # Backfill existing tracks with correct track_type values
-            await conn.execute(
-                text("UPDATE tracks SET track_type = 'prize' WHERE track_type IS NULL AND name = ANY(:names)"),
-                {"names": ("Deep Space Exploration", "Orbital Commerce", "Mission Control AI")},
-            )
-            await conn.execute(
-                text("UPDATE tracks SET track_type = 'themed' WHERE track_type IS NULL AND name = ANY(:names)"),
-                {"names": ("Cosmic Commons", "Nebula Arts", "Lunar Settlements")},
-            )
-        except Exception:
-            pass  # Column may already exist or table not yet created
+    """Start the crawler scheduler and initialize services."""
+    # Note: Tables are created via alembic migrations, not here
 
     try:
         await _seed_demo_data()
@@ -88,6 +74,16 @@ async def lifespan(app: FastAPI):
         import logging
 
         logging.getLogger(__name__).error(f"Vector store init failed: {e}")
+
+    # Index site pages into vector store for assistant navigation
+    try:
+        from app.assistant.site_pages import index_site_pages
+
+        await index_site_pages()
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).error(f"Site page indexing failed: {e}")
 
     # Start Discord bot (if token configured, fails gracefully)
     await start_bot()
@@ -148,10 +144,27 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS: allow localhost for dev, and wildcard for production (no credentials)
+import os
+
+if os.getenv("HACKVERIFY_DEBUG", "false").lower() == "true":
+    # Local development: explicit origins with credentials
+    origins = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ]
+    creds = True
+else:
+    # Production: allow all origins, no credentials (handled by Nginx)
+    origins = ["*"]
+    creds = False
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=origins,
+    allow_credentials=creds,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -176,6 +189,7 @@ app.include_router(checkin_router)
 app.include_router(qr_router)
 app.include_router(crawler_router, prefix="/api/crawler", tags=["crawler"])
 app.include_router(judging_router)
+app.include_router(webhooks_router)
 app.include_router(websocket_router)
 app.include_router(monitoring_router)
 app.include_router(content_router)

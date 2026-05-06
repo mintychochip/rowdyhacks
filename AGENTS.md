@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Hack the Valley (HTV) is a hackathon management platform for Toronto's largest student-run hackathon. It handles registration, check-in (QR + Apple/Google Wallet), judging (ELO-based), submission integrity analysis, and a Devpost crawler.
+Hack the Valley (HTV) is a hackathon management platform for Bakersfield's largest student-run hackathon. It handles registration, check-in (QR + Apple/Google Wallet), judging (ELO-based), submission integrity analysis, and a Devpost crawler.
 
 ## Deployment Architecture
 

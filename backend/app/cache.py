@@ -52,9 +52,16 @@ class _MemoryCache:
 _memory_cache = _MemoryCache()
 
 
+_redis_available = None  # Cache the availability check
+
 async def get_redis():
-    """Get or create Redis client (returns None if redis not installed)."""
-    global _redis_client, _redis
+    """Get or create Redis client (returns None if redis not installed or unreachable)."""
+    global _redis_client, _redis, _redis_available
+
+    # If we already know Redis is unavailable, don't retry
+    if _redis_available is False:
+        return None
+
     if _redis_client is None and settings.redis_url:
         try:
             if _redis is None:
@@ -64,8 +71,16 @@ async def get_redis():
                 encoding="utf-8",
                 decode_responses=True,
                 max_connections=20,
+                socket_connect_timeout=1,  # Quick timeout - fail fast
+                socket_timeout=1,
+                health_check_interval=30,
             )
+            # Test the connection immediately
+            await _redis_client.ping()
+            _redis_available = True
         except Exception:
+            _redis_available = False
+            _redis_client = None
             return None
     return _redis_client
 

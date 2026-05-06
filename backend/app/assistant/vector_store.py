@@ -26,6 +26,9 @@ MESSAGES_COLLECTION = "assistant_messages"
 # Vector dimensions for all-MiniLM-L6-v2
 VECTOR_DIM = 384
 
+# Sentinel value for global documents (e.g., site pages) that match any hackathon
+GLOBAL_HACKATHON_ID = "global"
+
 
 class VectorStore:
     """Manages Qdrant vector store for assistant documents and messages."""
@@ -80,16 +83,20 @@ class VectorStore:
         doc_id: str,
         embedding: List[float],
         content: str,
-        hackathon_id: str,
         doc_type: str,
         title: str,
+        hackathon_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
         role_access: Optional[List[str]] = None,
     ) -> None:
-        """Index a document with its embedding."""
+        """Index a document with its embedding.
+
+        If hackathon_id is None, the document is stored as a "global" document
+        that will match any hackathon context during search.
+        """
         payload = {
             "content": content,
-            "hackathon_id": str(hackathon_id),
+            "hackathon_id": hackathon_id or GLOBAL_HACKATHON_ID,
             "doc_type": doc_type,
             "title": title,
             "metadata": metadata or {},
@@ -112,16 +119,13 @@ class VectorStore:
         limit: int = 5,
         score_threshold: float = 0.7,
     ) -> List[Dict[str, Any]]:
-        """Search documents by similarity with filters."""
-        must_conditions = []
+        """Search documents by similarity with filters.
 
-        if hackathon_id:
-            must_conditions.append(
-                FieldCondition(
-                    key="hackathon_id",
-                    match=MatchValue(value=str(hackathon_id)),
-                )
-            )
+        When hackathon_id is provided, also returns global documents
+        (those with hackathon_id set to the GLOBAL_HACKATHON_ID sentinel).
+        """
+        must_conditions = []
+        should_conditions = []
 
         if doc_type:
             must_conditions.append(
@@ -140,7 +144,26 @@ class VectorStore:
                 )
             )
 
-        search_filter = Filter(must=must_conditions) if must_conditions else None
+        if hackathon_id:
+            # Match either the given hackathon OR global documents
+            should_conditions = [
+                FieldCondition(
+                    key="hackathon_id",
+                    match=MatchValue(value=str(hackathon_id)),
+                ),
+                FieldCondition(
+                    key="hackathon_id",
+                    match=MatchValue(value=GLOBAL_HACKATHON_ID),
+                ),
+            ]
+
+        search_filter = None
+        if must_conditions or should_conditions:
+            search_filter = Filter(
+                must=must_conditions or None,
+                should=should_conditions or None,
+                min_should=1 if should_conditions else None,
+            )
 
         results = await self.client.search(
             collection_name=DOCUMENTS_COLLECTION,

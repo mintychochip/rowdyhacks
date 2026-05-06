@@ -7,31 +7,13 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import create_qr_token, decode_token
+from app.auth import create_qr_token
+from app.clerk_auth import require_organizer
 from app.database import get_db
 from app.models import Hackathon, HackathonOrganizer, Registration, RegistrationStatus, User
 from app.waitlist import promote_from_waitlist
 
 router = APIRouter(prefix="/api/hackathons", tags=["organizer-registrations"])
-
-
-async def _get_organizer(authorization: str | None, db: AsyncSession) -> User:
-    """Extract current user and verify organizer role."""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Organizer authentication required")
-    token = authorization.removeprefix("Bearer ")
-    try:
-        payload = decode_token(token)
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    result = await db.execute(select(User).where(User.id == payload["sub"]))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    if user.role.value != "organizer":
-        raise HTTPException(status_code=403, detail="Organizer role required")
-    return user
 
 
 async def _verify_organizer_owns_hackathon(user: User, hackathon_id: uuid.UUID, db: AsyncSession) -> Hackathon:
@@ -49,7 +31,6 @@ async def _verify_organizer_owns_hackathon(user: User, hackathon_id: uuid.UUID, 
     )
     co_result = await db.execute(co_query)
     if co_result.scalar_one_or_none():
-        # Load the hackathon for the co-organizer
         hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
         hackathon = hackathon_result.scalar_one_or_none()
         if hackathon:
@@ -61,14 +42,14 @@ async def _verify_organizer_owns_hackathon(user: User, hackathon_id: uuid.UUID, 
 @router.get("/{hackathon_id}/registrations")
 async def list_hackathon_registrations(
     hackathon_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_organizer),
     status: str | None = Query(None),
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
     """List registrations for a hackathon. Organizer only, RLS: own hackathons only."""
-    user = await _get_organizer(authorization, db)
+    user = auth["user"]
     hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     count_query = select(func.count(Registration.id)).where(Registration.hackathon_id == hackathon_id)
@@ -116,11 +97,11 @@ async def list_hackathon_registrations(
 async def accept_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Approve a registration and generate QR token. Organizer only."""
-    user = await _get_organizer(authorization, db)
+    user = auth["user"]
     hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     query = select(Registration).where(
@@ -158,11 +139,11 @@ async def accept_registration(
 async def reject_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Reject a registration. Organizer only."""
-    user = await _get_organizer(authorization, db)
+    user = auth["user"]
     hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     query = select(Registration).where(
@@ -193,11 +174,11 @@ async def reject_registration(
 async def checkin_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Check in a registration. Organizer only."""
-    user = await _get_organizer(authorization, db)
+    user = auth["user"]
     hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     query = select(Registration).where(
@@ -221,11 +202,11 @@ async def checkin_registration(
 async def move_to_waitlist(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Move a pending registration to waitlist. Organizer only."""
-    user = await _get_organizer(authorization, db)
+    user = auth["user"]
     hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     query = select(Registration).where(
@@ -248,11 +229,11 @@ async def move_to_waitlist(
 async def remove_from_waitlist(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Move a waitlisted registration back to pending. Organizer only."""
-    user = await _get_organizer(authorization, db)
+    user = auth["user"]
     hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     query = select(Registration).where(
@@ -275,11 +256,11 @@ async def remove_from_waitlist(
 @router.post("/{hackathon_id}/waitlist/promote")
 async def manual_promote_waitlist(
     hackathon_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Manually promote top waitlisted person to offered. Organizer only."""
-    user = await _get_organizer(authorization, db)
+    user = auth["user"]
     hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     promoted = await promote_from_waitlist(hackathon_id, db)
@@ -296,13 +277,13 @@ async def manual_promote_waitlist(
 @router.get("/{hackathon_id}/waitlist")
 async def list_waitlist(
     hackathon_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_organizer),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
     """List waitlisted registrations with position. Organizer only."""
-    user = await _get_organizer(authorization, db)
+    user = auth["user"]
     hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     # Get waitlist ordered by priority

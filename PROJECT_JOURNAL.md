@@ -227,7 +227,7 @@ None currently.
 ## Rebrand: Hack the Valley (2026-05-03)
 
 ### Overview
-Full rebrand from "RowdyHacks" to "Hack the Valley" - Toronto's largest student-run hackathon.
+Full rebrand from "RowdyHacks" to "Hack the Valley" - Bakersfield's largest student-run hackathon.
 
 ### Changes Made
 
@@ -239,7 +239,7 @@ Full rebrand from "RowdyHacks" to "Hack the Valley" - Toronto's largest student-
 
 **Branding Updates:**
 - Logo: `/htv-logo.png` (Hack the Valley logo)
-- Title: "Hack the Valley | Toronto's Hackathon"
+- Title: "Hack the Valley | Bakersfield's Hackathon"
 - Tagline: "Hack. Build. Create."
 - Hero: "Join 800+ hackers for 36 hours of innovation..."
 - Stats: 800+ Hackers / 36h / $50k+ in Prizes

@@ -1,20 +1,31 @@
-import { PRIMARY, GOLD, TEXT_MUTED, BORDER, RADIUS } from '../../theme';
+import { PRIMARY, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, INPUT_BG, BORDER, RADIUS, TYPO } from '../../theme';
 import TagInput from '../TagInput';
 
 const LABEL_STYLE: React.CSSProperties = {
-  display: 'block', fontSize: 13, color: TEXT_MUTED, marginBottom: 6,
+  display: 'block', fontSize: 12, fontWeight: 500, color: TEXT_SECONDARY, marginBottom: 6, letterSpacing: '0.01em',
 };
 
 const FIELD_STYLE: React.CSSProperties = {
-  width: '100%', padding: '12px 16px', background: '#0a0f1e',
-  border: `2px solid ${PRIMARY}40`, borderRadius: RADIUS.md,
-  color: '#e8e8f0', fontSize: 15, boxSizing: 'border-box', outline: 'none',
+  width: '100%', padding: '10px 14px', background: INPUT_BG,
+  border: `1px solid ${BORDER}`, borderRadius: RADIUS.md,
+  color: TEXT_PRIMARY, fontSize: 14, fontFamily: TYPO.body.fontFamily,
+  boxSizing: 'border-box', outline: 'none', transition: 'border-color 0.15s ease',
 };
 
 const SECTION_TITLE_STYLE: React.CSSProperties = {
-  fontSize: 13, color: GOLD, fontWeight: 700, textTransform: 'uppercase',
-  letterSpacing: '0.08em', marginBottom: 14, paddingBottom: 8,
+  fontSize: 11, fontWeight: 600, color: TEXT_MUTED, textTransform: 'uppercase' as const,
+  letterSpacing: '0.06em', marginBottom: 14, paddingBottom: 8,
   borderBottom: `1px solid ${BORDER}`,
+};
+
+const SELECT_STYLE: React.CSSProperties = {
+  ...FIELD_STYLE,
+  cursor: 'pointer',
+  appearance: 'none' as const,
+  backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 12px center',
+  paddingRight: 36,
 };
 
 const EXPERIENCE_OPTIONS = [
@@ -40,8 +51,8 @@ export default function WizardSkillsLinks({ data, onChange }: Props) {
     <div>
       {/* Skills */}
       <div style={{ marginBottom: 28 }}>
-        <div style={SECTION_TITLE_STYLE}>Tech Stack</div>
-        <label style={LABEL_STYLE}>Skills & technologies</label>
+        <div style={SECTION_TITLE_STYLE}>Skills</div>
+        <label style={LABEL_STYLE}>Technologies you work with</label>
         <TagInput
           value={data.skills}
           onChange={(skills) => onChange({ ...data, skills })}
@@ -51,21 +62,23 @@ export default function WizardSkillsLinks({ data, onChange }: Props) {
 
       {/* Professional Links */}
       <div style={{ marginBottom: 28 }}>
-        <div style={SECTION_TITLE_STYLE}>Professional Links <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: TEXT_MUTED, fontSize: 11 }}>(all optional)</span></div>
-        <div style={{ marginBottom: 14 }}>
-          <label style={LABEL_STYLE}>LinkedIn URL</label>
-          <input value={data.linkedinUrl} onChange={update('linkedinUrl')}
-            placeholder="https://linkedin.com/in/you" style={FIELD_STYLE} />
-        </div>
-        <div style={{ marginBottom: 14 }}>
-          <label style={LABEL_STYLE}>GitHub URL</label>
-          <input value={data.githubUrl} onChange={update('githubUrl')}
-            placeholder="https://github.com/you" style={FIELD_STYLE} />
-        </div>
-        <div>
-          <label style={LABEL_STYLE}>Resume URL</label>
-          <input value={data.resumeUrl} onChange={update('resumeUrl')}
-            placeholder="https://drive.google.com/..." style={FIELD_STYLE} />
+        <div style={SECTION_TITLE_STYLE}>Links <span style={{ fontWeight: 400, textTransform: 'none' as const, letterSpacing: 0, color: TEXT_MUTED, fontSize: 11 }}>(optional)</span></div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={LABEL_STYLE}>LinkedIn</label>
+            <input value={data.linkedinUrl} onChange={update('linkedinUrl')}
+              placeholder="https://linkedin.com/in/you" style={FIELD_STYLE} />
+          </div>
+          <div>
+            <label style={LABEL_STYLE}>GitHub</label>
+            <input value={data.githubUrl} onChange={update('githubUrl')}
+              placeholder="https://github.com/you" style={FIELD_STYLE} />
+          </div>
+          <div>
+            <label style={LABEL_STYLE}>Resume</label>
+            <input value={data.resumeUrl} onChange={update('resumeUrl')}
+              placeholder="https://drive.google.com/..." style={FIELD_STYLE} />
+          </div>
         </div>
       </div>
 
@@ -73,9 +86,9 @@ export default function WizardSkillsLinks({ data, onChange }: Props) {
       <div style={{ marginBottom: 28 }}>
         <div style={SECTION_TITLE_STYLE}>Experience</div>
         <label style={LABEL_STYLE}>Experience level</label>
-        <select value={data.experienceLevel} onChange={update('experienceLevel')} style={FIELD_STYLE}>
+        <select value={data.experienceLevel} onChange={update('experienceLevel')} style={SELECT_STYLE}>
           {EXPERIENCE_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
+            <option key={opt.value} value={opt.value} style={{ background: INPUT_BG, color: TEXT_PRIMARY }}>{opt.label}</option>
           ))}
         </select>
       </div>

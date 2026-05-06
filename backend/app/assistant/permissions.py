@@ -188,6 +188,18 @@ TOOL_DEFINITIONS = {
             "required": ["question", "answer"]
         }
     },
+    # Site navigation tool (all roles)
+    "query_site_pages": {
+        "name": "query_site_pages",
+        "description": "Search the site for relevant pages by describing what you're looking for. Returns links to pages like application forms, the project gallery, judging portal, resources, leaderboard, and other site features. Use this when a user asks about navigating the platform or finding a specific page.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "What the user is looking for, e.g., 'submitting a project', 'checking scores', 'finding resources'"}
+            },
+            "required": ["query"]
+        }
+    },
 }
 
 # Role-based tool permissions
@@ -200,6 +212,7 @@ ROLE_TOOLS: dict[UserRole, set[str]] = {
         "ideation_help",
         "submission_guidance",
         "view_own_submission_status",
+        "query_site_pages",
     },
     UserRole.JUDGE: {
         "query_hackathon_info",
@@ -209,6 +222,7 @@ ROLE_TOOLS: dict[UserRole, set[str]] = {
         "judging_guidelines",
         "view_assigned_submissions",
         "view_submission_details",
+        "query_site_pages",
     },
     UserRole.ORGANIZER: {
         # Inherits all tools
@@ -227,6 +241,7 @@ ROLE_TOOLS: dict[UserRole, set[str]] = {
         "check_in_status",
         "judging_progress",
         "modify_faq",
+        "query_site_pages",
     },
 }
 

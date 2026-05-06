@@ -49,6 +49,7 @@ class DocumentType(str, Enum):
     RULES = "rules"
     RESOURCES = "resources"
     SUBMISSION_SUMMARY = "submission_summary"
+    SITE_PAGE = "site_page"
 
 
 class AssistantConversation(Base):
@@ -62,7 +63,7 @@ class AssistantConversation(Base):
         default=uuid4,
     )
     user_id = Column(
-        UUID(as_uuid=True),
+        String(64),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

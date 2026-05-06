@@ -1,10 +1,11 @@
 import asyncio
+import uuid
 
 import pytest
 import pytest_asyncio
 from app.database import get_db
 from app.main import app
-from app.models import Base
+from app.models import Base, User, UserRole
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -40,9 +41,16 @@ async def db_session(engine):
         await session.rollback()
 
 
+async def _override_require_clerk_user():
+    """Override require_clerk_user for testing."""
+    return {"sub": str(uuid.uuid4()), "email": "test@example.com"}
+
+
 @pytest_asyncio.fixture
 async def client(engine):
     """Provide an async test client that uses the test DB."""
+    from app.clerk_auth import require_clerk_user
+
     async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async def override_get_db():
@@ -53,6 +61,7 @@ async def client(engine):
                 await session.close()
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[require_clerk_user] = _override_require_clerk_user
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

@@ -7,9 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.clerk_auth import require_clerk_user
 from app.database import get_db
 from app.models import Hackathon, Registration
-from app.routes.registrations import _get_current_user_payload
 
 router = APIRouter(prefix="/api/hackathons", tags=["hacker-dashboard"])
 
@@ -17,15 +17,13 @@ router = APIRouter(prefix="/api/hackathons", tags=["hacker-dashboard"])
 @router.get("/{hackathon_id}/hacker-dashboard")
 async def get_hacker_dashboard(
     hackathon_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
+    user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the hacker dashboard for the current user's registration at a hackathon.
 
     Returns hackathon details (schedule, wifi, discord) + registration (QR, scan_count, scans).
     """
-    payload = _get_current_user_payload(authorization)
-
     # Load hackathon
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
@@ -35,7 +33,7 @@ async def get_hacker_dashboard(
     # Load user's registration for this hackathon
     reg_result = await db.execute(
         select(Registration)
-        .where(Registration.hackathon_id == hackathon_id, Registration.user_id == payload["sub"])
+        .where(Registration.hackathon_id == hackathon_id, Registration.user_id == user_payload["sub"])
         .options(selectinload(Registration.scans))
         .options(selectinload(Registration.user))
     )

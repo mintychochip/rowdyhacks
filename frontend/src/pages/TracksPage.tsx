@@ -3,12 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useAuth } from '../contexts/AuthContext';
 import * as api from '../services/api';
-import {
-  PRIMARY, PRIMARY_BG20, CYAN, CYAN_BG20,
-  TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_WHITE,
-  CARD_BG, INPUT_BG, BORDER,
-  TYPO, SPACE, RADIUS, SHADOW,
-} from '../theme';
 
 interface TrackResource {
   name: string;
@@ -36,150 +30,186 @@ interface TrackCardProps {
   toggleTrack: (id: string) => void;
 }
 
+// Icons
+const ChevronDownIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m6 9 6 6 6-6"/>
+  </svg>
+);
+
+const ExternalLinkIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+    <polyline points="15 3 21 3 21 9"/>
+    <line x1="10" x2="21" y1="14" y2="3"/>
+  </svg>
+);
+
+const TrophyIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+    <path d="M4 22h16"/>
+    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+  </svg>
+);
+
+const GavelIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m14 13-7 7"/>
+    <path d="M19.5 2.5 21 4l-6.5 6.5"/>
+    <path d="m14 6-7 7"/>
+    <path d="m7.5 12.5 2 2"/>
+    <path d="m6.5 13.5 2 2"/>
+    <path d="m5.5 14.5 2 2"/>
+    <path d="M4 20l2 2"/>
+  </svg>
+);
+
+const BookmarkIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
+  </svg>
+);
+
+const ArrowRightIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12h14"/>
+    <path d="m12 5 7 7-7 7"/>
+  </svg>
+);
+
+// Track icon mapping
+const TRACK_ICONS: Record<string, string> = {
+  'Deep Space Exploration': '🚀',
+  'Orbital Commerce': '💎',
+  'Cosmic Commons': '🌌',
+  'Nebula Arts': '✨',
+  'Mission Control AI': '🤖',
+  'Lunar Settlements': '🌕',
+};
+
 function TrackCard({ track, hackathonId, isMobile, expandedTrack, toggleTrack }: TrackCardProps) {
   const isExpanded = expandedTrack === track.id;
+  const accentColor = track.color || 'var(--accent-primary)';
+
   return (
     <div
       style={{
-        flex: isMobile ? '1 1 100%' : '1 1 300px',
-        maxWidth: isMobile ? '100%' : '400px',
-        minWidth: isMobile ? 'auto' : '280px',
-        background: CARD_BG,
-        border: `1px solid ${isExpanded ? track.color : BORDER}`,
-        borderLeft: `4px solid ${track.color}`,
-        borderRadius: RADIUS.lg,
+        background: 'var(--bg-elevated)',
+        border: '1px solid',
+        borderColor: isExpanded ? 'var(--border-strong)' : 'var(--border-default)',
+        borderRadius: 12,
         overflow: 'hidden',
-        transition: 'all 0.25s ease',
-        boxShadow: isExpanded ? `0 4px 24px ${track.color}20` : SHADOW.card,
+        transition: 'all 200ms ease',
       }}
     >
+      {/* Card Header */}
       <button
         onClick={() => toggleTrack(track.id)}
         style={{
           width: '100%',
           display: 'flex',
           alignItems: 'center',
-          gap: SPACE.md,
-          padding: isMobile ? SPACE.md : SPACE.lg,
-          background: 'none',
+          gap: 16,
+          padding: isMobile ? '16px' : '20px',
+          background: isExpanded ? 'var(--bg-tertiary)' : 'transparent',
           border: 'none',
           cursor: 'pointer',
           textAlign: 'left',
-          color: TEXT_PRIMARY,
+          transition: 'background 150ms ease',
         }}
       >
+        {/* Icon */}
         <div style={{
-          width: 56, height: 56, borderRadius: RADIUS.md,
-          background: `${track.color}20`, display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
-          fontSize: 28, flexShrink: 0,
-        }}>
-          {track.icon || '🛸'}
-        </div>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ ...TYPO.h3, marginBottom: 4, color: isExpanded ? track.color : TEXT_PRIMARY }}>
-            {track.name}
-          </h3>
-          <p style={{ color: TEXT_SECONDARY, fontSize: 14, margin: 0, lineClamp: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-            {track.description}
-          </p>
-        </div>
-        <div style={{
-          fontSize: 20, color: TEXT_MUTED,
-          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-          transition: 'transform 0.25s ease', flexShrink: 0,
-        }}>
-          ▾
-        </div>
-      </button>
-
-      <div style={{
-        maxHeight: isExpanded ? '2000px' : '0px',
-        overflow: 'hidden',
-        transition: 'max-height 0.35s ease',
-        padding: isExpanded ? (isMobile ? `0 ${SPACE.md}px ${SPACE.md}px` : `0 ${SPACE.lg}px ${SPACE.lg}px`) : `0 ${isMobile ? SPACE.md : SPACE.lg}px`,
-        opacity: isExpanded ? 1 : 0,
-        transitionProperty: 'max-height, opacity, padding',
-        transitionDuration: '0.35s, 0.25s, 0.35s',
-        transitionTimingFunction: 'ease',
-      }}>
-        <TrackDetails track={track} hackathonId={hackathonId} isMobile={isMobile} />
-      </div>
-    </div>
-  );
-}
-
-function SponsorTrackCard({ track, hackathonId, isMobile, expandedTrack, toggleTrack }: TrackCardProps) {
-  const isExpanded = expandedTrack === track.id;
-  // Use a more corporate/sponsor style
-  return (
-    <div
-      style={{
-        flex: isMobile ? '1 1 100%' : '1 1 280px',
-        maxWidth: isMobile ? '100%' : '350px',
-        minWidth: isMobile ? 'auto' : '260px',
-        background: `linear-gradient(135deg, ${CARD_BG} 0%, ${track.color}08 100%)`,
-        border: `1px solid ${isExpanded ? track.color : BORDER}`,
-        borderTop: `3px solid ${track.color}`,
-        borderRadius: RADIUS.lg,
-        overflow: 'hidden',
-        transition: 'all 0.25s ease',
-        boxShadow: isExpanded ? `0 8px 32px ${track.color}30` : SHADOW.card,
-      }}
-    >
-      <button
-        onClick={() => toggleTrack(track.id)}
-        style={{
-          width: '100%',
+          width: 48,
+          height: 48,
+          borderRadius: 12,
+          background: isExpanded ? `${accentColor}20` : 'var(--bg-tertiary)',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
-          gap: SPACE.md,
-          padding: isMobile ? `${SPACE.lg}px ${SPACE.md}px` : `${SPACE.xl}px ${SPACE.lg}px`,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          textAlign: 'center',
-          color: TEXT_PRIMARY,
-        }}
-      >
-        {/* Sponsor "logo" placeholder */}
-        <div style={{
-          width: 80, height: 80, borderRadius: RADIUS.lg,
-          background: `linear-gradient(135deg, ${track.color}30 0%, ${track.color}10 100%)`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 36, border: `2px solid ${track.color}40`,
+          justifyContent: 'center',
+          fontSize: 24,
+          flexShrink: 0,
+          transition: 'all 150ms ease',
+          border: '1px solid',
+          borderColor: isExpanded ? `${accentColor}40` : 'var(--border-default)',
         }}>
-          {track.icon || '🏢'}
+          {TRACK_ICONS[track.name] || track.icon || '🎯'}
         </div>
-        <div>
-          <h3 style={{ ...TYPO.h3, marginBottom: 4, color: track.color, fontSize: 18 }}>
+
+        {/* Title & Description */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 style={{
+            fontSize: 16,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            marginBottom: 4,
+            letterSpacing: '-0.01em',
+          }}>
             {track.name}
           </h3>
-          <p style={{ color: TEXT_SECONDARY, fontSize: 13, margin: 0, maxWidth: 240 }}>
+          <p style={{
+            color: 'var(--text-secondary)',
+            fontSize: 13,
+            margin: 0,
+            lineHeight: 1.5,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}>
             {track.description}
           </p>
         </div>
+
+        {/* Prize Badge */}
+        {track.prize && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 12px',
+            background: 'var(--accent-subtle)',
+            borderRadius: 100,
+            fontSize: 12,
+            fontWeight: 600,
+            color: 'var(--accent-primary)',
+            flexShrink: 0,
+          }}>
+            <TrophyIcon />
+            {track.prize.split(' ')[0]}
+          </div>
+        )}
+
+        {/* Expand Chevron */}
         <div style={{
-          fontSize: 16, color: TEXT_MUTED,
+          color: 'var(--text-muted)',
           transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-          transition: 'transform 0.25s ease',
+          transition: 'transform 200ms ease',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}>
-          ▾
+          <ChevronDownIcon />
         </div>
       </button>
 
+      {/* Expanded Content */}
       <div style={{
         maxHeight: isExpanded ? '2000px' : '0px',
         overflow: 'hidden',
-        transition: 'max-height 0.35s ease',
-        padding: isExpanded ? (isMobile ? `0 ${SPACE.md}px ${SPACE.md}px` : `0 ${SPACE.lg}px ${SPACE.lg}px`) : `0 ${isMobile ? SPACE.md : SPACE.lg}px`,
-        opacity: isExpanded ? 1 : 0,
-        transitionProperty: 'max-height, opacity, padding',
-        transitionDuration: '0.35s, 0.25s, 0.35s',
-        transitionTimingFunction: 'ease',
+        transition: 'max-height 400ms cubic-bezier(0.4, 0, 0.2, 1)',
       }}>
-        <TrackDetails track={track} hackathonId={hackathonId} isMobile={isMobile} />
+        <div style={{
+          padding: isMobile ? '0 16px 16px' : '0 20px 20px',
+          borderTop: '1px solid var(--border-subtle)',
+        }}>
+          <TrackDetails track={track} hackathonId={hackathonId} isMobile={isMobile} />
+        </div>
       </div>
     </div>
   );
@@ -192,77 +222,125 @@ interface TrackDetailsProps {
 }
 
 function TrackDetails({ track, hackathonId, isMobile }: TrackDetailsProps) {
+  const accentColor = track.color || 'var(--accent-primary)';
+
   return (
-    <div>
-      {/* Challenge prompt */}
+    <div style={{ paddingTop: 20 }}>
+      {/* Challenge Section */}
       <div style={{
-        background: `${track.color}10`,
-        border: `1px solid ${track.color}30`,
-        borderRadius: RADIUS.md,
-        padding: SPACE.md,
-        marginBottom: SPACE.lg,
-        whiteSpace: 'pre-line',
-        fontSize: 15,
-        color: TEXT_PRIMARY,
-        lineHeight: 1.7,
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 10,
+        padding: 16,
+        marginBottom: 20,
       }}>
-        {track.challenge || track.description}
+        <p style={{
+          color: 'var(--text-secondary)',
+          fontSize: 14,
+          lineHeight: 1.7,
+          margin: 0,
+          whiteSpace: 'pre-line',
+        }}>
+          {track.challenge || track.description}
+        </p>
       </div>
 
+      {/* Two Column Layout */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-        gap: SPACE.lg,
+        gap: 20,
       }}>
-        {/* Left column */}
-        <div>
-          <h4 style={{
-            ...TYPO['label-caps'], color: track.color,
-            marginBottom: SPACE.sm, display: 'flex', alignItems: 'center', gap: 6,
-          }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>gavel</span>
-            Judging Criteria
-          </h4>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.xs, marginBottom: SPACE.lg }}>
-            {(track.criteria || []).map((criterion, idx) => (
-              <span key={idx} style={{
-                padding: '6px 12px', borderRadius: RADIUS.full,
-                background: `${track.color}15`, color: track.color,
-                fontSize: 13, fontWeight: 500,
-              }}>
-                {criterion}
-              </span>
-            ))}
+        {/* Left Column - Criteria & Prize */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Judging Criteria */}
+          <div>
+            <h4 style={{
+              fontSize: 11,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--text-muted)',
+              marginBottom: 12,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}>
+              <GavelIcon />
+              Judging Criteria
+            </h4>
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 8,
+            }}>
+              {(track.criteria || []).map((criterion, idx) => (
+                <span key={idx} style={{
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  background: 'var(--bg-tertiary)',
+                  color: 'var(--text-secondary)',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  border: '1px solid var(--border-default)',
+                }}>
+                  {criterion}
+                </span>
+              ))}
+            </div>
           </div>
 
-          <h4 style={{
-            ...TYPO['label-caps'], color: track.color,
-            marginBottom: SPACE.sm, display: 'flex', alignItems: 'center', gap: 6,
-          }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>trophy</span>
-            Prize
-          </h4>
-          <div style={{
-            padding: SPACE.md, borderRadius: RADIUS.md,
-            background: `${track.color}10`, border: `1px solid ${track.color}30`,
-            color: track.color, fontSize: 18, fontWeight: 700, textAlign: 'center',
-          }}>
-            {track.prize || 'Prize TBA'}
+          {/* Prize */}
+          <div>
+            <h4 style={{
+              fontSize: 11,
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--text-muted)',
+              marginBottom: 12,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}>
+              <TrophyIcon />
+              Prize
+            </h4>
+            <div style={{
+              padding: 14,
+              borderRadius: 10,
+              background: 'var(--accent-subtle)',
+              border: '1px solid rgba(139, 92, 246, 0.2)',
+              color: 'var(--accent-primary)',
+              fontSize: 16,
+              fontWeight: 600,
+              textAlign: 'center',
+            }}>
+              {track.prize || 'Prize TBA'}
+            </div>
           </div>
         </div>
 
-        {/* Right column */}
-        <div>
+        {/* Right Column - Resources & CTA */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Resources */}
           {(track.resources && track.resources.length > 0) && (
-            <>
+            <div>
               <h4 style={{
-                ...TYPO['label-caps'], color: track.color,
-                marginBottom: SPACE.sm, display: 'flex', alignItems: 'center', gap: 6,
+                fontSize: 11,
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: 'var(--text-muted)',
+                marginBottom: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
               }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>bookmark</span>
+                <BookmarkIcon />
                 Starter Resources
               </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm, marginBottom: SPACE.lg }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {track.resources.map((resource, idx) => (
                   <a
                     key={idx}
@@ -270,33 +348,72 @@ function TrackDetails({ track, hackathonId, isMobile }: TrackDetailsProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
-                      display: 'flex', alignItems: 'center', gap: SPACE.sm,
-                      padding: '10px 14px', borderRadius: RADIUS.md,
-                      background: INPUT_BG, color: CYAN,
-                      textDecoration: 'none', fontSize: 14, fontWeight: 500,
-                      border: `1px solid ${BORDER}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      padding: '10px 14px',
+                      borderRadius: 8,
+                      background: 'var(--bg-tertiary)',
+                      color: 'var(--text-secondary)',
+                      textDecoration: 'none',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      border: '1px solid var(--border-default)',
+                      transition: 'all 150ms ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-secondary)';
+                      e.currentTarget.style.color = 'var(--text-primary)';
+                      e.currentTarget.style.borderColor = 'var(--border-strong)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-tertiary)';
+                      e.currentTarget.style.color = 'var(--text-secondary)';
+                      e.currentTarget.style.borderColor = 'var(--border-default)';
                     }}
                   >
-                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>link</span>
-                    {resource.name}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {resource.name}
+                    </span>
+                    <ExternalLinkIcon />
                   </a>
                 ))}
               </div>
-            </>
+            </div>
           )}
 
+          {/* CTA Button */}
           <Link
             to={hackathonId ? `/hackathons/${hackathonId}/register` : '/register'}
             style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              width: '100%', padding: '12px 24px',
-              background: track.color, borderRadius: RADIUS.md,
-              color: TEXT_WHITE, textDecoration: 'none',
-              fontSize: 15, fontWeight: 700, boxSizing: 'border-box',
-              marginTop: track.resources && track.resources.length > 0 ? 0 : SPACE.md,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              width: '100%',
+              padding: '12px 20px',
+              background: 'var(--accent-primary)',
+              borderRadius: 10,
+              color: 'white',
+              textDecoration: 'none',
+              fontSize: 14,
+              fontWeight: 500,
+              marginTop: 'auto',
+              transition: 'all 150ms ease',
+              boxShadow: '0 4px 14px rgba(139, 92, 246, 0.3)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--accent-primary-hover)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--accent-primary)';
+              e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
-            Register for {track.name} →
+            Register for {track.name}
+            <ArrowRightIcon />
           </Link>
         </div>
       </div>
@@ -368,7 +485,6 @@ export default function TracksPage() {
       }
       if (hId) {
         setHackathonId(hId);
-        // Parallelize: fetch hackathon + tracks simultaneously
         const [hackathon, tracksData] = await Promise.all([
           api.getHackathon(hId).catch(() => null),
           api.getHackathonTracks(hId).catch(() => ({ tracks: [] })),
@@ -393,150 +509,188 @@ export default function TracksPage() {
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: isMobile ? SPACE.md : SPACE.xl }}>
-      {/* Loading toast — subtle, non-blocking */}
+    <div style={{ maxWidth: 800, margin: '0 auto' }}>
+      {/* Loading indicator */}
       {loading && (
         <div style={{
-          textAlign: 'center', padding: `${SPACE.sm}px ${SPACE.md}px`,
-          marginBottom: SPACE.md, borderRadius: RADIUS.md,
-          background: 'rgba(139,92,246,0.1)', color: '#8b5cf6',
-          fontSize: 13, fontWeight: 500,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 12,
+          padding: '12px 20px',
+          marginBottom: 24,
+          borderRadius: 10,
+          background: 'var(--accent-subtle)',
+          color: 'var(--accent-primary)',
+          fontSize: 13,
+          fontWeight: 500,
         }}>
-          Syncing tracks from orbit...
+          <div style={{
+            width: 16,
+            height: 16,
+            border: '2px solid var(--border-default)',
+            borderTop: '2px solid var(--accent-primary)',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          Loading tracks...
         </div>
       )}
 
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: SPACE.xl }}>
-        <div style={{ fontSize: 56, marginBottom: SPACE.md }}>🛰️</div>
-        <h1 style={{ ...TYPO.h1, marginBottom: SPACE.sm }}>
+      <div style={{
+        textAlign: 'center',
+        marginBottom: 40,
+      }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 64,
+          height: 64,
+          borderRadius: 16,
+          background: 'var(--accent-subtle)',
+          border: '1px solid rgba(139, 92, 246, 0.2)',
+          fontSize: 28,
+          marginBottom: 20,
+        }}>
+          🏆
+        </div>
+        <h1 style={{
+          fontSize: isMobile ? 28 : 32,
+          fontWeight: 700,
+          color: 'var(--text-primary)',
+          letterSpacing: '-0.02em',
+          marginBottom: 12,
+        }}>
           {hackathonName ? `${hackathonName} Tracks` : 'Challenge Tracks'}
         </h1>
-        <p style={{ color: TEXT_SECONDARY, fontSize: 16, maxWidth: 600, margin: '0 auto' }}>
-          Six mission tracks. Each with its own challenge prompt, judging criteria, prizes, and curated resources. Choose your orbit.
+        <p style={{
+          color: 'var(--text-secondary)',
+          fontSize: 16,
+          lineHeight: 1.6,
+          maxWidth: 500,
+          margin: '0 auto',
+        }}>
+          Six mission tracks. Each with its own challenge prompt, judging criteria, prizes, and curated resources.
         </p>
       </div>
 
-      {/* Prize & Themed Tracks — Card Grid */}
-      {(() => {
-        const prizeTracks = tracks.filter(t => t.track_type === 'prize');
-        const themedTracks = tracks.filter(t => t.track_type === 'themed');
-        const generalTracks = tracks.filter(t => !t.track_type || !['prize', 'themed', 'sponsor'].includes(t.track_type));
+      {/* Track Count */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 24,
+        padding: '12px 16px',
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 10,
+      }}>
+        <span style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: 'var(--success)',
+        }} />
+        <span style={{
+          fontSize: 13,
+          color: 'var(--text-secondary)',
+          fontWeight: 500,
+        }}>
+          {tracks.length} tracks available
+        </span>
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
+          Click to expand
+        </span>
+      </div>
 
-        return (
-          <>
-            {/* Prize Tracks */}
-            {prizeTracks.length > 0 && (
-              <div style={{ marginBottom: SPACE.xl }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: SPACE.sm,
-                  marginBottom: SPACE.md, paddingBottom: SPACE.sm,
-                  borderBottom: `2px solid #f59e0b30`,
-                }}>
-                  <span style={{ fontSize: 24 }}>🏆</span>
-                  <h2 style={{ ...TYPO.h2, color: '#f59e0b', margin: 0, fontSize: 20 }}>Prize Tracks</h2>
-                  <span style={{ background: '#f59e0b20', color: '#f59e0b', padding: '2px 10px', borderRadius: RADIUS.full, fontSize: 12, fontWeight: 600 }}>{prizeTracks.length}</span>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.md }}>
-                  {prizeTracks.map(track => <TrackCard key={track.id} track={track} hackathonId={hackathonId} isMobile={isMobile} expandedTrack={expandedTrack} toggleTrack={toggleTrack} />)}
-                </div>
-              </div>
-            )}
-
-            {/* Themed Tracks */}
-            {themedTracks.length > 0 && (
-              <div style={{ marginBottom: SPACE.xl }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: SPACE.sm,
-                  marginBottom: SPACE.md, paddingBottom: SPACE.sm,
-                  borderBottom: `2px solid #8b5cf630`,
-                }}>
-                  <span style={{ fontSize: 24 }}>🎨</span>
-                  <h2 style={{ ...TYPO.h2, color: '#8b5cf6', margin: 0, fontSize: 20 }}>Themed Tracks</h2>
-                  <span style={{ background: '#8b5cf620', color: '#8b5cf6', padding: '2px 10px', borderRadius: RADIUS.full, fontSize: 12, fontWeight: 600 }}>{themedTracks.length}</span>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.md }}>
-                  {themedTracks.map(track => <TrackCard key={track.id} track={track} hackathonId={hackathonId} isMobile={isMobile} expandedTrack={expandedTrack} toggleTrack={toggleTrack} />)}
-                </div>
-              </div>
-            )}
-
-            {/* General Tracks */}
-            {generalTracks.length > 0 && (
-              <div style={{ marginBottom: SPACE.xl }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: SPACE.sm,
-                  marginBottom: SPACE.md, paddingBottom: SPACE.sm,
-                  borderBottom: `2px solid #10b98130`,
-                }}>
-                  <span style={{ fontSize: 24 }}>🛰️</span>
-                  <h2 style={{ ...TYPO.h2, color: '#10b981', margin: 0, fontSize: 20 }}>General Tracks</h2>
-                  <span style={{ background: '#10b98120', color: '#10b981', padding: '2px 10px', borderRadius: RADIUS.full, fontSize: 12, fontWeight: 600 }}>{generalTracks.length}</span>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.md }}>
-                  {generalTracks.map(track => <TrackCard key={track.id} track={track} hackathonId={hackathonId} isMobile={isMobile} expandedTrack={expandedTrack} toggleTrack={toggleTrack} />)}
-                </div>
-              </div>
-            )}
-
-            {/* Sponsor Tracks — Company Style */}
-            {(() => {
-              const sponsorTracks = tracks.filter(t => t.track_type === 'sponsor');
-              if (sponsorTracks.length === 0) return null;
-              return (
-                <div style={{ marginBottom: SPACE.xl }}>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: SPACE.sm,
-                    marginBottom: SPACE.md, paddingBottom: SPACE.sm,
-                    borderBottom: `2px solid #06b6d430`,
-                  }}>
-                    <span style={{ fontSize: 24 }}>🤝</span>
-                    <h2 style={{ ...TYPO.h2, color: '#06b6d4', margin: 0, fontSize: 20 }}>Sponsor Tracks</h2>
-                    <span style={{ background: '#06b6d420', color: '#06b6d4', padding: '2px 10px', borderRadius: RADIUS.full, fontSize: 12, fontWeight: 600 }}>{sponsorTracks.length}</span>
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.md }}>
-                    {sponsorTracks.map(track => (
-                      <SponsorTrackCard key={track.id} track={track} hackathonId={hackathonId} isMobile={isMobile} expandedTrack={expandedTrack} toggleTrack={toggleTrack} />
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-          </>
-        );
-      })()}
+      {/* Tracks List */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        marginBottom: 40,
+      }}>
+        {tracks.map(track => (
+          <TrackCard
+            key={track.id}
+            track={track}
+            hackathonId={hackathonId}
+            isMobile={isMobile}
+            expandedTrack={expandedTrack}
+            toggleTrack={toggleTrack}
+          />
+        ))}
+      </div>
 
       {/* Bottom CTA */}
       <div style={{
-        background: `linear-gradient(135deg, ${PRIMARY_BG20} 0%, ${CYAN_BG20} 100%)`,
-        border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg,
-        padding: isMobile ? SPACE.lg : SPACE.xl, textAlign: 'center',
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 12,
+        padding: isMobile ? '24px' : '32px',
+        textAlign: 'center',
       }}>
-        <h3 style={{ ...TYPO.h3, marginBottom: SPACE.sm }}>Not sure which track to choose?</h3>
-        <p style={{ color: TEXT_SECONDARY, marginBottom: SPACE.lg, maxWidth: 500, margin: `0 auto ${SPACE.lg}px` }}>
+        <h3 style={{
+          fontSize: 18,
+          fontWeight: 600,
+          color: 'var(--text-primary)',
+          marginBottom: 8,
+        }}>
+          Not sure which track to choose?
+        </h3>
+        <p style={{
+          color: 'var(--text-secondary)',
+          fontSize: 14,
+          marginBottom: 24,
+          maxWidth: 420,
+          margin: '0 auto 24px',
+        }}>
           You can explore all tracks and decide later. The best projects often bridge multiple domains.
         </p>
         {user ? (
           <Link
             to={hackathonId ? `/hackathons/${hackathonId}/hacker-dashboard` : '/dashboard'}
             style={{
-              display: 'inline-block', padding: '12px 28px',
-              background: PRIMARY, borderRadius: RADIUS.md,
-              color: TEXT_WHITE, textDecoration: 'none', fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '12px 24px',
+              background: 'var(--accent-primary)',
+              borderRadius: 10,
+              color: 'white',
+              textDecoration: 'none',
+              fontSize: 14,
+              fontWeight: 500,
+              transition: 'all 150ms ease',
+              boxShadow: '0 4px 14px rgba(139, 92, 246, 0.3)',
             }}
           >
             Go to Dashboard
+            <ArrowRightIcon />
           </Link>
         ) : (
           <Link
             to="/auth"
             style={{
-              display: 'inline-block', padding: '12px 28px',
-              background: PRIMARY, borderRadius: RADIUS.md,
-              color: TEXT_WHITE, textDecoration: 'none', fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '12px 24px',
+              background: 'var(--accent-primary)',
+              borderRadius: 10,
+              color: 'white',
+              textDecoration: 'none',
+              fontSize: 14,
+              fontWeight: 500,
+              transition: 'all 150ms ease',
+              boxShadow: '0 4px 14px rgba(139, 92, 246, 0.3)',
             }}
           >
             Sign In to Register
+            <ArrowRightIcon />
           </Link>
         )}
       </div>

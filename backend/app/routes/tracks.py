@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import decode_token
 from app.cache import cache_delete_pattern, cached
+from app.clerk_auth import require_clerk_user
 from app.database import get_db
 from app.models import Hackathon, Track, User, UserRole
 
@@ -17,27 +17,16 @@ TRACKS_CACHE_TTL = 300  # 5 minutes
 CACHE_PFX = "tracks"
 
 
-def _get_current_user_payload(authorization: str | None):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authentication required")
-    token = authorization.removeprefix("Bearer ")
-    try:
-        return decode_token(token)
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-
-async def _get_current_user(db: AsyncSession, authorization: str | None) -> User:
-    payload = _get_current_user_payload(authorization)
-    result = await db.execute(select(User).where(User.id == payload["sub"]))
+async def _get_current_user(db: AsyncSession, user_payload: dict) -> User:
+    result = await db.execute(select(User).where(User.id == user_payload["sub"]))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
 
-async def _require_organizer(hackathon_id: str, db: AsyncSession, authorization: str | None) -> Hackathon:
-    user = await _get_current_user(db, authorization)
+async def _require_organizer(hackathon_id: str, db: AsyncSession, user_payload: dict) -> Hackathon:
+    user = await _get_current_user(db, user_payload)
     if user.role != UserRole.organizer:
         raise HTTPException(status_code=403, detail="Only organizers can manage tracks")
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
@@ -155,10 +144,10 @@ async def list_tracks(hackathon_id: str, db: AsyncSession = Depends(get_db)):
 async def create_track(
     hackathon_id: str,
     body: dict,
-    authorization: str = Header(alias="Authorization"),
+    user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _require_organizer(hackathon_id, db, authorization)
+    await _require_organizer(hackathon_id, db, user_payload)
     track = Track(
         hackathon_id=hackathon_id,
         name=body["name"],
@@ -198,10 +187,10 @@ async def update_track(
     hackathon_id: str,
     track_id: str,
     body: dict,
-    authorization: str = Header(alias="Authorization"),
+    user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _require_organizer(hackathon_id, db, authorization)
+    await _require_organizer(hackathon_id, db, user_payload)
     result = await db.execute(select(Track).where(Track.id == track_id, Track.hackathon_id == hackathon_id))
     track = result.scalar_one_or_none()
     if not track:
@@ -235,10 +224,10 @@ async def update_track(
 async def delete_track(
     hackathon_id: str,
     track_id: str,
-    authorization: str = Header(alias="Authorization"),
+    user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _require_organizer(hackathon_id, db, authorization)
+    await _require_organizer(hackathon_id, db, user_payload)
     result = await db.execute(select(Track).where(Track.id == track_id, Track.hackathon_id == hackathon_id))
     track = result.scalar_one_or_none()
     if not track:

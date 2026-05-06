@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import decode_token
+from app.clerk_auth import require_organizer
 from app.database import get_db
 from app.models import Submission, User, UserRole
 
@@ -19,21 +19,9 @@ async def get_dashboard(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    authorization: str | None = Header(alias="Authorization"),
+    auth: dict = Depends(require_organizer),
 ):
     """Get paginated submissions list. Organizer only."""
-    # Auth check
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401)
-    try:
-        payload = decode_token(authorization.removeprefix("Bearer "))
-    except ValueError:
-        raise HTTPException(status_code=401)
-    result = await db.execute(select(User).where(User.id == payload["sub"]))
-    user = result.scalar_one_or_none()
-    if not user or user.role != UserRole.organizer:
-        raise HTTPException(status_code=403, detail="Organizer role required")
-
     query = select(Submission)
     count_query = select(func.count(Submission.id))
 

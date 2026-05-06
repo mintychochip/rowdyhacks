@@ -9,7 +9,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth import decode_token
+from app.clerk_auth import require_organizer
 from app.database import get_db
 from app.models import (
     Hackathon,
@@ -68,19 +68,8 @@ async def create_judging_session(
     hackathon_id: uuid.UUID,
     body: JudgingSessionCreate,
     db: AsyncSession = Depends(get_db),
-    authorization: str | None = Header(alias="Authorization"),
+    auth: dict = Depends(require_organizer),
 ):
-    # Auth check
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401)
-    try:
-        payload = decode_token(authorization.removeprefix("Bearer "))
-    except ValueError:
-        raise HTTPException(status_code=401)
-    result = await db.execute(select(User).where(User.id == payload["sub"]))
-    user = result.scalar_one_or_none()
-    if not user or user.role != UserRole.organizer:
-        raise HTTPException(status_code=403, detail="Organizer role required")
     """Create or replace a judging session with rubric criteria for a hackathon."""
     # Verify hackathon exists
     hk = await db.get(Hackathon, hackathon_id)

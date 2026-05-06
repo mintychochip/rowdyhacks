@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from app.auth import create_qr_token, hash_password
+from app.auth import create_qr_token
 from app.models import Hackathon, Registration, RegistrationStatus, User, UserRole
 
 
@@ -12,14 +12,12 @@ async def test_scan_checks_in_accepted_registration(db_session, client):
         id=uuid.uuid4(),
         email="scan@test.com",
         name="Scannie",
-        password_hash=hash_password("pw"),
         role=UserRole.participant,
     )
     org = User(
         id=uuid.uuid4(),
         email="checkinorg@test.com",
         name="Organizer",
-        password_hash=hash_password("pw"),
         role=UserRole.organizer,
     )
     hack = Hackathon(
@@ -46,7 +44,6 @@ async def test_scan_rejects_expired_token(db_session, client):
         id=uuid.uuid4(),
         email="exp@test.com",
         name="Expired",
-        password_hash=hash_password("pw"),
         role=UserRole.participant,
     )
     hack = Hackathon(
@@ -72,7 +69,6 @@ async def test_scan_rejects_double_checkin(db_session, client):
         id=uuid.uuid4(),
         email="double@test.com",
         name="Double",
-        password_hash=hash_password("pw"),
         role=UserRole.participant,
     )
     hack = Hackathon(
@@ -99,14 +95,12 @@ async def test_scan_rejects_revoked_registration(db_session, client):
         id=uuid.uuid4(),
         email="revoked@test.com",
         name="Revoked",
-        password_hash=hash_password("pw"),
         role=UserRole.participant,
     )
     org = User(
         id=uuid.uuid4(),
         email="revorg@test.com",
         name="RevOrg",
-        password_hash=hash_password("pw"),
         role=UserRole.organizer,
     )
     hack = Hackathon(

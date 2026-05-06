@@ -487,3 +487,40 @@ class ToolExecutor:
             "message": f"FAQ entry added/updated: {question[:50]}...",
             "note": "The entry will be indexed and available to the assistant shortly",
         }
+
+    # ========== Site Navigation Tool ==========
+
+    async def tool_query_site_pages(self, query: str) -> Dict[str, Any]:
+        """Search site pages relevant to the user's query."""
+        from app.assistant.embedder import embedder
+        from app.assistant.vector_store import vector_store
+
+        query_embedding = embedder.embed_text(query)
+        results = await vector_store.search_documents(
+            query_embedding=query_embedding,
+            doc_type="site_page",
+            role=self.user.role,
+            limit=5,
+            score_threshold=0.5,
+        )
+
+        if not results:
+            return {
+                "pages": [],
+                "message": "No relevant pages found. Try a different search."
+            }
+
+        pages = []
+        for r in results:
+            path = r.get("metadata", {}).get("path", "")
+            pages.append({
+                "title": r.get("title", ""),
+                "url": path,
+                "description": r.get("metadata", {}).get("description", ""),
+                "relevance": round(r.get("score", 0), 3),
+            })
+
+        return {
+            "pages": pages,
+            "message": f"Found {len(pages)} relevant page(s). You can share the URLs with the user."
+        }

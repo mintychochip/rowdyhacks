@@ -1,7 +1,8 @@
-import { SignIn, useUser } from "@clerk/clerk-react";
+import { SignIn, useUser, useAuth } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMediaQuery } from "../hooks/useMediaQuery";
+import * as api from "../services/api";
 import {
   PAGE_BG,
   CARD_BG,
@@ -17,16 +18,38 @@ import {
 } from "../theme";
 
 export default function AuthPage() {
-  const { isSignedIn } = useUser();
+  const { isSignedIn, user } = useUser();
+  const { getToken, isLoaded } = useAuth();
   const navigate = useNavigate();
   const { isMobile } = useMediaQuery();
+  const [syncing, setSyncing] = useState(false);
 
-  // Redirect already-logged-in users away from auth page
+  // Handle auth completion and user sync
   useEffect(() => {
-    if (isSignedIn) {
-      navigate("/", { replace: true });
-    }
-  }, [isSignedIn, navigate]);
+    if (!isLoaded || !isSignedIn || !user) return;
+
+    // Already signed in - sync with backend and redirect
+    const syncAndRedirect = async () => {
+      setSyncing(true);
+      try {
+        const token = await getToken();
+        if (token) {
+          localStorage.setItem("auth_token", token);
+          // Sync user with backend
+          await api.getMe();
+        }
+        navigate("/", { replace: true });
+      } catch (err) {
+        console.error("Failed to sync after sign in:", err);
+        // Still redirect even if sync fails - AuthContext will retry
+        navigate("/", { replace: true });
+      } finally {
+        setSyncing(false);
+      }
+    };
+
+    syncAndRedirect();
+  }, [isSignedIn, isLoaded, user, getToken, navigate]);
 
   return (
     <div
@@ -39,7 +62,15 @@ export default function AuthPage() {
         backgroundColor: PAGE_BG,
       }}
     >
-      <SignIn
+      {syncing ? (
+        <div style={{ color: TEXT_PRIMARY, textAlign: "center" }}>
+          <div style={{ fontSize: "24px", marginBottom: "16px" }}>✓</div>
+          <div>Signed in! Redirecting...</div>
+        </div>
+      ) : (
+        <SignIn
+          routing="hash"
+          signUpUrl="/sign-up"
         appearance={{
           variables: {
             colorPrimary: PRIMARY,
@@ -76,7 +107,6 @@ export default function AuthPage() {
               fontSize: `${TYPO.h3.fontSize}px`,
               fontWeight: TYPO.h3.fontWeight,
               lineHeight: TYPO.h3.lineHeight,
-              letterSpacing: TYPO.h3.letterSpacing,
             },
             headerSubtitle: {
               color: TEXT_SECONDARY,
@@ -214,10 +244,10 @@ export default function AuthPage() {
           },
           layout: {
             socialButtonsPlacement: "top",
-            termsPlacement: "bottom",
           },
         }}
       />
+      )}
     </div>
   );
 }

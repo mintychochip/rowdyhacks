@@ -26,7 +26,13 @@ from app.models_assistant import (
     AssistantMessageStatus,
     ConversationRole,
 )
-from app.routes.auth import get_current_user
+from app.clerk_auth import require_clerk_user_with_db
+
+async def get_current_user(
+    auth: dict = Depends(require_clerk_user_with_db),
+) -> User:
+    """Get current User ORM object from Clerk auth."""
+    return auth["user"]
 from app.schemas.builder import (
     GenerateProjectRequest,
     GenerateProjectResponse,
@@ -134,9 +140,8 @@ async def get_current_user_sse(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Get current user from either Authorization header or query param (for SSE). Supports Clerk tokens."""
+    """Get current user from either Authorization header or query param (for SSE). Clerk-only."""
     from app.clerk_auth import is_clerk_token, decode_clerk_token, extract_clerk_user_id
-    from app.auth import decode_token
     from app.database import set_current_user_id
 
     # Try header first
@@ -152,26 +157,16 @@ async def get_current_user_sse(
     if not token:
         raise HTTPException(status_code=401, detail="Missing authentication token")
 
-    user_id = None
-    user_email = None
-    user_name = None
+    if not is_clerk_token(token):
+        raise HTTPException(status_code=401, detail="Clerk token required")
 
-    # Try Clerk token first
-    if is_clerk_token(token):
-        try:
-            payload = await decode_clerk_token(token)
-            user_id = extract_clerk_user_id(payload)
-            user_email = payload.get("email") or payload.get("public_metadata", {}).get("email")
-            user_name = payload.get("name") or payload.get("public_metadata", {}).get("name")
-        except ValueError as e:
-            raise HTTPException(status_code=401, detail=f"Invalid Clerk token: {e}")
-    else:
-        # Fall back to internal JWT
-        try:
-            payload = decode_token(token)
-            user_id = payload.get("sub")
-        except ValueError:
-            raise HTTPException(status_code=401, detail="Invalid token")
+    try:
+        payload = await decode_clerk_token(token)
+        user_id = extract_clerk_user_id(payload)
+        user_email = payload.get("email") or payload.get("public_metadata", {}).get("email")
+        user_name = payload.get("name") or payload.get("public_metadata", {}).get("name")
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid Clerk token: {e}")
 
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token: no user ID")
@@ -184,7 +179,7 @@ async def get_current_user_sse(
     user = result.scalar_one_or_none()
 
     # Auto-create user for Clerk tokens
-    if not user and is_clerk_token(token) and user_email:
+    if not user and user_email:
         user = User(
             id=user_id,
             email=user_email,

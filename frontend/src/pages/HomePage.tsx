@@ -8,15 +8,6 @@ import QRCodeDisplay from '../components/QRCodeDisplay';
 import WalletButtons from '../components/WalletButtons';
 import ScheduleGrid from '../components/ScheduleGrid';
 import { Badge } from '../components/Primitives';
-import {
-  PRIMARY, PRIMARY_BG20, CYAN, SUCCESS, SUCCESS_BG10, WARNING, WARNING_BG10,
-  ERROR, ERROR_TEXT, ERROR_BG20,
-  TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_WHITE,
-  INPUT_BG, INPUT_BORDER, CARD_BG, BORDER,
-  STATUS_ACCEPTED, STATUS_PENDING, STATUS_REJECTED, STATUS_CHECKED_IN,
-  GOLD, GOLD_BG10,
-  SPACE, RADIUS,
-} from '../theme';
 
 interface ScheduleEvent { datetime: string; title: string; description?: string; location?: string; }
 interface HackathonData {
@@ -31,12 +22,93 @@ interface RegData {
   scan_count?: number; scans?: ScanItem[];
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: STATUS_PENDING, accepted: STATUS_ACCEPTED,
-  rejected: STATUS_REJECTED, checked_in: STATUS_CHECKED_IN,
+const STATUS_COLORS: Record<string, { bg: string; color: string; border: string }> = {
+  pending: { bg: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.2)' },
+  accepted: { bg: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', border: 'rgba(34, 197, 94, 0.2)' },
+  rejected: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.2)' },
+  checked_in: { bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.2)' },
 };
 
 const SCAN_LABELS: Record<string, string> = { checkin: 'Check-in', meal: 'Meal', workshop: 'Workshop' };
+
+// Icons
+const CalendarIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+    <line x1="16" x2="16" y1="2" y2="6"/>
+    <line x1="8" x2="8" y1="2" y2="6"/>
+    <line x1="3" x2="21" y1="10" y2="10"/>
+  </svg>
+);
+
+const MapPinIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+    <circle cx="12" cy="10" r="3"/>
+  </svg>
+);
+
+const UsersIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+);
+
+const ClockIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12 6 12 12 16 14"/>
+  </svg>
+);
+
+const TrophyIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+    <path d="M4 22h16"/>
+    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+  </svg>
+);
+
+const ArrowRightIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12h14"/>
+    <path d="m12 5 7 7-7 7"/>
+  </svg>
+);
+
+const WifiIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+    <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+    <line x1="12" x2="12.01" y1="20" y2="20"/>
+  </svg>
+);
+
+const CopyIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 6 9 17l-5-5"/>
+  </svg>
+);
+
+const DiscordIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+  </svg>
+);
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -49,7 +121,6 @@ export default function HomePage() {
   const [error, setError] = useState('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  // Register form
   const [regName, setRegName] = useState('');
   const [registering, setRegistering] = useState(false);
   const [regError, setRegError] = useState('');
@@ -62,7 +133,6 @@ export default function HomePage() {
   useEffect(() => { loadHome(); }, [user]);
 
   const loadHome = async () => {
-    // Participants go straight to their dashboard, not the home page
     if (user?.role === 'participant') {
       try {
         const hacks = await api.getHackathons();
@@ -81,17 +151,14 @@ export default function HomePage() {
       const latest = hacks[0];
 
       if (user) {
-        // Check if user has an accepted registration — use full dashboard endpoint
         const regs = await api.getMyRegistrations();
         const mine = (regs.registrations || []).find((r: any) => r.hackathon_id === latest.id);
 
         if (mine && (mine.status === 'accepted' || mine.status === 'checked_in')) {
-          // Load full dashboard data
           const dash = await api.getHackerDashboard(latest.id);
           setHackathon(dash.hackathon);
           setRegistration(dash.registration);
         } else {
-          // Just load hackathon info + registration
           const hk = await api.getHackathon(latest.id);
           setHackathon(hk);
           if (mine) setRegistration(mine);
@@ -116,63 +183,199 @@ export default function HomePage() {
   };
 
   const copyToClipboard = async (text: string, field: string) => {
-    try { await navigator.clipboard.writeText(text); setCopiedField(field); setTimeout(() => setCopiedField(null), 2000); } catch {}
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {}
   };
 
-  if (loading) return <p style={{ color: TEXT_MUTED, textAlign: 'center', padding: SPACE.xl }}>Loading...</p>;
+  if (loading) return (
+    <div style={{
+      minHeight: '60vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '24px',
+    }}>
+      <div style={{
+        width: '48px',
+        height: '48px',
+        border: '3px solid var(--border-default)',
+        borderTop: '3px solid var(--accent-primary)',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite',
+      }} />
+      <p style={{ color: 'var(--text-tertiary)', fontSize: '14px', margin: 0 }}>Loading...</p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
 
-    // Not logged in - minimal hero
+  // Not logged in - Hero landing
   if (!user) {
     return (
-      <div style={{ maxWidth: 640, padding: isMobile ? '40px 24px' : '80px 24px' }}>
-        <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, color: '#666', marginBottom: 16 }}>
-          Feb 15-17, 2026 - Toronto
-        </div>
-        <h1 style={{ fontSize: isMobile ? 32 : 42, fontWeight: 600, lineHeight: 1.1, letterSpacing: '-0.02em', marginBottom: 20, color: '#fff' }}>
-          Build something worth showing off.
-        </h1>
-        <p style={{ fontSize: 17, color: '#999', lineHeight: 1.6, marginBottom: 32 }}>
-          36 hours, 800+ hackers, real prizes. No pitch decks required.
-        </p>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Link to="/auth" style={{
-            padding: '12px 24px',
-            background: '#fff',
-            color: '#000',
-            fontSize: 14,
-            fontWeight: 500,
-            textDecoration: 'none',
-            borderRadius: 4,
+      <div style={{
+        maxWidth: 1200,
+        margin: '0 auto',
+        padding: isMobile ? '40px 16px' : '80px 24px',
+      }}>
+        {/* Hero section */}
+        <div style={{
+          textAlign: 'center',
+          marginBottom: isMobile ? 60 : 100,
+        }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 16px',
+            background: 'var(--accent-subtle)',
+            border: '1px solid rgba(139, 92, 246, 0.2)',
+            borderRadius: 100,
+            marginBottom: 32,
           }}>
-            Get Ticket
-          </Link>
-          <Link to="/tracks" style={{ color: '#66b3ff', fontSize: 14, textDecoration: 'none' }}>
-            View tracks -&gt;
-          </Link>
+            <span style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: 'var(--accent-primary)',
+              animation: 'pulse 2s ease-in-out infinite',
+            }} />
+            <span style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: 'var(--accent-primary)',
+            }}>
+              Feb 15-17, 2026
+            </span>
+          </div>
+
+          <h1 style={{
+            fontSize: isMobile ? 40 : 64,
+            fontWeight: 700,
+            lineHeight: 1.1,
+            letterSpacing: '-0.03em',
+            marginBottom: 24,
+            color: 'var(--text-primary)',
+            background: 'linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}>
+            Build something<br />worth showing off
+          </h1>
+
+          <p style={{
+            fontSize: isMobile ? 17 : 20,
+            color: 'var(--text-secondary)',
+            lineHeight: 1.6,
+            marginBottom: 40,
+            maxWidth: 560,
+            margin: '0 auto 40px',
+          }}>
+            36 hours, 800+ hackers, real prizes. No pitch decks required.
+          </p>
+
+          <div style={{
+            display: 'flex',
+            gap: 16,
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+          }}>
+            <Link to="/auth" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '14px 28px',
+              background: 'var(--accent-primary)',
+              color: 'white',
+              fontSize: 15,
+              fontWeight: 500,
+              textDecoration: 'none',
+              borderRadius: 10,
+              transition: 'all 150ms ease',
+              boxShadow: '0 4px 20px rgba(139, 92, 246, 0.3)',
+            }}>
+              Get Ticket
+              <ArrowRightIcon />
+            </Link>
+            <Link to="/tracks" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '14px 24px',
+              background: 'transparent',
+              color: 'var(--text-secondary)',
+              fontSize: 15,
+              fontWeight: 500,
+              textDecoration: 'none',
+              borderRadius: 10,
+              border: '1px solid var(--border-default)',
+              transition: 'all 150ms ease',
+            }}>
+              View tracks
+            </Link>
+          </div>
         </div>
+
+        {/* Stats grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-          gap: 32,
-          marginTop: 64,
-          paddingTop: 32,
-          borderTop: '1px solid #333'
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
+          gap: 16,
         }}>
-          <div>
-            <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, color: '#666', marginBottom: 8 }}>ATTENDEES</div>
-            <div style={{ fontSize: 32, fontWeight: 600, color: '#fff' }}>800+</div>
-            <div style={{ fontSize: 14, color: '#666' }}>University hackers</div>
-          </div>
-          <div>
-            <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, color: '#666', marginBottom: 8 }}>DURATION</div>
-            <div style={{ fontSize: 32, fontWeight: 600, color: '#fff' }}>36h</div>
-            <div style={{ fontSize: 14, color: '#666' }}>Non-stop building</div>
-          </div>
-          <div>
-            <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, color: '#666', marginBottom: 8 }}>PRIZES</div>
-            <div style={{ fontSize: 32, fontWeight: 600, color: '#fff' }}>$50K</div>
-            <div style={{ fontSize: 14, color: '#666' }}>Cash + internships</div>
-          </div>
+          {[
+            { icon: <UsersIcon />, value: '800+', label: 'Hackers', sublabel: 'University students & developers' },
+            { icon: <ClockIcon />, value: '36h', label: 'Duration', sublabel: 'Non-stop building & learning' },
+            { icon: <TrophyIcon />, value: '$50K', label: 'Prizes', sublabel: 'Cash, internships & swag' },
+            { icon: <MapPinIcon />, value: 'Bakersfield', label: 'Location', sublabel: 'Downtown venue' },
+          ].map((stat, i) => (
+            <div key={i} style={{
+              padding: 24,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 12,
+              transition: 'all 150ms ease',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: 'var(--accent-subtle)',
+                color: 'var(--accent-primary)',
+                marginBottom: 16,
+              }}>
+                {stat.icon}
+              </div>
+              <div style={{
+                fontSize: 32,
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+                marginBottom: 4,
+                letterSpacing: '-0.02em',
+              }}>
+                {stat.value}
+              </div>
+              <div style={{
+                fontSize: 14,
+                fontWeight: 500,
+                color: 'var(--text-secondary)',
+                marginBottom: 2,
+              }}>
+                {stat.label}
+              </div>
+              <div style={{
+                fontSize: 12,
+                color: 'var(--text-muted)',
+              }}>
+                {stat.sublabel}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -182,108 +385,341 @@ export default function HomePage() {
   if (!hackathon) {
     const isOrganizer = user.role === 'organizer';
     return (
-      <div style={{ maxWidth: 640, padding: isMobile ? '40px 24px' : '80px 24px' }}>
-        <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 12, color: '#666', marginBottom: 16 }}>
-          Hack the Valley
+      <div style={{
+        maxWidth: 640,
+        margin: '0 auto',
+        padding: isMobile ? '60px 16px' : '100px 24px',
+        textAlign: 'center',
+      }}>
+        <div style={{
+          width: 80,
+          height: 80,
+          borderRadius: 20,
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-default)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 24px',
+          fontSize: 40,
+        }}>
+          📅
         </div>
-        <h1 style={{ fontSize: isMobile ? 28 : 32, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.02em', marginBottom: 16, color: '#fff' }}>
-          Welcome
+        <h1 style={{
+          fontSize: 28,
+          fontWeight: 600,
+          color: 'var(--text-primary)',
+          marginBottom: 12,
+        }}>
+          No Active Events
         </h1>
-        <p style={{ fontSize: 16, color: '#999', lineHeight: 1.6, marginBottom: 32 }}>
-          {isOrganizer ? 'Set up your first hackathon event.' : 'No active events right now.'}
+        <p style={{
+          fontSize: 16,
+          color: 'var(--text-secondary)',
+          marginBottom: 32,
+        }}>
+          {isOrganizer ? 'Set up your first hackathon event to get started.' : 'Check back later for upcoming hackathons.'}
         </p>
         {isOrganizer && (
           <Link to="/hackathons" style={{
-            display: 'inline-block',
-            padding: '12px 24px',
-            background: '#fff',
-            color: '#000',
-            fontSize: 14,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '14px 28px',
+            background: 'var(--accent-primary)',
+            color: 'white',
+            fontSize: 15,
             fontWeight: 500,
             textDecoration: 'none',
-            borderRadius: 4,
+            borderRadius: 10,
+            boxShadow: '0 4px 20px rgba(139, 92, 246, 0.3)',
           }}>
             Create Event
+            <ArrowRightIcon />
           </Link>
         )}
       </div>
     );
   }
 
-
   const isOrganizer = user.role === 'organizer';
   const isAccepted = registration && (registration.status === 'accepted' || registration.status === 'checked_in');
   const scanUrl = registration?.qr_token ? `${window.location.origin}/api/checkin/scan?token=${registration.qr_token}` : '';
 
-  // ===================================================================
-  // ACCEPTED / CHECKED_IN — Full Dashboard
-  // ===================================================================
+  // Accepted / Checked-in Dashboard
   if (isAccepted) {
-    const now = Date.now();
-
     return (
-      <div style={{ padding: isMobile ? SPACE.md : SPACE.xl, maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: SPACE.lg, flexWrap: 'wrap', gap: SPACE.md }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: 32,
+          flexWrap: 'wrap',
+          gap: 16,
+        }}>
           <div>
-            <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: SPACE.xs, color: TEXT_WHITE, letterSpacing: '-0.02em' }}>{hackathon.name}</h1>
-            <p style={{ color: TEXT_MUTED, fontSize: 14, margin: 0 }}>Hacker Dashboard</p>
-          </div>
-          {hackathon.discord_invite_url && (
-            <a href={hackathon.discord_invite_url} target="_blank" rel="noopener noreferrer" title="Join Discord"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                background: 'rgba(88,101,242,0.15)', color: '#5865F2', borderRadius: RADIUS.md,
-                padding: '8px 14px', textDecoration: 'none', fontSize: 13, fontWeight: 600,
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              marginBottom: 8,
+            }}>
+              <h1 style={{
+                fontSize: 28,
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+                letterSpacing: '-0.02em',
               }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-              Discord
+                {hackathon.name}
+              </h1>
+              <span style={{
+                padding: '4px 12px',
+                background: STATUS_COLORS[registration.status]?.bg || 'var(--bg-tertiary)',
+                color: STATUS_COLORS[registration.status]?.color || 'var(--text-secondary)',
+                border: `1px solid ${STATUS_COLORS[registration.status]?.border || 'var(--border-default)'}`,
+                borderRadius: 100,
+                fontSize: 12,
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}>
+                {registration.status === 'checked_in' ? 'Checked In' : 'Accepted'}
+              </span>
+            </div>
+            <p style={{
+              fontSize: 15,
+              color: 'var(--text-secondary)',
+              margin: 0,
+            }}>
+              Hacker Dashboard
+            </p>
+          </div>
+
+          {hackathon.discord_invite_url && (
+            <a
+              href={hackathon.discord_invite_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 18px',
+                background: 'rgba(88, 101, 242, 0.1)',
+                border: '1px solid rgba(88, 101, 242, 0.2)',
+                borderRadius: 10,
+                color: '#5865F2',
+                fontSize: 14,
+                fontWeight: 500,
+                textDecoration: 'none',
+                transition: 'all 150ms ease',
+              }}
+            >
+              <DiscordIcon />
+              Join Discord
             </a>
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 340px', gap: SPACE.lg, alignItems: 'start' }}>
+        {/* Main grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 380px',
+          gap: 24,
+          alignItems: 'start',
+        }}>
           {/* Left column */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
-
-            {/* QR Hero Card */}
-            <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg, padding: SPACE.lg, textAlign: 'center' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: SPACE.md }}>
-                <QRCodeDisplay token={scanUrl} size={isMobile ? 200 : 240} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {/* QR Code Card */}
+            <div style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 12,
+              padding: 32,
+              textAlign: 'center',
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                marginBottom: 24,
+              }}>
+                <div style={{
+                  padding: 20,
+                  background: 'white',
+                  borderRadius: 12,
+                }}>
+                  <QRCodeDisplay token={scanUrl} size={isMobile ? 180 : 220} />
+                </div>
               </div>
+              <p style={{
+                fontSize: 14,
+                color: 'var(--text-secondary)',
+                marginBottom: 16,
+              }}>
+                Show this QR code at check-in and meal times
+              </p>
               <WalletButtons />
               {registration.checked_in_at && (
-                <div style={{ marginTop: SPACE.md, display: 'inline-block', padding: '4px 14px', borderRadius: RADIUS.full, background: SUCCESS_BG10, color: SUCCESS, fontSize: 13, fontWeight: 600 }}>
-                  Checked in {new Date(registration.checked_in_at).toLocaleString()}
+                <div style={{
+                  marginTop: 20,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 16px',
+                  borderRadius: 100,
+                  background: 'var(--success-subtle)',
+                  color: 'var(--success)',
+                  fontSize: 13,
+                  fontWeight: 500,
+                }}>
+                  <CheckIcon />
+                  Checked in {new Date(registration.checked_in_at).toLocaleDateString()}
                 </div>
               )}
             </div>
 
             {/* WiFi Card */}
             {hackathon.wifi_ssid && (
-              <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg, padding: SPACE.lg }}>
-                <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: SPACE.sm, color: TEXT_WHITE }}>WiFi</h3>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: INPUT_BG, borderRadius: RADIUS.md, marginBottom: SPACE.sm }}>
-                  <div>
-                    <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>Network</div>
-                    <div style={{ fontSize: 16, fontWeight: 600 }}>{hackathon.wifi_ssid}</div>
+              <div style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 12,
+                padding: 24,
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  marginBottom: 20,
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: 'var(--bg-tertiary)',
+                    color: 'var(--text-secondary)',
+                  }}>
+                    <WifiIcon />
                   </div>
-                  <button onClick={() => copyToClipboard(hackathon.wifi_ssid!, 'ssid')}
-                    style={{ background: 'none', border: `1px solid ${INPUT_BORDER}`, borderRadius: RADIUS.sm, color: copiedField === 'ssid' ? SUCCESS : TEXT_MUTED, cursor: 'pointer', padding: '4px 10px', fontSize: 12 }}>
-                    {copiedField === 'ssid' ? 'Copied' : 'Copy'}
-                  </button>
+                  <h3 style={{
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: 'var(--text-primary)',
+                    margin: 0,
+                  }}>
+                    WiFi Access
+                  </h3>
                 </div>
-                {hackathon.wifi_password && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: INPUT_BG, borderRadius: RADIUS.md }}>
+
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '14px 16px',
+                    background: 'var(--bg-tertiary)',
+                    borderRadius: 10,
+                    border: '1px solid var(--border-default)',
+                  }}>
                     <div>
-                      <div style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 2 }}>Password</div>
-                      <div style={{ fontSize: 16, fontWeight: 600 }}>{hackathon.wifi_password}</div>
+                      <div style={{
+                        fontSize: 11,
+                        color: 'var(--text-muted)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        marginBottom: 4,
+                      }}>
+                        Network
+                      </div>
+                      <div style={{
+                        fontSize: 16,
+                        fontWeight: 500,
+                        color: 'var(--text-primary)',
+                      }}>
+                        {hackathon.wifi_ssid}
+                      </div>
                     </div>
-                    <button onClick={() => copyToClipboard(hackathon.wifi_password!, 'password')}
-                      style={{ background: 'none', border: `1px solid ${INPUT_BORDER}`, borderRadius: RADIUS.sm, color: copiedField === 'password' ? SUCCESS : TEXT_MUTED, cursor: 'pointer', padding: '4px 10px', fontSize: 12 }}>
-                      {copiedField === 'password' ? 'Copied' : 'Copy'}
+                    <button
+                      onClick={() => copyToClipboard(hackathon.wifi_ssid!, 'ssid')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '8px 12px',
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-default)',
+                        borderRadius: 8,
+                        color: copiedField === 'ssid' ? 'var(--success)' : 'var(--text-secondary)',
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        transition: 'all 150ms ease',
+                      }}
+                    >
+                      {copiedField === 'ssid' ? <CheckIcon /> : <CopyIcon />}
+                      {copiedField === 'ssid' ? 'Copied' : 'Copy'}
                     </button>
                   </div>
-                )}
+
+                  {hackathon.wifi_password && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '14px 16px',
+                      background: 'var(--bg-tertiary)',
+                      borderRadius: 10,
+                      border: '1px solid var(--border-default)',
+                    }}>
+                      <div>
+                        <div style={{
+                          fontSize: 11,
+                          color: 'var(--text-muted)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          marginBottom: 4,
+                        }}>
+                          Password
+                        </div>
+                        <div style={{
+                          fontSize: 16,
+                          fontWeight: 500,
+                          color: 'var(--text-primary)',
+                          fontFamily: 'var(--font-mono)',
+                        }}>
+                          {hackathon.wifi_password}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(hackathon.wifi_password!, 'password')}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '8px 12px',
+                          background: 'var(--bg-elevated)',
+                          border: '1px solid var(--border-default)',
+                          borderRadius: 8,
+                          color: copiedField === 'password' ? 'var(--success)' : 'var(--text-secondary)',
+                          fontSize: 13,
+                          cursor: 'pointer',
+                          transition: 'all 150ms ease',
+                        }}
+                      >
+                        {copiedField === 'password' ? <CheckIcon /> : <CopyIcon />}
+                        {copiedField === 'password' ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -291,19 +727,73 @@ export default function HomePage() {
             <ScheduleGrid events={hackathon.schedule || []} />
 
             {/* Scan History */}
-            <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg, padding: SPACE.lg }}>
-              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: SPACE.sm, color: TEXT_WHITE }}>
+            <div style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 12,
+              padding: 24,
+            }}>
+              <h3 style={{
+                fontSize: 16,
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+                marginBottom: 16,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+              }}>
                 Scan History
-                {registration.scan_count ? <Badge color={PRIMARY} bgColor={PRIMARY_BG20} style={{ marginLeft: SPACE.sm }}>{registration.scan_count} scan{registration.scan_count !== 1 ? 's' : ''}</Badge> : null}
+                {registration.scan_count ? (
+                  <span style={{
+                    padding: '3px 10px',
+                    background: 'var(--accent-subtle)',
+                    color: 'var(--accent-primary)',
+                    borderRadius: 100,
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}>
+                    {registration.scan_count}
+                  </span>
+                ) : null}
               </h3>
               {(!registration.scans || registration.scans.length === 0) ? (
-                <p style={{ color: TEXT_MUTED, fontSize: 14 }}>No scans yet.</p>
+                <p style={{ color: 'var(--text-tertiary)', fontSize: 14, margin: 0 }}>
+                  No scans yet. Visit check-in points to get scanned.
+                </p>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {registration.scans.map(scan => (
-                    <div key={scan.id} style={{ display: 'flex', alignItems: 'center', gap: SPACE.md, padding: '8px 12px', background: INPUT_BG, borderRadius: RADIUS.md }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: scan.scan_type === 'checkin' ? SUCCESS : scan.scan_type === 'meal' ? WARNING : PRIMARY, textTransform: 'capitalize' }}>{scan.scan_type}</span>
-                      <span style={{ fontSize: 12, color: TEXT_MUTED, marginLeft: 'auto' }}>{new Date(scan.scanned_at).toLocaleString()}</span>
+                    <div key={scan.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 16,
+                      padding: '12px 16px',
+                      background: 'var(--bg-tertiary)',
+                      borderRadius: 10,
+                      border: '1px solid var(--border-default)',
+                    }}>
+                      <span style={{
+                        padding: '4px 12px',
+                        borderRadius: 100,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        textTransform: 'capitalize',
+                        background: scan.scan_type === 'checkin' ? 'var(--success-subtle)' :
+                                   scan.scan_type === 'meal' ? 'var(--warning-subtle)' :
+                                   'var(--accent-subtle)',
+                        color: scan.scan_type === 'checkin' ? 'var(--success)' :
+                              scan.scan_type === 'meal' ? 'var(--warning)' :
+                              'var(--accent-primary)',
+                      }}>
+                        {SCAN_LABELS[scan.scan_type] || scan.scan_type}
+                      </span>
+                      <span style={{
+                        fontSize: 13,
+                        color: 'var(--text-muted)',
+                        marginLeft: 'auto',
+                      }}>
+                        {new Date(scan.scanned_at).toLocaleString()}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -311,32 +801,103 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right column: Countdown Timer */}
-          <div style={{ position: isMobile ? 'static' : 'sticky', top: SPACE.lg }}>
-            <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg, padding: SPACE.lg, textAlign: 'center' }}>
-              <div style={{ fontSize: 13, color: TEXT_MUTED, marginBottom: SPACE.md, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
+          {/* Right column: Countdown */}
+          <div style={{
+            position: isMobile ? 'static' : 'sticky',
+            top: 80,
+          }}>
+            <div style={{
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 12,
+              padding: 28,
+              textAlign: 'center',
+            }}>
+              <div style={{
+                fontSize: 12,
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: 'var(--text-muted)',
+                marginBottom: 20,
+              }}>
                 {countdown.isExpired ? 'Event Ended' : 'Time Remaining'}
               </div>
+
               {countdown.isExpired ? (
-                <div style={{ fontSize: 24, fontWeight: 700, color: TEXT_SECONDARY }}>Finished</div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: SPACE.sm, marginBottom: SPACE.md }}>
-                  {[{ label: 'Days', value: countdown.days }, { label: 'Hours', value: countdown.hours }, { label: 'Min', value: countdown.minutes }, { label: 'Sec', value: countdown.seconds }].map(unit => (
-                    <div key={unit.label}>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: isMobile ? 28 : 36, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: PRIMARY, lineHeight: 1.1 }}>
-                        {String(unit.value).padStart(2, '0')}
-                      </div>
-                      <div style={{ fontSize: 10, color: TEXT_MUTED, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 4 }}>{unit.label}</div>
-                    </div>
-                  ))}
+                <div style={{
+                  fontSize: 32,
+                  fontWeight: 700,
+                  color: 'var(--text-secondary)',
+                }}>
+                  Finished
                 </div>
+              ) : (
+                <>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: 12,
+                    marginBottom: 24,
+                  }}>
+                    {[
+                      { label: 'Days', value: countdown.days },
+                      { label: 'Hours', value: countdown.hours },
+                      { label: 'Min', value: countdown.minutes },
+                      { label: 'Sec', value: countdown.seconds },
+                    ].map(unit => (
+                      <div key={unit.label}>
+                        <div style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: isMobile ? 28 : 36,
+                          fontWeight: 700,
+                          fontVariantNumeric: 'tabular-nums',
+                          color: 'var(--accent-primary)',
+                          lineHeight: 1.1,
+                        }}>
+                          {String(unit.value).padStart(2, '0')}
+                        </div>
+                        <div style={{
+                          fontSize: 10,
+                          color: 'var(--text-muted)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.1em',
+                          marginTop: 6,
+                        }}>
+                          {unit.label}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{
+                    height: 6,
+                    background: 'var(--bg-tertiary)',
+                    borderRadius: 3,
+                    overflow: 'hidden',
+                    marginBottom: 12,
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${countdown.elapsedPercent}%`,
+                      background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-secondary))',
+                      borderRadius: 3,
+                      transition: 'width 1s linear',
+                    }} />
+                  </div>
+
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: 11,
+                    color: 'var(--text-muted)',
+                  }}>
+                    <span>Start</span>
+                    <span>{countdown.elapsedPercent}%</span>
+                    <span>End</span>
+                  </div>
+                </>
               )}
-              <div style={{ height: 4, background: INPUT_BG, borderRadius: 2, overflow: 'hidden', marginTop: SPACE.sm }}>
-                <div style={{ height: '100%', width: `${countdown.elapsedPercent}%`, background: `linear-gradient(90deg, ${PRIMARY}, ${CYAN})`, borderRadius: 2, transition: 'width 1s linear' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: SPACE.xs, fontSize: 10, color: TEXT_MUTED }}>
-                <span>Start</span><span>{countdown.elapsedPercent}%</span><span>End</span>
-              </div>
             </div>
           </div>
         </div>
@@ -344,37 +905,143 @@ export default function HomePage() {
     );
   }
 
-  // ===================================================================
-  // NOT REGISTERED — Application form
-  // ===================================================================
+  // NOT REGISTERED - Application form
   const startDate = new Date(hackathon.start_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const endDate = new Date(hackathon.end_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? SPACE.md : SPACE.xl }}>
-      <div style={{ textAlign: 'center', marginBottom: SPACE.xl }}>
-        <div style={{ fontSize: 13, color: CYAN, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: SPACE.sm }}>
-          {startDate} – {endDate}
+    <div style={{ maxWidth: 560, margin: '0 auto', padding: isMobile ? '20px 16px' : '40px 24px' }}>
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: 40 }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '6px 14px',
+          background: 'var(--accent-subtle)',
+          border: '1px solid rgba(139, 92, 246, 0.2)',
+          borderRadius: 100,
+          marginBottom: 20,
+        }}>
+          <CalendarIcon />
+          <span style={{
+            fontSize: 12,
+            fontWeight: 500,
+            color: 'var(--accent-primary)',
+          }}>
+            {startDate} – {endDate}
+          </span>
         </div>
-        <h1 style={{ fontSize: isMobile ? 28 : 36, fontWeight: 700, marginBottom: SPACE.xs, color: TEXT_WHITE, letterSpacing: '-0.02em' }}>{hackathon.name}</h1>
-        <p style={{ color: TEXT_SECONDARY, fontSize: 15 }}>{startDate} – {endDate}</p>
-        {hackathon.description && <p style={{ color: TEXT_MUTED, fontSize: 14, maxWidth: 450, margin: '0 auto', marginTop: SPACE.xs }}>{hackathon.description}</p>}
+
+        <h1 style={{
+          fontSize: isMobile ? 26 : 32,
+          fontWeight: 700,
+          color: 'var(--text-primary)',
+          letterSpacing: '-0.02em',
+          marginBottom: 12,
+        }}>
+          {hackathon.name}
+        </h1>
+
+        {hackathon.description && (
+          <p style={{
+            fontSize: 15,
+            color: 'var(--text-secondary)',
+            maxWidth: 480,
+            margin: '0 auto',
+          }}>
+            {hackathon.description}
+          </p>
+        )}
       </div>
 
       {/* NOT REGISTERED */}
       {!isOrganizer && !registration && (
-        <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg, padding: SPACE.xl }}>
-          <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: SPACE.xs, color: TEXT_WHITE }}>Apply to participate</h2>
-          <p style={{ color: TEXT_MUTED, fontSize: 14, marginBottom: SPACE.lg }}>Submit your application below.</p>
+        <div style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 12,
+          padding: 32,
+        }}>
+          <h2 style={{
+            fontSize: 18,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            marginBottom: 8,
+          }}>
+            Apply to participate
+          </h2>
+          <p style={{
+            color: 'var(--text-secondary)',
+            fontSize: 14,
+            marginBottom: 24,
+          }}>
+            Submit your application to join the hackathon.
+          </p>
+
           <form onSubmit={handleRegister}>
-            <div style={{ marginBottom: SPACE.md }}>
-              <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Display name (optional)</label>
-              <input value={regName} onChange={e => setRegName(e.target.value)} placeholder="Your name or team name"
-                style={{ width: '100%', padding: '12px 16px', background: INPUT_BG, border: `1px solid ${INPUT_BORDER}`, borderRadius: RADIUS.md, color: TEXT_PRIMARY, fontSize: 15, boxSizing: 'border-box', outline: 'none' }} />
+            <div style={{ marginBottom: 20 }}>
+              <label style={{
+                display: 'block',
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--text-secondary)',
+                marginBottom: 8,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}>
+                Display name (optional)
+              </label>
+              <input
+                value={regName}
+                onChange={e => setRegName(e.target.value)}
+                placeholder="Your name or team name"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 10,
+                  color: 'var(--text-primary)',
+                  fontSize: 15,
+                  outline: 'none',
+                  transition: 'all 150ms ease',
+                }}
+              />
             </div>
-            {regError && <div style={{ background: ERROR_BG20, border: `1px solid ${ERROR}40`, borderRadius: RADIUS.md, padding: '10px 14px', marginBottom: SPACE.md, color: ERROR_TEXT, fontSize: 13 }}>{regError}</div>}
-            <button type="submit" disabled={registering}
-              style={{ width: '100%', padding: '14px 20px', background: PRIMARY, border: 'none', borderRadius: RADIUS.md, color: TEXT_WHITE, fontSize: 16, fontWeight: 700, cursor: registering ? 'not-allowed' : 'pointer', opacity: registering ? 0.6 : 1 }}>
+
+            {regError && (
+              <div style={{
+                background: 'var(--error-subtle)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                borderRadius: 10,
+                padding: '12px 16px',
+                marginBottom: 20,
+                color: 'var(--error)',
+                fontSize: 14,
+              }}>
+                {regError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={registering}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                background: 'var(--accent-primary)',
+                border: 'none',
+                borderRadius: 10,
+                color: 'white',
+                fontSize: 15,
+                fontWeight: 500,
+                cursor: registering ? 'not-allowed' : 'pointer',
+                opacity: registering ? 0.7 : 1,
+                transition: 'all 150ms ease',
+                boxShadow: '0 4px 20px rgba(139, 92, 246, 0.3)',
+              }}
+            >
               {registering ? 'Submitting...' : 'Submit Application'}
             </button>
           </form>
@@ -383,34 +1050,151 @@ export default function HomePage() {
 
       {/* PENDING */}
       {registration && registration.status === 'pending' && (
-        <div style={{ background: CARD_BG, border: `2px solid ${STATUS_PENDING}40`, borderRadius: RADIUS.lg, padding: SPACE.xl, textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: SPACE.md }}>&#9993;</div>
-          <Badge color={STATUS_PENDING} style={{ marginBottom: SPACE.md }}>pending review</Badge>
-          <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: SPACE.sm, color: TEXT_WHITE }}>Application submitted</h2>
-          <p style={{ color: TEXT_PRIMARY, fontWeight: 600, marginBottom: SPACE.xs, fontSize: 16 }}>{registration.team_name || user.name}</p>
-          <p style={{ color: TEXT_MUTED, fontSize: 14, maxWidth: 360, margin: '0 auto' }}>Your application is being reviewed. You'll see your QR pass here once accepted.</p>
+        <div style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--warning-subtle)',
+          borderRadius: 12,
+          padding: 40,
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: 64,
+            height: 64,
+            borderRadius: 16,
+            background: 'var(--warning-subtle)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 20px',
+            fontSize: 28,
+          }}>
+            ✉️
+          </div>
+
+          <span style={{
+            display: 'inline-block',
+            padding: '4px 12px',
+            background: 'var(--warning-subtle)',
+            color: 'var(--warning)',
+            borderRadius: 100,
+            fontSize: 12,
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            marginBottom: 16,
+          }}>
+            Pending Review
+          </span>
+
+          <h2 style={{
+            fontSize: 20,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            marginBottom: 12,
+          }}>
+            Application submitted
+          </h2>
+
+          <p style={{
+            color: 'var(--text-secondary)',
+            fontSize: 15,
+            marginBottom: 8,
+          }}>
+            {registration.team_name || user.name}
+          </p>
+
+          <p style={{
+            color: 'var(--text-muted)',
+            fontSize: 14,
+          }}>
+            Your application is being reviewed. You'll see your QR pass here once accepted.
+          </p>
         </div>
       )}
 
       {/* REJECTED */}
       {registration && registration.status === 'rejected' && (
-        <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg, padding: SPACE.xl, textAlign: 'center' }}>
-          <Badge color={STATUS_REJECTED} style={{ marginBottom: SPACE.md }}>not accepted</Badge>
-          <p style={{ color: TEXT_SECONDARY, fontSize: 14 }}>Your application was not accepted for this event.</p>
+        <div style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--error-subtle)',
+          borderRadius: 12,
+          padding: 40,
+          textAlign: 'center',
+        }}>
+          <span style={{
+            display: 'inline-block',
+            padding: '4px 12px',
+            background: 'var(--error-subtle)',
+            color: 'var(--error)',
+            borderRadius: 100,
+            fontSize: 12,
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            marginBottom: 16,
+          }}>
+            Not Accepted
+          </span>
+
+          <p style={{
+            color: 'var(--text-secondary)',
+            fontSize: 15,
+          }}>
+            Your application was not accepted for this event.
+          </p>
         </div>
       )}
 
       {/* ORGANIZER TOOLS */}
       {isOrganizer && (
-        <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg, padding: SPACE.lg, marginTop: registration ? SPACE.lg : 0 }}>
-          <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: SPACE.md, color: TEXT_WHITE }}>Organizer Tools</h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.sm }}>
-            <button onClick={() => navigate(`/hackathons/${hackathon.id}/registrations`)} style={{ padding: '8px 18px', background: PRIMARY, border: 'none', borderRadius: RADIUS.md, color: TEXT_WHITE, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Manage Registrations</button>
-            <button onClick={() => navigate(`/hackathons/${hackathon.id}/settings`)} style={{ padding: '8px 18px', background: 'none', border: `1px solid ${BORDER}`, borderRadius: RADIUS.md, color: TEXT_SECONDARY, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Event Settings</button>
-            <button onClick={() => navigate(`/hackathons/${hackathon.id}/judging/setup`)} style={{ padding: '8px 18px', background: 'none', border: `1px solid ${BORDER}`, borderRadius: RADIUS.md, color: TEXT_SECONDARY, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Set Up Judging</button>
-            <button onClick={() => navigate(`/hackathons/${hackathon.id}/judging/results`)} style={{ padding: '8px 18px', background: 'none', border: `1px solid ${BORDER}`, borderRadius: RADIUS.md, color: TEXT_SECONDARY, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>View Results</button>
-            <button onClick={() => navigate(`/hackathons/${hackathon.id}/judging`)} style={{ padding: '8px 18px', background: 'none', border: `1px solid ${BORDER}`, borderRadius: RADIUS.md, color: TEXT_SECONDARY, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Score Projects</button>
-            <button onClick={() => navigate('/check-in')} style={{ padding: '8px 18px', background: 'none', border: `1px solid ${BORDER}`, borderRadius: RADIUS.md, color: TEXT_SECONDARY, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Check-In Scanner</button>
+        <div style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 12,
+          padding: 24,
+          marginTop: registration ? 24 : 0,
+        }}>
+          <h3 style={{
+            fontSize: 16,
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            marginBottom: 16,
+          }}>
+            Organizer Tools
+          </h3>
+
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 10,
+          }}>
+            {[
+              { label: 'Manage Registrations', onClick: () => navigate(`/hackathons/${hackathon.id}/registrations`), primary: true },
+              { label: 'Event Settings', onClick: () => navigate(`/hackathons/${hackathon.id}/settings`) },
+              { label: 'Set Up Judging', onClick: () => navigate(`/hackathons/${hackathon.id}/judging/setup`) },
+              { label: 'View Results', onClick: () => navigate(`/hackathons/${hackathon.id}/judging/results`) },
+              { label: 'Score Projects', onClick: () => navigate(`/hackathons/${hackathon.id}/judging`) },
+              { label: 'Check-In Scanner', onClick: () => navigate('/check-in') },
+            ].map((btn, i) => (
+              <button
+                key={i}
+                onClick={btn.onClick}
+                style={{
+                  padding: '10px 18px',
+                  background: btn.primary ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+                  border: '1px solid',
+                  borderColor: btn.primary ? 'transparent' : 'var(--border-default)',
+                  borderRadius: 8,
+                  color: btn.primary ? 'white' : 'var(--text-secondary)',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  transition: 'all 150ms ease',
+                }}
+              >
+                {btn.label}
+              </button>
+            ))}
           </div>
         </div>
       )}

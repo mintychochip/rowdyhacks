@@ -158,7 +158,7 @@ class JudgingSessionStatus(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    id = Column(String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
     email = Column(String(320), unique=True, nullable=False, index=True)
     name = Column(String(200), nullable=False)
     role = Column(SAEnum(UserRole), nullable=False, default=UserRole.participant)
@@ -192,7 +192,7 @@ class OAuthAccount(Base):
     provider = Column(String(20), nullable=False)
     provider_user_id = Column(String(255), nullable=False)
     provider_email = Column(String(320), nullable=True)
-    user_id = Column(Guid, ForeignKey("users.id"), nullable=False)
+    user_id = Column(String(64), ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     __table_args__ = (Index("ix_oauth_accounts_provider_user", "provider", "provider_user_id", unique=True),)
@@ -214,7 +214,7 @@ class Hackathon(Base):
     max_participants = Column(Integer, nullable=True)
     current_participants = Column(Integer, nullable=False, default=0)
     waitlist_enabled = Column(Boolean, nullable=False, default=False)
-    organizer_id = Column(Guid, ForeignKey("users.id"), nullable=False)
+    organizer_id = Column(String(64), ForeignKey("users.id"), nullable=False)
     description = Column(Text, nullable=True)
     schedule = Column(JsonType, nullable=True)
     venue_address = Column(Text, nullable=True)
@@ -272,9 +272,9 @@ class HackathonOrganizer(Base):
     )
 
     hackathon_id = Column(Guid, ForeignKey("hackathons.id", ondelete="CASCADE"), primary_key=True)
-    user_id = Column(Guid, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     added_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    added_by = Column(Guid, ForeignKey("users.id"), nullable=True)
+    added_by = Column(String(64), ForeignKey("users.id"), nullable=True)
 
     hackathon = relationship("Hackathon", back_populates="co_organizers")
     user = relationship("User", foreign_keys=[user_id], back_populates="co_organized_hackathons")
@@ -295,7 +295,7 @@ class Submission(Base):
     claimed_tech = Column(ArrayOfStrings, nullable=True)
     team_members = Column(JsonType, nullable=True)
     hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=True, index=True)
-    submitted_by = Column(Guid, ForeignKey("users.id"), nullable=True)
+    submitted_by = Column(String(64), ForeignKey("users.id"), nullable=True)
     status = Column(SAEnum(SubmissionStatus), nullable=False, default=SubmissionStatus.pending, index=True)
     risk_score = Column(Integer, nullable=True)
     verdict = Column(SAEnum(Verdict), nullable=True)
@@ -339,7 +339,7 @@ class Registration(Base):
 
     id = Column(Guid, primary_key=True, default=uuid.uuid4)
     hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=False)
-    user_id = Column(Guid, ForeignKey("users.id"), nullable=False)
+    user_id = Column(String(64), ForeignKey("users.id"), nullable=False)
     status = Column(SAEnum(RegistrationStatus), nullable=False, default=RegistrationStatus.pending)
     team_name = Column(String(200), nullable=True)
     team_members = Column(JsonType, nullable=True)
@@ -493,7 +493,7 @@ class JudgeAssignment(Base):
 
     id = Column(Guid, primary_key=True, default=uuid.uuid4)
     session_id = Column(Guid, ForeignKey("judging_sessions.id"), nullable=False)
-    judge_id = Column(Guid, ForeignKey("users.id"), nullable=False)
+    judge_id = Column(String(64), ForeignKey("users.id"), nullable=False)
     submission_id = Column(Guid, ForeignKey("submissions.id"), nullable=False)
     opened_at = Column(DateTime(timezone=True), nullable=True)
     submitted_at = Column(DateTime(timezone=True), nullable=True)
@@ -520,7 +520,7 @@ class JudgeRating(Base):
     __tablename__ = "judge_ratings"
 
     id = Column(Guid, primary_key=True, default=uuid.uuid4)
-    judge_id = Column(Guid, ForeignKey("users.id"), nullable=False)
+    judge_id = Column(String(64), ForeignKey("users.id"), nullable=False)
     hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=False)
     rating = Column(Integer, nullable=False, default=1500)
     projects_scored = Column(Integer, nullable=False, default=0)
@@ -538,7 +538,7 @@ class Announcement(Base):
     title = Column(String(200), nullable=False)
     content = Column(Text, nullable=False)
     priority = Column(String(20), nullable=False, default="normal")  # low, normal, high, urgent
-    sent_by = Column(Guid, ForeignKey("users.id"), nullable=False)
+    sent_by = Column(String(64), ForeignKey("users.id"), nullable=False)
     sent_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
 
@@ -548,7 +548,7 @@ class ConflictOfInterest(Base):
     __tablename__ = "conflicts_of_interest"
 
     id = Column(Guid, primary_key=True, default=uuid.uuid4)
-    judge_id = Column(Guid, ForeignKey("users.id"), nullable=False)
+    judge_id = Column(String(64), ForeignKey("users.id"), nullable=False)
     hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=False)
     submission_id = Column(Guid, ForeignKey("submissions.id"), nullable=False)
     reason = Column(Text, nullable=True)
@@ -598,7 +598,7 @@ class SimilarityMatch(Base):
     status = Column(String(20), default="pending")  # pending, confirmed, dismissed
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
-    reviewed_by = Column(Guid, ForeignKey("users.id"), nullable=True)
+    reviewed_by = Column(String(64), ForeignKey("users.id"), nullable=True)
 
 
 class EmailLog(Base):
@@ -627,14 +627,14 @@ class ContentPage(Base):
     __tablename__ = "content_pages"
 
     id = Column(Guid, primary_key=True, default=uuid.uuid4)
-    slug = Column(String(100), unique=True, nullable=False, index=True)
+    slug = Column(String(100), unique=True, nullable=False)
     title = Column(String(200), nullable=False)
     content = Column(Text, nullable=False)
     tab_group = Column(String(50), nullable=False, default="resources")
     sort_order = Column(Integer, default=0, nullable=False)
     tab_group_order = Column(Integer, default=0, nullable=False)
     is_published = Column(Boolean, default=True, nullable=False)
-    created_by = Column(Guid, ForeignKey("users.id"), nullable=False)
+    created_by = Column(String(64), ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=lambda: datetime.now(UTC), nullable=True)
 

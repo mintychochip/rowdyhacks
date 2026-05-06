@@ -1,6 +1,6 @@
 # Hack the Valley
 
-Toronto's hackathon platform — registration, check-in, judging, and everything in between. Canada's largest student-run hackathon.
+Bakersfield's hackathon platform — registration, check-in, judging, and everything in between. Bakersfield's largest student-run hackathon.
 
 ## Features
 

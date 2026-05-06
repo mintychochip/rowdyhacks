@@ -14,9 +14,9 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import decode_token
 from app.cache import cache_delete_pattern, cached
 from app.checks.similarity import run_similarity
+from app.clerk_auth import require_clerk_user_with_db, require_organizer
 from app.database import get_db
 from app.models import (
     Announcement,
@@ -46,27 +46,6 @@ HK_CACHE_TTL = 300  # 5 minutes
 HK_CACHE_PFX = "hackathons"
 
 
-def _get_current_user_payload(authorization: str | None):
-    """Extract and validate the current user from Bearer token."""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authentication required")
-    token = authorization.removeprefix("Bearer ")
-    try:
-        return decode_token(token)
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-
-async def _get_current_user(db: AsyncSession, authorization: str | None) -> User:
-    """Get the current authenticated user."""
-    payload = _get_current_user_payload(authorization)
-    result = await db.execute(select(User).where(User.id == payload["sub"]))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
-
-
 async def _ensure_organizer(user: User, hackathon: Hackathon, db: AsyncSession):
     """Verify user is the organizer or a co-organizer of the hackathon."""
     # Primary organizer check
@@ -87,10 +66,12 @@ async def _ensure_organizer(user: User, hackathon: Hackathon, db: AsyncSession):
 
 @router.post("", status_code=201)
 async def create_hackathon(
-    body: HackathonCreate, authorization: str = Header(alias="Authorization"), db: AsyncSession = Depends(get_db)
+    body: HackathonCreate,
+    auth: dict = Depends(require_clerk_user_with_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a new hackathon."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
     if user.role != UserRole.organizer:
         raise HTTPException(status_code=403, detail="Only organizers can create hackathons")
 
@@ -242,10 +223,12 @@ async def get_hackathon_stats(hackathon_id: uuid.UUID, db: AsyncSession = Depend
 
 @router.get("/{hackathon_id}/swag-counts")
 async def get_swag_counts(
-    hackathon_id: uuid.UUID, authorization: str = Header(alias="Authorization"), db: AsyncSession = Depends(get_db)
+    hackathon_id: uuid.UUID,
+    auth: dict = Depends(require_clerk_user_with_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get meal and swag planning counts (organizer only)."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -308,11 +291,11 @@ async def get_hackathon_submissions(hackathon_id: uuid.UUID, db: AsyncSession = 
 async def update_hackathon(
     hackathon_id: uuid.UUID,
     body: dict,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
     """Update hackathon settings (schedule, wifi, discord, webhook, deadline, capacity)."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -373,11 +356,11 @@ async def run_hackathon_similarity(hackathon_id: uuid.UUID, db: AsyncSession = D
 async def bulk_accept_registrations(
     hackathon_id: uuid.UUID,
     registration_ids: list[uuid.UUID],
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
     """Bulk accept pending registrations."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -417,11 +400,11 @@ async def bulk_accept_registrations(
 async def bulk_reject_registrations(
     hackathon_id: uuid.UUID,
     registration_ids: list[uuid.UUID],
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
     """Bulk reject pending/waitlisted registrations."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -439,10 +422,6 @@ async def bulk_reject_registrations(
         if not reg or reg.status not in (RegistrationStatus.pending, RegistrationStatus.waitlisted):
             continue
 
-        # If was accepted/waitlisted, decrement counter
-        if reg.status == RegistrationStatus.waitlisted:
-            pass  # wasn't counted in current_participants
-
         reg.status = RegistrationStatus.rejected
         rejected_count += 1
 
@@ -454,11 +433,11 @@ async def bulk_reject_registrations(
 async def bulk_waitlist_registrations(
     hackathon_id: uuid.UUID,
     registration_ids: list[uuid.UUID],
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
     """Bulk waitlist pending registrations."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -488,10 +467,12 @@ async def bulk_waitlist_registrations(
 
 @router.get("/{hackathon_id}/registrations/export")
 async def export_registrations_csv(
-    hackathon_id: uuid.UUID, authorization: str = Header(alias="Authorization"), db: AsyncSession = Depends(get_db)
+    hackathon_id: uuid.UUID,
+    auth: dict = Depends(require_clerk_user_with_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Export all registrations to CSV (organizer only)."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -591,11 +572,11 @@ async def export_registrations_csv(
 async def create_announcement(
     hackathon_id: uuid.UUID,
     body: AnnouncementCreate,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
     """Create and send an announcement to all hackathon participants (organizer only)."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -614,17 +595,17 @@ async def create_announcement(
     await db.commit()
     await db.refresh(announcement)
 
-    # TODO: Send to Discord webhook if configured
-
     return AnnouncementResponse.model_validate(announcement)
 
 
 @router.get("/{hackathon_id}/announcements")
 async def list_announcements(
-    hackathon_id: uuid.UUID, authorization: str = Header(alias="Authorization"), db: AsyncSession = Depends(get_db)
+    hackathon_id: uuid.UUID,
+    auth: dict = Depends(require_clerk_user_with_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """List announcements for a hackathon. Organizers see all, participants see accepted ones."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
 
     # Check if user has access to this hackathon
     reg_result = await db.execute(
@@ -663,11 +644,11 @@ async def list_announcements(
 async def declare_conflict_of_interest(
     hackathon_id: uuid.UUID,
     body: ConflictOfInterestCreate,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
     """Declare a conflict of interest for a submission (judge only)."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
 
     if user.role != UserRole.judge:
         raise HTTPException(status_code=403, detail="Only judges can declare conflicts of interest")
@@ -708,10 +689,12 @@ async def declare_conflict_of_interest(
 
 @router.get("/{hackathon_id}/conflicts-of-interest")
 async def list_conflicts_of_interest(
-    hackathon_id: uuid.UUID, authorization: str = Header(alias="Authorization"), db: AsyncSession = Depends(get_db)
+    hackathon_id: uuid.UUID,
+    auth: dict = Depends(require_clerk_user_with_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """List all conflicts of interest for a hackathon (organizer only)."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
 
     hack_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hack_result.scalar_one_or_none()
@@ -730,11 +713,11 @@ async def list_conflicts_of_interest(
 async def remove_conflict_of_interest(
     hackathon_id: uuid.UUID,
     coi_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
     """Remove a conflict of interest declaration (organizer or the judge who created it)."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
 
     coi_result = await db.execute(
         select(ConflictOfInterest).where(
@@ -764,10 +747,12 @@ async def remove_conflict_of_interest(
 
 @router.get("/{hackathon_id}/organizers")
 async def list_organizers(
-    hackathon_id: uuid.UUID, authorization: str = Header(alias="Authorization"), db: AsyncSession = Depends(get_db)
+    hackathon_id: uuid.UUID,
+    auth: dict = Depends(require_clerk_user_with_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """List all organizers for a hackathon (primary + co-organizers)."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
 
     hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hackathon_result.scalar_one_or_none()
@@ -816,11 +801,11 @@ async def list_organizers(
 async def add_organizer(
     hackathon_id: uuid.UUID,
     body: dict,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
     """Add a co-organizer to the hackathon (primary organizer only)."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
 
     hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hackathon_result.scalar_one_or_none()
@@ -879,11 +864,11 @@ async def add_organizer(
 async def remove_organizer(
     hackathon_id: uuid.UUID,
     user_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
     """Remove a co-organizer (primary organizer only)."""
-    current_user = await _get_current_user(db, authorization)
+    current_user = auth["user"]
 
     hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hackathon_result.scalar_one_or_none()
@@ -922,11 +907,11 @@ DEVPOST_PROJECT_RE = re.compile(r"/software/([^/?#]+)")
 @router.post("/{hackathon_id}/import-devpost")
 async def import_devpost_submissions(
     hackathon_id: uuid.UUID,
-    authorization: str = Header(alias="Authorization"),
+    auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
     """Scrape the Devpost hackathon gallery and import project URLs for analysis."""
-    user = await _get_current_user(db, authorization)
+    user = auth["user"]
     if user.role != UserRole.organizer:
         raise HTTPException(status_code=403, detail="Only organizers can import")
 
@@ -953,7 +938,6 @@ async def import_devpost_submissions(
                 )
                 resp.raise_for_status()
             except httpx.HTTPError as e:
-                # If page 1 fails, report error. Later pages failing is fine.
                 if page == 1:
                     raise HTTPException(status_code=502, detail=f"Failed to fetch Devpost gallery: {e}")
                 break
@@ -961,7 +945,6 @@ async def import_devpost_submissions(
             soup = BeautifulSoup(resp.text, "lxml")
             page_urls: set[str] = set()
 
-            # Find all project links on the gallery page
             for link in soup.select("a[href*='/software/']"):
                 href = link.get("href", "")
                 match = DEVPOST_PROJECT_RE.search(href)
@@ -969,7 +952,6 @@ async def import_devpost_submissions(
                     full_url = f"https://devpost.com/software/{match.group(1)}"
                     page_urls.add(full_url)
 
-            # Also try gallery-item links
             for link in soup.select("[class*='gallery-item'] a, [class*='link-to-software']"):
                 href = link.get("href", "")
                 match = DEVPOST_PROJECT_RE.search(href)
@@ -978,12 +960,11 @@ async def import_devpost_submissions(
                     page_urls.add(full_url)
 
             if not page_urls:
-                break  # No more projects found
+                break
 
             found_urls.update(page_urls)
             page += 1
 
-            # Safety limit — 20 pages max
             if page > 20:
                 break
 
@@ -993,7 +974,6 @@ async def import_devpost_submissions(
             detail="No project URLs found on the gallery. Make sure the Devpost URL is a valid hackathon page.",
         )
 
-    # Create submissions for new URLs
     from app.analyzer import analyze_submission
     from app.auth import create_anonymous_token
     from app.models import Submission, SubmissionStatus
@@ -1002,7 +982,6 @@ async def import_devpost_submissions(
     skipped = 0
 
     for url in found_urls:
-        # Check if already exists for this hackathon
         existing = await db.execute(
             select(Submission).where(
                 Submission.devpost_url == url,
@@ -1023,7 +1002,6 @@ async def import_devpost_submissions(
         await db.commit()
         await db.refresh(sub)
 
-        # Queue analysis
         asyncio.create_task(analyze_submission(sub.id))
         imported += 1
 

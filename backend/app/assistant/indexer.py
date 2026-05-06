@@ -232,7 +232,7 @@ class DocumentIndexer:
                 break
 
             # Create new
-                doc = AssistantDocument(
+            doc = AssistantDocument(
                     id=uuid4(),
                     hackathon_id=hackathon.id,
                     qdrant_id=qdrant_point_id,

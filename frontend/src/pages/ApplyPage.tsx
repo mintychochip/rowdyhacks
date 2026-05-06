@@ -11,9 +11,8 @@ import WizardShortAnswers from '../components/wizard/WizardShortAnswers';
 import type { AboutYouData, SkillsLinksData, LogisticsData, ShortAnswersData } from '../components/wizard/types';
 import WizardReview from '../components/wizard/WizardReview';
 import {
-  PRIMARY, GOLD,
-  TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_WHITE,
-  CARD_BG, BORDER, TYPO, RADIUS,
+  PRIMARY, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED,
+  CARD_BG, BORDER, TYPO, RADIUS, SHADOW, TIMING,
 } from '../theme';
 
 const TOTAL_STEPS = 5;
@@ -93,22 +92,31 @@ export default function ApplyPage() {
 
   if (result) {
     return (
-      <div style={{ maxWidth: 500, margin: '0 auto', padding: isMobile ? 20 : 60, textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 20 }}>&#9993;</div>
-        <h1 style={{ ...TYPO.h1, marginBottom: 12 }}>Application Submitted!</h1>
-        <p style={{ color: TEXT_SECONDARY, fontSize: 16, marginBottom: 24 }}>
-          Your application to <strong>{hackathonName}</strong> has been received.
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: isMobile ? 20 : 80, textAlign: 'center' }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: RADIUS.full,
+          background: 'rgba(94, 106, 210, 0.12)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 24px',
+        }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={PRIMARY} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+        <h1 style={{ ...TYPO.h2, marginBottom: 8, color: TEXT_PRIMARY }}>Application submitted</h1>
+        <p style={{ color: TEXT_MUTED, fontSize: 15, marginBottom: 8, lineHeight: 1.6 }}>
+          Your application to <strong style={{ color: TEXT_SECONDARY }}>{hackathonName}</strong> has been received.
         </p>
-        <p style={{ color: TEXT_MUTED, fontSize: 14, marginBottom: 24 }}>
-          The organizers will review it and you'll see your QR pass here when accepted.
+        <p style={{ color: TEXT_MUTED, fontSize: 14, marginBottom: 32, lineHeight: 1.5 }}>
+          You'll be notified when the organizers make a decision.
         </p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
           <button onClick={() => navigate('/')}
-            style={{ padding: '12px 24px', background: PRIMARY, border: 'none', borderRadius: RADIUS.md, color: TEXT_WHITE, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ padding: '10px 22px', background: PRIMARY, border: 'none', borderRadius: RADIUS.md, color: '#fff', fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: `background ${TIMING.fast}` }}>
             Go to Dashboard
           </button>
           <button onClick={() => navigate('/registrations')}
-            style={{ padding: '12px 24px', background: 'none', border: `1px solid ${BORDER}`, borderRadius: RADIUS.md, color: TEXT_SECONDARY, fontSize: 15, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ padding: '10px 22px', background: 'none', border: `1px solid ${BORDER}`, borderRadius: RADIUS.md, color: TEXT_SECONDARY, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: `border-color ${TIMING.fast}` }}>
             View Application
           </button>
         </div>
@@ -147,39 +155,63 @@ export default function ApplyPage() {
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', padding: isMobile ? 20 : 60 }}>
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div style={{ fontSize: 13, color: GOLD, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
-          Toronto · April 29–30, 2026
+      <div style={{ textAlign: 'center', marginBottom: 36 }}>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          fontSize: 11, color: TEXT_MUTED, fontWeight: 500,
+          textTransform: 'uppercase', letterSpacing: '0.08em',
+          marginBottom: 10, background: 'rgba(255,255,255,0.03)',
+          padding: '4px 10px', borderRadius: RADIUS.full,
+          border: `1px solid ${BORDER}`,
+        }}>
+          <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+          Bakersfield · April 29–30, 2026
         </div>
-        <h1 style={{ ...TYPO.h1, marginBottom: 8 }}>{hackathonName}</h1>
-        <p style={{ color: TEXT_MUTED, fontSize: 15 }}>Submit your application to participate</p>
+        <h1 style={{ ...TYPO.h2, marginBottom: 6, letterSpacing: '-0.03em' }}>{hackathonName}</h1>
+        <p style={{ color: TEXT_MUTED, fontSize: 14 }}>Submit your application to participate</p>
       </div>
 
       {/* Progress Bar */}
       <WizardProgress currentStep={step} />
 
-      <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg, padding: 32 }}>
+      <div style={{
+        background: CARD_BG, border: `1px solid ${BORDER}`,
+        borderRadius: RADIUS.xl, padding: isMobile ? 24 : 36,
+        boxShadow: SHADOW.card,
+      }}>
         {/* Step Content */}
         {renderStep()}
 
         {/* Error */}
         {error && (
-          <div style={{ background: '#ff444420', border: '1px solid #ff4444', borderRadius: 8, padding: '10px 14px', marginTop: 16, color: '#ff6b6b', fontSize: 14 }}>{error}</div>
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)',
+            borderRadius: RADIUS.md, padding: '10px 14px', marginTop: 20,
+            color: '#ef4444', fontSize: 13, lineHeight: 1.5,
+          }}>{error}</div>
         )}
 
         {/* Navigation buttons (not shown on review step since it has its own submit) */}
         {step < TOTAL_STEPS && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, gap: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 32, gap: 12 }}>
             {canGoBack ? (
               <button type="button" onClick={() => setStep(s => s - 1)}
-                style={{ padding: '10px 20px', background: 'none', border: `1px solid ${BORDER}`, borderRadius: RADIUS.md, color: TEXT_SECONDARY, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                style={{
+                  padding: '9px 20px', background: 'none', border: `1px solid ${BORDER}`,
+                  borderRadius: RADIUS.md, color: TEXT_SECONDARY, fontSize: 14, fontWeight: 500,
+                  cursor: 'pointer', transition: `all ${TIMING.fast}`,
+                }}>
                 Back
               </button>
             ) : <div />}
             {canGoNext && (
               <button type="button" onClick={() => setStep(s => s + 1)}
-                style={{ padding: '10px 28px', background: PRIMARY, border: 'none', borderRadius: RADIUS.md, color: TEXT_WHITE, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                Next
+                style={{
+                  padding: '9px 28px', background: PRIMARY, border: 'none',
+                  borderRadius: RADIUS.md, color: '#fff', fontSize: 14, fontWeight: 500,
+                  cursor: 'pointer', transition: `opacity ${TIMING.fast}`,
+                }}>
+                Continue
               </button>
             )}
           </div>
@@ -188,7 +220,11 @@ export default function ApplyPage() {
         {/* Back button for review step */}
         {step === TOTAL_STEPS && (
           <button type="button" onClick={() => setStep(4)}
-            style={{ marginTop: 16, padding: '10px 20px', background: 'none', border: `1px solid ${BORDER}`, borderRadius: RADIUS.md, color: TEXT_SECONDARY, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+            style={{
+              marginTop: 16, padding: '9px 20px', background: 'none',
+              border: `1px solid ${BORDER}`, borderRadius: RADIUS.md,
+              color: TEXT_SECONDARY, fontSize: 14, fontWeight: 500, cursor: 'pointer',
+            }}>
             Back
           </button>
         )}

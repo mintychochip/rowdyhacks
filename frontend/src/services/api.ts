@@ -1,34 +1,61 @@
 const BASE = import.meta.env.VITE_API_URL || '/api';
 
+// Token getter function - set by AuthContext to get fresh Clerk tokens
+let getTokenFunc: (() => Promise<string | null>) | null = null;
+
+export function setTokenGetter(fn: () => Promise<string | null>) {
+  getTokenFunc = fn;
+}
+
+async function getAuthToken(): Promise<string | null> {
+  if (getTokenFunc) {
+    try {
+      const token = await getTokenFunc();
+      if (token) return token;
+    } catch (e) {
+      console.error('Failed to get fresh token:', e);
+    }
+  }
+  return null;
+}
+
 export async function request(path: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('auth_token');
+  const token = await getAuthToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...((options.headers as Record<string, string>) || {}),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}${path}`, { ...options, headers });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    // Handle FastAPI validation errors (array) or standard {detail} errors
-    if (Array.isArray(err)) {
-      // Validation errors: [{loc: [...], msg: "...", type: "..."}]
-      const messages = err.map((e: any) => e.msg || String(e)).join(', ');
-      throw new Error(messages || 'Validation failed');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      // Handle FastAPI validation errors (array) or standard {detail} errors
+      if (Array.isArray(err)) {
+        // Validation errors: [{loc: [...], msg: "...", type: "..."}]
+        const messages = err.map((e: any) => e.msg || String(e)).join(', ');
+        throw new Error(messages || 'Validation failed');
+      }
+      throw new Error(err.detail || err.message || JSON.stringify(err) || 'Request failed');
     }
-    throw new Error(err.detail || err.message || JSON.stringify(err) || 'Request failed');
+    return res.json();
+  } catch (e) {
+    clearTimeout(timeoutId);
+    throw e;
   }
-  return res.json();
 }
 
 // Auth
-export const register = (data: { email: string; name: string; password: string }) =>
-  request('/auth/register', { method: 'POST', body: JSON.stringify(data) });
-
-export const login = (data: { email: string; password: string }) =>
-  request('/auth/login', { method: 'POST', body: JSON.stringify(data) });
-
 export const getMe = () => request('/auth/me');
 
 // Checks
@@ -289,19 +316,6 @@ export const getJudgingQueue = (hackathonId: string, judgeId: string, minJudges?
 
 export const rerunJudging = (hackathonId: string) =>
   request(`/hackathons/${hackathonId}/judging/rerun`, { method: 'POST' });
-
-// OAuth
-export const getOAuthAuthorizeUrl = (provider: string) =>
-  `${BASE}/auth/oauth/${provider}/authorize`;
-
-export const getOAuthLinkUrl = (provider: string) =>
-  `${BASE}/auth/me/oauth/link/${provider}`;
-
-export const getLinkedAccounts = () =>
-  request('/auth/me/oauth');
-
-export const unlinkProvider = (provider: string) =>
-  request(`/auth/me/oauth/${provider}`, { method: 'DELETE' });
 
 // Co-Organizers
 export const getOrganizers = (hackathonId: string) =>

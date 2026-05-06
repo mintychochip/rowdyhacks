@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import * as api from "../services/api";
+import { setTokenGetter } from "../services/api";
 
 interface User {
   id: string;
@@ -43,21 +44,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Register Clerk's getToken with the API service for automatic token refresh
+  useEffect(() => {
+    setTokenGetter(async () => {
+      try {
+        return await getToken();
+      } catch (e) {
+        console.error('Failed to get Clerk token:', e);
+        return null;
+      }
+    });
+  }, [getToken]);
+
   useEffect(() => {
     if (!isLoaded) return;
 
     if (clerkUser) {
       setIsLoading(true);
 
-      getToken()
-        .then((clerkToken) => {
-          if (!clerkToken) return;
-          setToken(clerkToken);
-          localStorage.setItem("auth_token", clerkToken);
+      // Get fresh token and sync with backend
+      const syncUser = async () => {
+        try {
+          const clerkToken = await getToken();
+          if (!clerkToken) {
+            console.error("No token available from Clerk");
+            setIsLoading(false);
+            return;
+          }
 
-          return api.getMe();
-        })
-        .then((userData) => {
+          setToken(clerkToken);
+
+          // Call backend to get or create user
+          const userData = await api.getMe();
+
           if (userData) {
             setUser({
               id: userData.id,
@@ -66,14 +85,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               role: userData.role,
             });
           }
-        })
-        .catch((err) => {
+        } catch (err) {
           console.error("Failed to sync user:", err);
-          localStorage.removeItem("auth_token");
-        })
-        .finally(() => setIsLoading(false));
+          // Backend sync failed - clear user but keep Clerk session
+          // so we can retry on next render
+          setUser(null);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      syncUser();
     } else {
-      localStorage.removeItem("auth_token");
       setToken(null);
       setUser(null);
       setIsLoading(false);
@@ -85,7 +108,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem("auth_token");
     signOut?.();
   };
 
@@ -95,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         token,
         isLoading: isLoading || !isLoaded,
-        isAuthenticated: !!clerkUser,
+        isAuthenticated: !!user, // Only authenticated if we have synced user data
         login,
         logout,
       }}

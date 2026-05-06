@@ -27,6 +27,8 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -45,6 +47,24 @@ services:
     ports:
       - "127.0.0.1:6333:6333"
 
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   backend:
     build: ./backend
     restart: unless-stopped
@@ -54,9 +74,16 @@ services:
       HACKVERIFY_LLM_API_KEY: ${LLM_API_KEY:-}
       HACKVERIFY_GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       HACKVERIFY_DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
-      HACKVERIFY_BASE_URL: ${BASE_URL:-https://localhost}
+      HACKVERIFY_BASE_URL: ${BASE_URL:-http://localhost}
+      HACKVERIFY_FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      HACKVERIFY_DEBUG: "true"
       HACKVERIFY_REDIS_URL: redis://redis:6379/0
       HACKVERIFY_QDRANT_URL: http://qdrant:6333
+      HACKVERIFY_S3_ENDPOINT: http://minio:9000
+      HACKVERIFY_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      HACKVERIFY_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      HACKVERIFY_S3_BUCKET: ${S3_BUCKET:-hackverify-files}
+      HACKVERIFY_S3_REGION: ${S3_REGION:-us-east-1}
     volumes:
       - ./backend:/app
       - ./data:/app/data
@@ -75,7 +102,7 @@ services:
       start_period: 30s
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     ports:
-      - "127.0.0.1:8000:8000"
+      - "8000:8000"
 
   frontend:
     image: ghcr.io/mintychochip/rowdyhacks/frontend:latest
@@ -128,3 +155,4 @@ volumes:
   postgres_data:
   redis_data:
   qdrant_data:
+  minio_data:

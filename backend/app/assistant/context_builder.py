@@ -239,6 +239,7 @@ class ContextBuilder:
         parts.append("- When helping with ideation, be creative but practical")
         parts.append("- For judging questions, emphasize fairness and consistency")
         parts.append("- Format responses clearly with bullet points or numbered lists when appropriate")
+        parts.append("- You can help users navigate the platform: use the query_site_pages tool to find relevant pages, then share the URL path with the user")
 
         return "\n".join(parts)
 

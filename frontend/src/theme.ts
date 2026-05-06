@@ -1,128 +1,276 @@
 // ============================================================
-// Hack the Valley Design System
-// Raw Hacker Aesthetic: Monochrome, IBM Plex, Minimal
+// Hack the Valley Design System - Linear Inspired
+// Cinematic Minimalism: Deep layers, subtle glows, refined motion
 // ============================================================
 
-// Theme type definition
 export type ThemeMode = 'light' | 'dark';
 
-// Color tokens for light mode
-const lightColors = {
-  bg: '#ffffff',
-  bgSubtle: '#f7f7f7',
-  bgElevated: '#ffffff',
-  textPrimary: '#000000',
-  textSecondary: '#444444',
-  textMuted: '#666666',
-  border: '#e0e0e0',
-  borderStrong: '#000000',
-  link: '#0066cc',
+// Linear-inspired dark theme colors
+const darkColors = {
+  // Base backgrounds - layered depth
+  bg: '#0e0e10',
+  bgPrimary: '#0e0e10',
+  bgSecondary: '#141416',
+  bgTertiary: '#1a1a1c',
+  bgElevated: '#1f1f22',
+  bgOverlay: 'rgba(0, 0, 0, 0.8)',
+
+  // Text colors - refined hierarchy
+  textPrimary: '#f7f8f8',
+  textSecondary: '#a1a1aa',
+  textTertiary: '#71717a',
+  textMuted: '#52525b',
+  textInverse: '#09090b',
+
+  // Accent colors - Muted slate/indigo (Linear's subtle style)
+  accentPrimary: '#5e6ad2',
+  accentPrimaryHover: '#4f58b3',
+  accentSecondary: '#6b7280',
+  accentGlow: 'rgba(94, 106, 210, 0.25)',
+  accentSubtle: 'rgba(94, 106, 210, 0.08)',
+
+  // Semantic colors
   success: '#22c55e',
+  successSubtle: 'rgba(34, 197, 94, 0.1)',
   warning: '#f59e0b',
-  error: '#dc2626',
-  codeBg: '#f5f5f5',
-  codeText: '#444444',
-  prompt: '#22c55e',
+  warningSubtle: 'rgba(245, 158, 11, 0.1)',
+  error: '#ef4444',
+  errorSubtle: 'rgba(239, 68, 68, 0.1)',
+  info: '#3b82f6',
+  infoSubtle: 'rgba(59, 130, 246, 0.1)',
+
+  // Borders - subtle definition
+  borderSubtle: 'rgba(255, 255, 255, 0.06)',
+  borderDefault: 'rgba(255, 255, 255, 0.1)',
+  borderStrong: 'rgba(255, 255, 255, 0.15)',
+  borderFocus: 'rgba(139, 92, 246, 0.5)',
 } as const;
 
-// Color tokens for dark mode - Hack the Valley brand colors
-const darkColors = {
-  bg: '#0f172a',
-  bgSubtle: '#1e293b',
-  bgElevated: '#1e293b',
-  textPrimary: '#f8fafc',
-  textSecondary: '#94a3b8',
-  textMuted: '#64748b',
-  border: '#334155',
-  borderStrong: '#475569',
-  link: '#06b6d4',
-  success: '#22c55e',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  codeBg: '#1e293b',
-  codeText: '#94a3b8',
-  prompt: '#06b6d4',
+// Light theme - refined and airy
+const lightColors = {
+  bg: '#ffffff',
+  bgPrimary: '#fafafa',
+  bgSecondary: '#f4f4f5',
+  bgTertiary: '#e4e4e7',
+  bgElevated: '#ffffff',
+  bgOverlay: 'rgba(0, 0, 0, 0.6)',
+
+  textPrimary: '#18181b',
+  textSecondary: '#52525b',
+  textTertiary: '#71717a',
+  textMuted: '#a1a1aa',
+  textInverse: '#ffffff',
+
+  accentPrimary: '#7c3aed',
+  accentPrimaryHover: '#6d28d9',
+  accentSecondary: '#6366f1',
+  accentGlow: 'rgba(124, 58, 237, 0.2)',
+  accentSubtle: 'rgba(124, 58, 237, 0.1)',
+
+  success: '#16a34a',
+  successSubtle: 'rgba(22, 163, 74, 0.1)',
+  warning: '#d97706',
+  warningSubtle: 'rgba(217, 119, 6, 0.1)',
+  error: '#dc2626',
+  errorSubtle: 'rgba(220, 38, 38, 0.1)',
+  info: '#2563eb',
+  infoSubtle: 'rgba(37, 99, 235, 0.1)',
+
+  borderSubtle: 'rgba(0, 0, 0, 0.06)',
+  borderDefault: 'rgba(0, 0, 0, 0.1)',
+  borderStrong: 'rgba(0, 0, 0, 0.15)',
+  borderFocus: 'rgba(124, 58, 237, 0.5)',
 } as const;
 
 // Export color getters based on theme
 export const getColors = (mode: ThemeMode) => mode === 'light' ? lightColors : darkColors;
 
-// Legacy exports for backward compatibility during migration
-export const PAGE_BG = '#0f172a';
-export const CARD_BG = '#1e293b';
-export const INPUT_BG = '#334155';
-export const NAV_BG = '#0f172a';
-export const EXPANDED_BG = '#1a1a1a';
-export const TABLE_HOVER = '#1a1a1a';
-export const PRIMARY = '#2563eb';
-export const PRIMARY_HOVER = '#1d4ed8';
-export const PRIMARY_DISABLED = '#555555';
-export const PRIMARY_BG20 = '#ffffff20';
-export const CYAN = '#999999';
-export const CYAN_BG20 = '#99999920';
-export const CYAN_BG10 = '#99999910';
-export const TEXT_PRIMARY = '#f8fafc';
-export const TEXT_SECONDARY = '#94a3b8';
-export const TEXT_MUTED = '#64748b';
-export const TEXT_DIM = '#444444';
-export const TEXT_WHITE = '#ffffff';
-export const BORDER = '#334155';
-export const BORDER_LIGHT = '#475569';
-export const INPUT_BORDER = '#333333';
-export const RADIUS = { sm: 4, md: 4, lg: 4, full: 4 };
-export const SPACE = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, '2xl': 48 };
+// Legacy exports for backward compatibility
+export const PAGE_BG = darkColors.bg;
+export const CARD_BG = darkColors.bgElevated;
+export const INPUT_BG = darkColors.bgTertiary;
+export const NAV_BG = darkColors.bgSecondary;
+export const EXPANDED_BG = darkColors.bgTertiary;
+export const TABLE_HOVER = darkColors.bgTertiary;
+
+export const PRIMARY = darkColors.accentPrimary;
+export const PRIMARY_HOVER = darkColors.accentPrimaryHover;
+export const PRIMARY_DISABLED = '#52525b';
+export const PRIMARY_BG20 = 'rgba(94, 106, 210, 0.2)';
+
+export const CYAN = '#5e6ad2';
+export const CYAN_BG20 = 'rgba(94, 106, 210, 0.2)';
+export const CYAN_BG10 = darkColors.accentSubtle;
+
+export const TEXT_PRIMARY = darkColors.textPrimary;
+export const TEXT_SECONDARY = darkColors.textSecondary;
+export const TEXT_MUTED = darkColors.textMuted;
+export const TEXT_DIM = darkColors.textTertiary;
+export const TEXT_WHITE = darkColors.textPrimary;
+
+export const BORDER = darkColors.borderDefault;
+export const BORDER_LIGHT = darkColors.borderStrong;
+export const INPUT_BORDER = darkColors.borderDefault;
+
+// Spacing - refined scale
+export const SPACE = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  '2xl': 32,
+  '3xl': 40,
+  '4xl': 48,
+} as const;
+
+// Radius - softer corners
+export const RADIUS = {
+  sm: 6,
+  md: 8,
+  lg: 12,
+  xl: 16,
+  full: 9999,
+} as const;
 
 // Status/Semantic colors (legacy compatibility)
-export const SUCCESS = '#22c55e';
-export const SUCCESS_BG20 = '#22c55e20';
-export const SUCCESS_BG10 = '#22c55e10';
-export const WARNING = '#fbbf24';
-export const WARNING_BG20 = '#fbbf2420';
-export const WARNING_BG10 = '#fbbf2410';
-export const WARNING_BORDER30 = '#fbbf2430';
-export const ERROR = '#ef4444';
-export const ERROR_TEXT = '#ef4444';
-export const ERROR_BG20 = '#ef444420';
-export const ERROR_BG10 = '#ef444410';
-export const ERROR_BORDER30 = '#ef444430';
-export const INFO = '#3b82f6';
-export const INFO_BG20 = '#3b82f620';
-export const INFO_BG10 = '#3b82f610';
+export const SUCCESS = darkColors.success;
+export const SUCCESS_BG20 = 'rgba(34, 197, 94, 0.2)';
+export const SUCCESS_BG10 = darkColors.successSubtle;
+
+export const WARNING = darkColors.warning;
+export const WARNING_BG20 = 'rgba(245, 158, 11, 0.2)';
+export const WARNING_BG10 = darkColors.warningSubtle;
+export const WARNING_BORDER30 = 'rgba(245, 158, 11, 0.3)';
+
+export const ERROR = darkColors.error;
+export const ERROR_TEXT = darkColors.error;
+export const ERROR_BG20 = 'rgba(239, 68, 68, 0.2)';
+export const ERROR_BG10 = darkColors.errorSubtle;
+export const ERROR_BORDER30 = 'rgba(239, 68, 68, 0.3)';
+
+export const INFO = darkColors.info;
+export const INFO_BG20 = 'rgba(59, 130, 246, 0.2)';
+export const INFO_BG10 = darkColors.infoSubtle;
+
 export const ORANGE = '#f97316';
 
 // Status badge colors
-export const STATUS_PENDING = '#f59e0b';
-export const STATUS_ACCEPTED = '#22c55e';
-export const STATUS_REJECTED = '#ef4444';
-export const STATUS_CHECKED_IN = '#3b82f6';
-export const GOLD = '#f59e0b';
-export const GOLD_BG20 = '#fbbf2420';
-export const GOLD_BG10 = '#fbbf2410';
+export const STATUS_PENDING = darkColors.warning;
+export const STATUS_ACCEPTED = darkColors.success;
+export const STATUS_REJECTED = darkColors.error;
+export const STATUS_CHECKED_IN = darkColors.info;
+export const GOLD = '#fbbf24';
+export const GOLD_BG20 = 'rgba(251, 191, 36, 0.2)';
+export const GOLD_BG10 = 'rgba(251, 191, 36, 0.1)';
 
-// Typography tokens
+// Typography tokens - Inter + JetBrains Mono
 export const TYPO = {
-  h1: { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 42, fontWeight: 600, lineHeight: 1.1, letterSpacing: '-0.02em' },
-  h2: { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 32, fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.01em' },
-  h3: { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 20, fontWeight: 600, lineHeight: 1.3 },
-  body: { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 16, fontWeight: 400, lineHeight: 1.6 },
-  small: { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 14, fontWeight: 400, lineHeight: 1.5 },
-  label: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, lineHeight: 1.0, textTransform: 'uppercase' as const, letterSpacing: '0.05em' },
-  mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 400, lineHeight: 1.5 },
-  'mono-lg': { fontFamily: "'IBM Plex Mono', monospace", fontSize: 24, fontWeight: 400, lineHeight: 1.2, letterSpacing: '-0.02em' },
-  // Legacy typography exports for backward compatibility
-  'body-lg': { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 16, fontWeight: 400, lineHeight: 1.6 },
-  'body-sm': { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 14, fontWeight: 400, lineHeight: 1.5 },
-  'mono-data': { fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 500, lineHeight: 1.0, letterSpacing: '0.05em', fontVariantNumeric: 'tabular-nums' as const },
-  'label-caps': { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 12, fontWeight: 700, lineHeight: 1.0, letterSpacing: '0.08em' },
-  'score-lg': { fontFamily: "'IBM Plex Sans', -apple-system, sans-serif", fontSize: 32, fontWeight: 700, lineHeight: 1, letterSpacing: '-0.02em' },
+  h1: {
+    fontFamily: "'Inter', -apple-system, sans-serif",
+    fontSize: 32,
+    fontWeight: 600,
+    lineHeight: 1.2,
+    letterSpacing: '-0.02em',
+  },
+  h2: {
+    fontFamily: "'Inter', -apple-system, sans-serif",
+    fontSize: 24,
+    fontWeight: 600,
+    lineHeight: 1.3,
+    letterSpacing: '-0.01em',
+  },
+  h3: {
+    fontFamily: "'Inter', -apple-system, sans-serif",
+    fontSize: 18,
+    fontWeight: 600,
+    lineHeight: 1.4,
+  },
+  body: {
+    fontFamily: "'Inter', -apple-system, sans-serif",
+    fontSize: 15,
+    fontWeight: 400,
+    lineHeight: 1.6,
+  },
+  small: {
+    fontFamily: "'Inter', -apple-system, sans-serif",
+    fontSize: 13,
+    fontWeight: 400,
+    lineHeight: 1.5,
+  },
+  label: {
+    fontFamily: "'Inter', -apple-system, sans-serif",
+    fontSize: 11,
+    fontWeight: 500,
+    lineHeight: 1.0,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.05em',
+  },
+  mono: {
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: 13,
+    fontWeight: 400,
+    lineHeight: 1.5,
+  },
+  'mono-lg': {
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: 20,
+    fontWeight: 400,
+    lineHeight: 1.3,
+    letterSpacing: '-0.02em',
+  },
+  // Legacy typography
+  'body-lg': {
+    fontFamily: "'Inter', -apple-system, sans-serif",
+    fontSize: 16,
+    fontWeight: 400,
+    lineHeight: 1.6,
+  },
+  'body-sm': {
+    fontFamily: "'Inter', -apple-system, sans-serif",
+    fontSize: 13,
+    fontWeight: 400,
+    lineHeight: 1.5,
+  },
+  'mono-data': {
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: 12,
+    fontWeight: 500,
+    lineHeight: 1.0,
+    letterSpacing: '0.03em',
+    fontVariantNumeric: 'tabular-nums' as const,
+  },
+  'label-caps': {
+    fontFamily: "'Inter', -apple-system, sans-serif",
+    fontSize: 11,
+    fontWeight: 600,
+    lineHeight: 1.0,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase' as const,
+  },
+  'score-lg': {
+    fontFamily: "'Inter', -apple-system, sans-serif",
+    fontSize: 28,
+    fontWeight: 700,
+    lineHeight: 1,
+    letterSpacing: '-0.02em',
+  },
 } as const;
 
-// Shadow tokens (flat design - minimal shadows)
+// Shadow tokens - subtle depth
 export const SHADOW = {
-  card: 'none',
-  elevated: '0 1px 3px rgba(0,0,0,0.1)',
-  modal: '0 4px 12px rgba(0,0,0,0.15)',
-};
+  card: '0 1px 3px rgba(0, 0, 0, 0.3)',
+  elevated: '0 4px 12px rgba(0, 0, 0, 0.4)',
+  modal: '0 8px 32px rgba(0, 0, 0, 0.6)',
+  glow: '0 0 30px rgba(139, 92, 246, 0.3)',
+} as const;
 
 // Breakpoints
 export const BREAKPOINTS = { mobile: 768, tablet: 1024 };
+
+// Animation timing
+export const TIMING = {
+  fast: '100ms',
+  base: '150ms',
+  slow: '250ms',
+} as const;

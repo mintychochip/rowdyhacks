@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import * as api from '../services/api';
-import { PRIMARY, SUCCESS, SUCCESS_BG10, WARNING, WARNING_BG10, ERROR, ERROR_BG10, ERROR_TEXT, TEXT_PRIMARY, TEXT_MUTED, TEXT_DIM, TEXT_WHITE, CARD_BG, INPUT_BG, INPUT_BORDER, BORDER, TYPO, SPACE, RADIUS, SHADOW } from '../theme';
+import { SUCCESS, SUCCESS_BG10, WARNING, WARNING_BG10, ERROR, ERROR_BG10, ERROR_TEXT, TEXT_PRIMARY, TEXT_MUTED, TEXT_DIM, TEXT_WHITE, CARD_BG, INPUT_BG, INPUT_BORDER, BORDER, TYPO, SPACE, RADIUS, SHADOW } from '../theme';
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { bg: string; color: string }> = {
@@ -73,7 +73,7 @@ export default function Dashboard() {
   };
 
   const stats = [
-    { label: 'Total', value: total, color: PRIMARY },
+    { label: 'Total', value: total, color: TEXT_PRIMARY },
     { label: 'Clean', value: submissions.filter(s => s.verdict === 'clean').length, color: SUCCESS },
     { label: 'Review', value: submissions.filter(s => s.verdict === 'review').length, color: WARNING },
     { label: 'Flagged', value: submissions.filter(s => s.verdict === 'flagged').length, color: ERROR },
@@ -91,8 +91,9 @@ export default function Dashboard() {
         </div>
         {hackathons.length === 0 && (
           <Link to="/hackathons" style={{
-            padding: '8px 18px', background: PRIMARY, borderRadius: RADIUS.sm,
-            color: TEXT_WHITE, textDecoration: 'none', ...TYPO['body-sm'], fontWeight: 600,
+            padding: '8px 18px', background: CARD_BG, borderRadius: RADIUS.sm,
+            border: `1px solid ${BORDER}`,
+            color: TEXT_PRIMARY, textDecoration: 'none', ...TYPO['body-sm'], fontWeight: 600,
           }}>
             + New Hackathon
           </Link>
@@ -176,7 +177,7 @@ export default function Dashboard() {
                     borderBottom: `1px solid ${BORDER}`,
                     cursor: 'pointer', transition: 'background 0.12s',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(26,92,231,0.06)')}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
                   onMouseLeave={e => (e.currentTarget.style.background = '')}>
                   <td style={{ padding: '14px 20px', ...TYPO['body-sm'], fontWeight: 500, color: TEXT_PRIMARY }}>
                     {sub.project_title || (sub.devpost_url ? new URL(sub.devpost_url).pathname.split('/').pop() : 'Untitled')}

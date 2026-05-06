@@ -40,6 +40,8 @@ export default function SignUpPage() {
       }}
     >
       <SignUp
+        routing="hash"
+        signInUrl="/auth"
         appearance={{
           variables: {
             colorPrimary: PRIMARY,
@@ -76,7 +78,6 @@ export default function SignUpPage() {
               fontSize: `${TYPO.h3.fontSize}px`,
               fontWeight: TYPO.h3.fontWeight,
               lineHeight: TYPO.h3.lineHeight,
-              letterSpacing: TYPO.h3.letterSpacing,
             },
             headerSubtitle: {
               color: TEXT_SECONDARY,
@@ -214,7 +215,6 @@ export default function SignUpPage() {
           },
           layout: {
             socialButtonsPlacement: "top",
-            termsPlacement: "bottom",
           },
         }}
       />

@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import decode_token
+from app.clerk_auth import require_organizer
 from app.crawler.scheduler import is_crawling, run_crawl
 from app.database import get_db
 from app.models import CrawledHackathon, CrawledProject, UserRole
@@ -25,22 +25,8 @@ class CreateCrawledHackathonRequest(BaseModel):
     end_date: str | None = None
 
 
-async def _require_organizer(authorization: str | None = Header(None)) -> dict:
-    """FastAPI dependency: require a valid JWT from an organizer user."""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authentication required")
-    token = authorization.removeprefix("Bearer ")
-    try:
-        payload = decode_token(token)
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    if payload.get("role") != UserRole.organizer.value:
-        raise HTTPException(status_code=403, detail="Organizer access required")
-    return payload
-
-
 @router.post("/trigger", status_code=202)
-async def trigger_crawl(user: dict = Depends(_require_organizer)):
+async def trigger_crawl(auth: dict = Depends(require_organizer)):
     """Manually trigger a full crawl cycle (organizer-only).
 
     Returns 409 if a crawl is already running.
@@ -58,7 +44,7 @@ async def trigger_crawl(user: dict = Depends(_require_organizer)):
 @router.post("/hackathons", status_code=201)
 async def create_crawled_hackathon(
     req: CreateCrawledHackathonRequest,
-    user: dict = Depends(_require_organizer),
+    auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Manually add a crawled hackathon (admin/debug use)."""
@@ -82,7 +68,7 @@ async def create_crawled_hackathon(
 
 @router.get("/hackathons")
 async def list_crawled_hackathons(
-    user: dict = Depends(_require_organizer),
+    auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """List all crawled hackathons with project counts."""
@@ -125,7 +111,7 @@ async def list_crawled_projects(
     hackathon_id: str,
     offset: int = 0,
     limit: int = 50,
-    user: dict = Depends(_require_organizer),
+    auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """List projects for a specific crawled hackathon."""
@@ -185,7 +171,7 @@ async def search_crawled_projects(
     q: str = "",
     offset: int = 0,
     limit: int = 50,
-    user: dict = Depends(_require_organizer),
+    auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Search crawled projects by title."""

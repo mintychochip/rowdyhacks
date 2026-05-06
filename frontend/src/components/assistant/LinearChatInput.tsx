@@ -223,19 +223,21 @@ export default function LinearChatInput({
         </div>
       </div>
 
-      {/* Bottom hint */}
+      {/* Bottom hint - fixed height to prevent layout shift */}
       <div
         style={{
           textAlign: 'center',
           marginTop: SPACE.sm,
           fontSize: 12,
           color: TEXT_MUTED,
+          height: 18,
+          lineHeight: '18px',
         }}
       >
         {isStreaming ? (
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: SPACE.xs }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: PRIMARY, animation: 'pulse 1.5s infinite' }} />
-            AI is responding using {selectedModel === 'thinking' ? '🧠 Thinking' : '⚡ Fast'} model...
+            AI is responding...
           </span>
         ) : (
           <span>Press Enter to send, Shift + Enter for new line</span>

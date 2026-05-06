@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { getContentPages } from '../services/api';
-import MarkdownRenderer from '../components/MarkdownRenderer';
 import {
   PRIMARY, CYAN,
   TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED,
@@ -26,12 +26,60 @@ interface GroupedPages {
   [tabGroup: string]: ContentPage[];
 }
 
+// Extract preview text from markdown content (first ~150 chars)
+function getPreview(content: string, maxLength = 150): string {
+  // Remove markdown syntax for preview
+  const plainText = content
+    .replace(/#+ /g, '') // Remove headers
+    .replace(/\*\*/g, '') // Remove bold
+    .replace(/\*/g, '') // Remove italic
+    .replace(/`/g, '') // Remove inline code
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Replace links with just text
+    .replace(/\n/g, ' ') // Replace newlines with spaces
+    .trim();
+
+  if (plainText.length <= maxLength) return plainText;
+  return plainText.substring(0, maxLength).trim() + '...';
+}
+
+// Calculate read time in minutes
+function getReadTime(content: string): number {
+  const wordsPerMinute = 200;
+  const wordCount = content.trim().split(/\s+/).length;
+  return Math.max(1, Math.ceil(wordCount / wordsPerMinute));
+}
+
+// Get category/tag from content based on keywords
+function getCategory(title: string, content: string): string {
+  const text = (title + ' ' + content).toLowerCase();
+  if (text.includes('api') || text.includes('endpoint')) return 'API';
+  if (text.includes('hardware') || text.includes('arduino') || text.includes('sensor')) return 'Hardware';
+  if (text.includes('git') || text.includes('github') || text.includes('deploy')) return 'DevOps';
+  if (text.includes('design') || text.includes('ui') || text.includes('figma')) return 'Design';
+  if (text.includes('python') || text.includes('javascript') || text.includes('code')) return 'Code';
+  return 'Guide';
+}
+
+// Icon for category
+function getCategoryIcon(category: string): string {
+  const icons: Record<string, string> = {
+    'API': 'api',
+    'Hardware': 'memory',
+    'DevOps': 'terminal',
+    'Design': 'palette',
+    'Code': 'code',
+    'Guide': 'book',
+  };
+  return icons[category] || 'article';
+}
+
 export default function ResourcesPage() {
   const { isMobile } = useMediaQuery();
+  const navigate = useNavigate();
   const [pages, setPages] = useState<ContentPage[]>([]);
   const [groupedPages, setGroupedPages] = useState<GroupedPages>({});
   const [tabGroups, setTabGroups] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,21 +112,37 @@ export default function ResourcesPage() {
 
       setGroupedPages(grouped);
       setTabGroups(sortedGroups);
-      if (sortedGroups.length > 0 && !activeTab) {
-        setActiveTab(sortedGroups[0]);
+      // Expand first group by default
+      if (sortedGroups.length > 0 && expandedGroups.size === 0) {
+        setExpandedGroups(new Set([sortedGroups[0]]));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load resources');
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, [expandedGroups.size]);
 
   useEffect(() => {
     loadPages();
   }, [loadPages]);
 
-  const currentPages = activeTab ? groupedPages[activeTab] || [] : [];
+  const toggleGroup = (group: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(group)) {
+        next.delete(group);
+      } else {
+        next.add(group);
+      }
+      return next;
+    });
+  };
+
+  const expandAll = () => setExpandedGroups(new Set(tabGroups));
+  const collapseAll = () => {
+    setExpandedGroups(new Set());
+  };
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', padding: isMobile ? SPACE.md : SPACE.xl }}>
@@ -178,94 +242,254 @@ export default function ResourcesPage() {
 
       {!loading && !error && pages.length > 0 && (
         <>
-          {tabGroups.length > 1 && (
-            <div style={{
-              display: 'flex',
-              gap: SPACE.sm,
-              marginBottom: SPACE.lg,
-              flexWrap: 'wrap',
-              borderBottom: '1px solid ' + BORDER,
-              paddingBottom: SPACE.md,
-            }}>
-              {tabGroups.map((group) => (
-                <button
+          {/* Expand/Collapse All Controls */}
+          <div style={{
+            display: 'flex',
+            gap: SPACE.sm,
+            marginBottom: SPACE.lg,
+            justifyContent: 'flex-end',
+          }}>
+            <button
+              onClick={expandAll}
+              style={{
+                padding: `${SPACE.xs}px ${SPACE.md}px`,
+                background: 'transparent',
+                border: '1px solid ' + BORDER,
+                borderRadius: RADIUS.md,
+                color: TEXT_SECONDARY,
+                cursor: 'pointer',
+                fontSize: 13,
+                display: 'flex',
+                alignItems: 'center',
+                gap: SPACE.xs,
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>unfold_more</span>
+              Expand All
+            </button>
+            <button
+              onClick={collapseAll}
+              style={{
+                padding: `${SPACE.xs}px ${SPACE.md}px`,
+                background: 'transparent',
+                border: '1px solid ' + BORDER,
+                borderRadius: RADIUS.md,
+                color: TEXT_SECONDARY,
+                cursor: 'pointer',
+                fontSize: 13,
+                display: 'flex',
+                alignItems: 'center',
+                gap: SPACE.xs,
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>unfold_less</span>
+              Collapse All
+            </button>
+          </div>
+
+          {/* Collapsible Groups */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
+            {tabGroups.map((group) => {
+              const isExpanded = expandedGroups.has(group);
+              const groupPages = groupedPages[group] || [];
+              const groupId = group.toLowerCase().replace(/\s+/g, '-');
+
+              return (
+                <div
                   key={group}
-                  onClick={() => setActiveTab(group)}
+                  id={groupId}
                   style={{
-                    padding: SPACE.sm + 'px ' + SPACE.md + 'px',
-                    background: activeTab === group ? PRIMARY + '20' : 'transparent',
-                    border: '1px solid ' + (activeTab === group ? PRIMARY : BORDER),
-                    borderRadius: RADIUS.md,
-                    color: activeTab === group ? PRIMARY : TEXT_SECONDARY,
-                    cursor: 'pointer',
-                    fontWeight: activeTab === group ? 600 : 500,
-                    fontSize: 14,
-                    transition: 'all 0.2s ease',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: SPACE.sm,
+                    background: CARD_BG,
+                    border: '1px solid ' + BORDER,
+                    borderRadius: RADIUS.lg,
+                    overflow: 'hidden',
+                    scrollMarginTop: '80px',
                   }}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-                    {group === 'General' ? 'article' : 'folder'}
-                  </span>
-                  {group}
-                  <span style={{
-                    background: activeTab === group ? PRIMARY : BORDER,
-                    color: activeTab === group ? TEXT_PRIMARY : TEXT_MUTED,
-                    padding: '2px 8px',
-                    borderRadius: RADIUS.full,
-                    fontSize: 12,
-                    fontWeight: 700,
-                  }}>
-                    {groupedPages[group]?.length || 0}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+                  {/* Group Header - Click to expand/collapse */}
+                  <button
+                    onClick={() => toggleGroup(group)}
+                    style={{
+                      width: '100%',
+                      padding: isMobile ? `${SPACE.lg}px ${SPACE.md}px` : `${SPACE.lg}px ${SPACE.xl}px`,
+                      background: isExpanded ? PRIMARY + '10' : 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      textAlign: 'left',
+                      transition: 'background 0.2s ease',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.md }}>
+                      <span
+                        className="material-symbols-outlined"
+                        style={{
+                          fontSize: 24,
+                          color: isExpanded ? PRIMARY : TEXT_MUTED,
+                          transition: 'transform 0.2s ease',
+                          transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                        }}
+                      >
+                        chevron_right
+                      </span>
+                      <div>
+                        <h2 style={{
+                          ...TYPO.h3,
+                          fontSize: isMobile ? 18 : 20,
+                          color: TEXT_PRIMARY,
+                          margin: 0,
+                        }}>
+                          {group}
+                        </h2>
+                        <span style={{ color: TEXT_MUTED, fontSize: 13 }}>
+                          {groupPages.length} resource{groupPages.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    </div>
+                    <span style={{
+                      background: isExpanded ? PRIMARY + '20' : BORDER,
+                      color: isExpanded ? PRIMARY : TEXT_MUTED,
+                      padding: '4px 12px',
+                      borderRadius: RADIUS.full,
+                      fontSize: 13,
+                      fontWeight: 600,
+                    }}>
+                      {groupPages.length}
+                    </span>
+                  </button>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
-            {currentPages.map((page) => (
-              <div
-                key={page.id}
-                style={{
-                  background: CARD_BG,
-                  border: '1px solid ' + BORDER,
-                  borderRadius: RADIUS.lg,
-                  padding: isMobile ? SPACE.lg : SPACE.lg + 'px ' + SPACE.xl + 'px',
-                }}
-              >
-                <h2 style={{
-                  ...TYPO.h2,
-                  fontSize: isMobile ? 20 : 24,
-                  marginBottom: SPACE.lg,
-                  color: TEXT_PRIMARY,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: SPACE.sm,
-                }}>
-                  <span className="material-symbols-outlined" style={{ color: CYAN }}>description</span>
-                  {page.title}
-                </h2>
+                  {/* Expandable Content */}
+                  {isExpanded && (
+                    <div style={{
+                      borderTop: '1px solid ' + BORDER,
+                      padding: isMobile ? SPACE.md : SPACE.lg + 'px ' + SPACE.xl + 'px',
+                    }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
+                        {groupPages.map((page) => {
+                          const preview = getPreview(page.content);
+                          const readTime = getReadTime(page.content);
+                          const category = getCategory(page.title, page.content);
+                          const categoryIcon = getCategoryIcon(category);
 
-                <MarkdownRenderer content={page.content} />
+                          return (
+                            <div
+                              key={page.id}
+                              onClick={() => navigate('/resources/' + page.slug)}
+                              style={{
+                                background: 'transparent',
+                                border: '1px solid ' + BORDER,
+                                borderRadius: RADIUS.md,
+                                overflow: 'hidden',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                              }}
+                            >
+                              <div style={{
+                                padding: isMobile ? `${SPACE.md}px` : `${SPACE.lg}px`,
+                                display: 'flex',
+                                gap: SPACE.md,
+                                alignItems: 'flex-start',
+                              }}>
+                                {/* Category Icon */}
+                                <div style={{
+                                  width: 44,
+                                  height: 44,
+                                  borderRadius: RADIUS.md,
+                                  background: PRIMARY + '15',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}>
+                                  <span className="material-symbols-outlined" style={{ color: PRIMARY, fontSize: 22 }}>
+                                    {categoryIcon}
+                                  </span>
+                                </div>
 
-                <div style={{
-                  marginTop: SPACE.lg,
-                  paddingTop: SPACE.md,
-                  borderTop: '1px solid ' + BORDER,
-                  fontSize: 12,
-                  color: TEXT_MUTED,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: SPACE.sm,
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>schedule</span>
-                  Last updated: {new Date(page.updated_at).toLocaleDateString()}
+                                {/* Title and Preview */}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: SPACE.sm,
+                                    marginBottom: SPACE.xs,
+                                    flexWrap: 'wrap',
+                                  }}>
+                                    <h3 style={{
+                                      ...TYPO.h3,
+                                      fontSize: isMobile ? 16 : 17,
+                                      color: TEXT_PRIMARY,
+                                      margin: 0,
+                                      fontWeight: 600,
+                                    }}>
+                                      {page.title}
+                                    </h3>
+                                    <span style={{
+                                      background: PRIMARY + '15',
+                                      color: PRIMARY,
+                                      padding: '2px 8px',
+                                      borderRadius: RADIUS.sm,
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.05em',
+                                    }}>
+                                      {category}
+                                    </span>
+                                  </div>
+
+                                  {/* Preview text (truncated) */}
+                                  <p style={{
+                                    color: TEXT_SECONDARY,
+                                    fontSize: 14,
+                                    lineHeight: 1.5,
+                                    margin: `0 0 ${SPACE.sm}px 0`,
+                                  }}>
+                                    {preview}
+                                  </p>
+
+                                  {/* Meta info */}
+                                  <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: SPACE.md,
+                                    color: TEXT_MUTED,
+                                    fontSize: 12,
+                                  }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>schedule</span>
+                                      {readTime} min read
+                                    </span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>update</span>
+                                      {new Date(page.updated_at).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Open icon */}
+                                <span
+                                  className="material-symbols-outlined"
+                                  style={{
+                                    fontSize: 20,
+                                    color: TEXT_MUTED,
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  open_in_new
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}

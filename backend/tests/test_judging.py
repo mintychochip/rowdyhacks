@@ -3,7 +3,6 @@
 from datetime import UTC
 
 import pytest
-from app.auth import hash_password
 from app.models import (
     Hackathon,
     Submission,
@@ -16,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def _create_user(db: AsyncSession, email: str, name: str, role: UserRole) -> User:
-    user = User(email=email, name=name, role=role, password_hash=hash_password("test1234"))
+    user = User(email=email, name=name, role=role)
     db.add(user)
     await db.commit()
     await db.refresh(user)

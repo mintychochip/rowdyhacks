@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { PRIMARY, TEXT_PRIMARY, TEXT_MUTED, TEXT_WHITE, INPUT_BG, BORDER, CARD_BG, RADIUS } from '../theme';
+import {
+  PRIMARY, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED,
+  INPUT_BG, BORDER, CARD_BG, RADIUS, SHADOW,
+} from '../theme';
 
 const TECH_SUGGESTIONS = [
   'React', 'Vue', 'Angular', 'Svelte', 'Next.js', 'Nuxt', 'Gatsby', 'Remix',
@@ -84,16 +87,16 @@ export default function TagInput({ value, onChange, placeholder = 'Search techno
       <div
         style={{
           display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center',
-          padding: '8px 12px', minHeight: 44,
-          background: INPUT_BG, border: `2px solid ${PRIMARY}40`, borderRadius: RADIUS.md,
-          cursor: 'text',
+          padding: '8px 12px', minHeight: 42,
+          background: INPUT_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.md,
+          cursor: 'text', transition: 'border-color 0.15s ease',
         }}
         onClick={() => inputRef.current?.focus()}
       >
         {value.map((tag) => (
           <span key={tag} style={{
             display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '3px 8px', background: '#1a5ce730', borderRadius: RADIUS.sm,
+            padding: '3px 8px', background: 'rgba(94, 106, 210, 0.12)', borderRadius: RADIUS.sm,
             fontSize: 13, color: TEXT_PRIMARY, fontWeight: 500,
           }}>
             {tag}
@@ -103,6 +106,7 @@ export default function TagInput({ value, onChange, placeholder = 'Search techno
               style={{
                 background: 'none', border: 'none', color: TEXT_MUTED,
                 cursor: 'pointer', padding: 0, fontSize: 15, lineHeight: 1,
+                display: 'flex', alignItems: 'center',
               }}
             >
               &times;
@@ -129,17 +133,18 @@ export default function TagInput({ value, onChange, placeholder = 'Search techno
         <div style={{
           position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
           marginTop: 4, background: CARD_BG, border: `1px solid ${BORDER}`,
-          borderRadius: RADIUS.md, maxHeight: 180, overflowY: 'auto',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+          borderRadius: RADIUS.md, maxHeight: 200, overflowY: 'auto',
+          boxShadow: SHADOW.elevated,
         }}>
           {filtered.map((s, i) => (
             <div
               key={s}
               onClick={() => addTag(s)}
               style={{
-                padding: '8px 12px', cursor: 'pointer', fontSize: 14,
-                color: i === highlightIndex ? TEXT_WHITE : TEXT_PRIMARY,
-                background: i === highlightIndex ? '#1a5ce740' : 'transparent',
+                padding: '9px 12px', cursor: 'pointer', fontSize: 14,
+                color: i === highlightIndex ? TEXT_PRIMARY : TEXT_SECONDARY,
+                background: i === highlightIndex ? 'rgba(94, 106, 210, 0.08)' : 'transparent',
+                borderBottom: i < filtered.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
               }}
               onMouseEnter={() => setHighlightIndex(i)}
             >

@@ -14,7 +14,6 @@ from sqlalchemy import select
 
 sys.path.insert(0, "C:/Users/justi/dev/rowdyhacks/backend")
 
-from app.auth import hash_password
 from app.database import async_session
 from app.models import Hackathon, Registration, RegistrationStatus, User, UserRole
 
@@ -51,7 +50,6 @@ async def create_demo_users(db, count: int) -> list[User]:
             id=uuid.uuid4(),
             email=f"demo{i + 1}@example.com",
             name=fake.name(),
-            password_hash=hash_password("demo12345"),
             role=UserRole.participant,
         )
         db.add(user)

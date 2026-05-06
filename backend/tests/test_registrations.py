@@ -10,9 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def _create_user(db, email, name, password="password123", role=UserRole.participant):
-    from app.auth import hash_password
-
-    user = User(id=uuid.uuid4(), email=email, name=name, password_hash=hash_password(password), role=role)
+    user = User(id=uuid.uuid4(), email=email, name=name, role=role)
     db.add(user)
     await db.commit()
     return user
@@ -28,9 +26,8 @@ async def _create_hackathon(db, name, organizer):
 
 
 def _auth_headers(user):
-    from app.auth import create_access_token
-
-    token = create_access_token(str(user.id), user.role.value)
+    # With Clerk dependency override in conftest, the actual token value is ignored
+    token = "test-clerk-token-placeholder"
     return {"Authorization": f"Bearer {token}"}
 
 

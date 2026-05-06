@@ -4,7 +4,7 @@ import asyncio
 import uuid
 from datetime import UTC, datetime
 
-from app.auth import create_qr_token, hash_password
+from app.auth import create_qr_token
 from app.database import async_session
 from app.models import Hackathon, Registration, RegistrationStatus, User, UserRole
 from sqlalchemy import select
@@ -23,7 +23,6 @@ async def seed():
             id=uuid.uuid4(),
             email="org@demo.com",
             name="Demo Organizer",
-            password_hash=hash_password("demo12345"),
             role=UserRole.organizer,
         )
         db.add(org)
@@ -33,7 +32,6 @@ async def seed():
             id=uuid.uuid4(),
             email="judge@demo.com",
             name="Demo Judge",
-            password_hash=hash_password("demo12345"),
             role=UserRole.judge,
         )
         db.add(judge)
@@ -43,7 +41,6 @@ async def seed():
             id=uuid.uuid4(),
             email="alice@demo.com",
             name="Alice",
-            password_hash=hash_password("demo12345"),
             role=UserRole.participant,
         )
         db.add(user)

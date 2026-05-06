@@ -27,9 +27,15 @@ def upgrade() -> None:
 
     # Add 'offered' to the registrationstatus enum (PostgreSQL only)
     # Must commit before using the new value in partial indexes
+    # Note: For fresh databases, the enum may not exist yet (tables created via metadata.create_all)
+    # so we catch the error and continue
     if dialect == "postgresql":
-        op.execute("ALTER TYPE registrationstatus ADD VALUE IF NOT EXISTS 'offered'")
-        op.execute("COMMIT")
+        try:
+            op.execute("ALTER TYPE registrationstatus ADD VALUE IF NOT EXISTS 'offered'")
+            op.execute("COMMIT")
+        except Exception:
+            # Enum doesn't exist yet (fresh database) - will be created by SQLAlchemy
+            pass
 
     # Add registration fields for waitlist support
     op.add_column("registrations", sa.Column("offered_at", sa.DateTime(timezone=True), nullable=True))
