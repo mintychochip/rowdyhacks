@@ -1,118 +1,176 @@
 // ============================================================
-// Hack the Valley Design System - Linear Inspired
-// Cinematic Minimalism: Deep layers, subtle glows, refined motion
+// Hack the Valley Design System — Rocket Theme
+// Space Launch: Deep layers, flame accents, star highlights
 // ============================================================
 
-export type ThemeMode = 'light' | 'dark';
+// Dark mode only — light theme deprecated
 
-// Linear-inspired dark theme colors
-const darkColors = {
-  // Base backgrounds - layered depth
-  bg: '#0e0e10',
-  bgPrimary: '#0e0e10',
-  bgSecondary: '#141416',
-  bgTertiary: '#1a1a1c',
-  bgElevated: '#1f1f22',
-  bgOverlay: 'rgba(0, 0, 0, 0.8)',
+// Space Backgrounds (Layered Depth)
+const bg = '#060913';
+const bgPrimary = '#0a0f1e';
+const bgSecondary = '#0f172a';
+const bgTertiary = '#131d35';
+const bgElevated = '#1a2542';
+const bgOverlay = 'rgba(0, 0, 0, 0.75)';
 
-  // Text colors - refined hierarchy
-  textPrimary: '#f7f8f8',
-  textSecondary: '#a1a1aa',
-  textTertiary: '#71717a',
-  textMuted: '#52525b',
-  textInverse: '#09090b',
+// Text colors
+const textPrimary = '#f1f5f9';
+const textSecondary = '#94a3b8';
+const textTertiary = '#64748b';
+const textMuted = '#475569';
+const textInverse = '#020617';
 
-  // Accent colors - Muted slate/indigo (Linear's subtle style)
-  accentPrimary: '#5e6ad2',
-  accentPrimaryHover: '#4f58b3',
-  accentSecondary: '#6b7280',
-  accentGlow: 'rgba(94, 106, 210, 0.25)',
-  accentSubtle: 'rgba(94, 106, 210, 0.08)',
+// Brand Blue (Primary Actions)
+const accentPrimary = '#2563eb';
+const accentPrimaryHover = '#3b82f6';
+const accentSecondary = '#1d4ed8';
+const accentGlow = 'rgba(37, 99, 235, 0.35)';
+const accentSubtle = 'rgba(37, 99, 235, 0.12)';
 
-  // Semantic colors
-  success: '#22c55e',
-  successSubtle: 'rgba(34, 197, 94, 0.1)',
-  warning: '#f59e0b',
-  warningSubtle: 'rgba(245, 158, 11, 0.1)',
-  error: '#ef4444',
-  errorSubtle: 'rgba(239, 68, 68, 0.1)',
-  info: '#3b82f6',
-  infoSubtle: 'rgba(59, 130, 246, 0.1)',
+// Flame Orange (CTA / Launch)
+const orange = '#f97316';
+const orangeHover = '#fb923c';
+const orangePressed = '#ea580c';
+const orangeGlow = 'rgba(249, 115, 22, 0.4)';
+const orangeSubtle = 'rgba(249, 115, 22, 0.12)';
 
-  // Borders - subtle definition
-  borderSubtle: 'rgba(255, 255, 255, 0.06)',
-  borderDefault: 'rgba(255, 255, 255, 0.1)',
-  borderStrong: 'rgba(255, 255, 255, 0.15)',
-  borderFocus: 'rgba(139, 92, 246, 0.5)',
+// Star Gold (Highlights / Winners)
+const gold = '#fbbf24';
+const goldHover = '#f59e0b';
+const goldGlow = 'rgba(251, 191, 36, 0.3)';
+
+// Semantic colors
+const success = '#22c55e';
+const successSubtle = 'rgba(34, 197, 94, 0.1)';
+const warning = '#eab308';
+const warningSubtle = 'rgba(234, 179, 8, 0.1)';
+const error = '#ef4444';
+const errorSubtle = 'rgba(239, 68, 68, 0.1)';
+const info = '#3b82f6';
+const infoSubtle = 'rgba(59, 130, 246, 0.1)';
+
+// Borders
+const borderSubtle = 'rgba(148, 163, 184, 0.08)';
+const borderDefault = 'rgba(148, 163, 184, 0.15)';
+const borderStrong = 'rgba(148, 163, 184, 0.25)';
+const borderFocus = 'rgba(37, 99, 235, 0.5)';
+
+// ============================================================
+// CSS Variables export (for inline styles)
+// ============================================================
+
+export const CSS_VARS = {
+  '--bg-base': bg,
+  '--bg-primary': bgPrimary,
+  '--bg-secondary': bgSecondary,
+  '--bg-tertiary': bgTertiary,
+  '--bg-elevated': bgElevated,
+  '--bg-overlay': bgOverlay,
+
+  '--text-primary': textPrimary,
+  '--text-secondary': textSecondary,
+  '--text-tertiary': textTertiary,
+  '--text-muted': textMuted,
+  '--text-inverse': textInverse,
+
+  '--accent-primary': accentPrimary,
+  '--accent-primary-hover': accentPrimaryHover,
+  '--accent-secondary': accentSecondary,
+  '--accent-glow': accentGlow,
+  '--accent-subtle': accentSubtle,
+
+  '--orange': orange,
+  '--orange-hover': orangeHover,
+  '--orange-pressed': orangePressed,
+  '--orange-glow': orangeGlow,
+  '--orange-subtle': orangeSubtle,
+
+  '--gold': gold,
+  '--gold-hover': goldHover,
+  '--gold-glow': goldGlow,
+
+  '--success': success,
+  '--success-subtle': successSubtle,
+  '--warning': warning,
+  '--warning-subtle': warningSubtle,
+  '--error': error,
+  '--error-subtle': errorSubtle,
+  '--info': info,
+  '--info-subtle': infoSubtle,
+
+  '--border-subtle': borderSubtle,
+  '--border-default': borderDefault,
+  '--border-strong': borderStrong,
+  '--border-focus': borderFocus,
 } as const;
 
-// Light theme - refined and airy
-const lightColors = {
-  bg: '#ffffff',
-  bgPrimary: '#fafafa',
-  bgSecondary: '#f4f4f5',
-  bgTertiary: '#e4e4e7',
-  bgElevated: '#ffffff',
-  bgOverlay: 'rgba(0, 0, 0, 0.6)',
+// ============================================================
+// Legacy exports — preserved for backward compatibility
+// ============================================================
 
-  textPrimary: '#18181b',
-  textSecondary: '#52525b',
-  textTertiary: '#71717a',
-  textMuted: '#a1a1aa',
-  textInverse: '#ffffff',
+export const PAGE_BG = bg;
+export const CARD_BG = bgElevated;
+export const INPUT_BG = bgTertiary;
+export const NAV_BG = bgSecondary;
+export const EXPANDED_BG = bgTertiary;
+export const TABLE_HOVER = bgTertiary;
 
-  accentPrimary: '#7c3aed',
-  accentPrimaryHover: '#6d28d9',
-  accentSecondary: '#6366f1',
-  accentGlow: 'rgba(124, 58, 237, 0.2)',
-  accentSubtle: 'rgba(124, 58, 237, 0.1)',
+export const PRIMARY = accentPrimary;
+export const PRIMARY_HOVER = accentPrimaryHover;
+export const PRIMARY_DISABLED = textMuted;
+export const PRIMARY_BG20 = 'rgba(37, 99, 235, 0.2)';
 
-  success: '#16a34a',
-  successSubtle: 'rgba(22, 163, 74, 0.1)',
-  warning: '#d97706',
-  warningSubtle: 'rgba(217, 119, 6, 0.1)',
-  error: '#dc2626',
-  errorSubtle: 'rgba(220, 38, 38, 0.1)',
-  info: '#2563eb',
-  infoSubtle: 'rgba(37, 99, 235, 0.1)',
+export const CYAN = accentPrimary;
+export const CYAN_BG20 = 'rgba(37, 99, 235, 0.2)';
+export const CYAN_BG10 = accentSubtle;
 
-  borderSubtle: 'rgba(0, 0, 0, 0.06)',
-  borderDefault: 'rgba(0, 0, 0, 0.1)',
-  borderStrong: 'rgba(0, 0, 0, 0.15)',
-  borderFocus: 'rgba(124, 58, 237, 0.5)',
-} as const;
+export const TEXT_PRIMARY = textPrimary;
+export const TEXT_SECONDARY = textSecondary;
+export const TEXT_MUTED = textMuted;
+export const TEXT_DIM = textTertiary;
+export const TEXT_WHITE = textPrimary;
 
-// Export color getters based on theme
-export const getColors = (mode: ThemeMode) => mode === 'light' ? lightColors : darkColors;
+export const BORDER = borderDefault;
+export const BORDER_LIGHT = borderStrong;
+export const INPUT_BORDER = borderDefault;
 
-// Legacy exports for backward compatibility
-export const PAGE_BG = darkColors.bg;
-export const CARD_BG = darkColors.bgElevated;
-export const INPUT_BG = darkColors.bgTertiary;
-export const NAV_BG = darkColors.bgSecondary;
-export const EXPANDED_BG = darkColors.bgTertiary;
-export const TABLE_HOVER = darkColors.bgTertiary;
+export const SUCCESS = success;
+export const SUCCESS_BG20 = 'rgba(34, 197, 94, 0.2)';
+export const SUCCESS_BG10 = successSubtle;
 
-export const PRIMARY = darkColors.accentPrimary;
-export const PRIMARY_HOVER = darkColors.accentPrimaryHover;
-export const PRIMARY_DISABLED = '#52525b';
-export const PRIMARY_BG20 = 'rgba(94, 106, 210, 0.2)';
+export const WARNING = warning;
+export const WARNING_BG20 = 'rgba(234, 179, 8, 0.2)';
+export const WARNING_BG10 = warningSubtle;
+export const WARNING_BORDER30 = 'rgba(234, 179, 8, 0.3)';
 
-export const CYAN = '#5e6ad2';
-export const CYAN_BG20 = 'rgba(94, 106, 210, 0.2)';
-export const CYAN_BG10 = darkColors.accentSubtle;
+export const ERROR = error;
+export const ERROR_TEXT = error;
+export const ERROR_BG20 = 'rgba(239, 68, 68, 0.2)';
+export const ERROR_BG10 = errorSubtle;
+export const ERROR_BORDER30 = 'rgba(239, 68, 68, 0.3)';
 
-export const TEXT_PRIMARY = darkColors.textPrimary;
-export const TEXT_SECONDARY = darkColors.textSecondary;
-export const TEXT_MUTED = darkColors.textMuted;
-export const TEXT_DIM = darkColors.textTertiary;
-export const TEXT_WHITE = darkColors.textPrimary;
+export const INFO = info;
+export const INFO_BG20 = 'rgba(59, 130, 246, 0.2)';
+export const INFO_BG10 = infoSubtle;
 
-export const BORDER = darkColors.borderDefault;
-export const BORDER_LIGHT = darkColors.borderStrong;
-export const INPUT_BORDER = darkColors.borderDefault;
+export const ORANGE = orange;
+export const ORANGE_BG20 = 'rgba(249, 115, 22, 0.2)';
+export const ORANGE_BG10 = orangeSubtle;
 
-// Spacing - refined scale
+export const GOLD = gold;
+export const GOLD_BG20 = 'rgba(251, 191, 36, 0.2)';
+export const GOLD_BG10 = 'rgba(251, 191, 36, 0.1)';
+
+// Status badge colors
+export const STATUS_PENDING = warning;
+export const STATUS_ACCEPTED = success;
+export const STATUS_REJECTED = error;
+export const STATUS_CHECKED_IN = info;
+
+// ============================================================
+// Spacing — unchanged
+// ============================================================
+
 export const SPACE = {
   xs: 4,
   sm: 8,
@@ -124,7 +182,10 @@ export const SPACE = {
   '4xl': 48,
 } as const;
 
-// Radius - softer corners
+// ============================================================
+// Radius — unchanged
+// ============================================================
+
 export const RADIUS = {
   sm: 6,
   md: 8,
@@ -133,56 +194,34 @@ export const RADIUS = {
   full: 9999,
 } as const;
 
-// Status/Semantic colors (legacy compatibility)
-export const SUCCESS = darkColors.success;
-export const SUCCESS_BG20 = 'rgba(34, 197, 94, 0.2)';
-export const SUCCESS_BG10 = darkColors.successSubtle;
+// ============================================================
+// Typography tokens
+// ============================================================
 
-export const WARNING = darkColors.warning;
-export const WARNING_BG20 = 'rgba(245, 158, 11, 0.2)';
-export const WARNING_BG10 = darkColors.warningSubtle;
-export const WARNING_BORDER30 = 'rgba(245, 158, 11, 0.3)';
-
-export const ERROR = darkColors.error;
-export const ERROR_TEXT = darkColors.error;
-export const ERROR_BG20 = 'rgba(239, 68, 68, 0.2)';
-export const ERROR_BG10 = darkColors.errorSubtle;
-export const ERROR_BORDER30 = 'rgba(239, 68, 68, 0.3)';
-
-export const INFO = darkColors.info;
-export const INFO_BG20 = 'rgba(59, 130, 246, 0.2)';
-export const INFO_BG10 = darkColors.infoSubtle;
-
-export const ORANGE = '#f97316';
-
-// Status badge colors
-export const STATUS_PENDING = darkColors.warning;
-export const STATUS_ACCEPTED = darkColors.success;
-export const STATUS_REJECTED = darkColors.error;
-export const STATUS_CHECKED_IN = darkColors.info;
-export const GOLD = '#fbbf24';
-export const GOLD_BG20 = 'rgba(251, 191, 36, 0.2)';
-export const GOLD_BG10 = 'rgba(251, 191, 36, 0.1)';
-
-// Typography tokens - Inter + JetBrains Mono
 export const TYPO = {
-  h1: {
-    fontFamily: "'Inter', -apple-system, sans-serif",
-    fontSize: 32,
-    fontWeight: 600,
+  display: {
+    fontFamily: "'Space Grotesk', -apple-system, sans-serif",
+    fontSize: 36,
+    fontWeight: 700,
     lineHeight: 1.2,
     letterSpacing: '-0.02em',
   },
+  h1: {
+    fontFamily: "'Space Grotesk', -apple-system, sans-serif",
+    fontSize: 28,
+    fontWeight: 700,
+    lineHeight: 1.2,
+    letterSpacing: '-0.01em',
+  },
   h2: {
     fontFamily: "'Inter', -apple-system, sans-serif",
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 600,
     lineHeight: 1.3,
-    letterSpacing: '-0.01em',
   },
   h3: {
     fontFamily: "'Inter', -apple-system, sans-serif",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 600,
     lineHeight: 1.4,
   },
@@ -204,7 +243,7 @@ export const TYPO = {
     fontWeight: 500,
     lineHeight: 1.0,
     textTransform: 'uppercase' as const,
-    letterSpacing: '0.05em',
+    letterSpacing: '0.08em',
   },
   mono: {
     fontFamily: "'JetBrains Mono', monospace",
@@ -219,7 +258,7 @@ export const TYPO = {
     lineHeight: 1.3,
     letterSpacing: '-0.02em',
   },
-  // Legacy typography
+  // Legacy typography aliases
   'body-lg': {
     fontFamily: "'Inter', -apple-system, sans-serif",
     fontSize: 16,
@@ -257,20 +296,44 @@ export const TYPO = {
   },
 } as const;
 
-// Shadow tokens - subtle depth
+// ============================================================
+// Shadow tokens
+// ============================================================
+
 export const SHADOW = {
-  card: '0 1px 3px rgba(0, 0, 0, 0.3)',
-  elevated: '0 4px 12px rgba(0, 0, 0, 0.4)',
-  modal: '0 8px 32px rgba(0, 0, 0, 0.6)',
-  glow: '0 0 30px rgba(139, 92, 246, 0.3)',
+  sm: '0 1px 2px rgba(0, 0, 0, 0.3)',
+  md: '0 4px 12px rgba(0, 0, 0, 0.4)',
+  lg: '0 8px 24px rgba(0, 0, 0, 0.5)',
+  glow: '0 0 20px rgba(37, 99, 235, 0.35)',
+  orangeGlow: '0 0 20px rgba(249, 115, 22, 0.4)',
+  goldGlow: '0 0 20px rgba(251, 191, 36, 0.3)',
 } as const;
 
-// Breakpoints
+// ============================================================
+// Breakpoints & Timing — unchanged
+// ============================================================
+
 export const BREAKPOINTS = { mobile: 768, tablet: 1024 };
 
-// Animation timing
 export const TIMING = {
   fast: '100ms',
   base: '150ms',
   slow: '250ms',
 } as const;
+
+// ============================================================
+// Deprecated — kept for compatibility but same values
+// ============================================================
+
+export type ThemeMode = 'dark';
+export const getColors = (_mode: ThemeMode) => ({
+  bg, bgPrimary, bgSecondary, bgTertiary, bgElevated, bgOverlay,
+  textPrimary, textSecondary, textTertiary, textMuted, textInverse,
+  accentPrimary, accentPrimaryHover, accentSecondary,
+  accentGlow, accentSubtle,
+  success, successSubtle,
+  warning, warningSubtle,
+  error, errorSubtle,
+  info, infoSubtle,
+  borderSubtle, borderDefault, borderStrong, borderFocus,
+});

@@ -6,8 +6,8 @@ import * as api from '../services/api';
 import CommandPalette, { useCommandPalette } from './CommandPalette';
 
 const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  organizer: { label: 'Organizer', color: '#5e6ad2', bg: 'rgba(94, 106, 210, 0.12)' },
-  judge: { label: 'Judge', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' },
+  organizer: { label: 'Organizer', color: '#3b82f6', bg: 'rgba(37, 99, 235, 0.12)' },
+  judge: { label: 'Judge', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.12)' },
   participant: { label: 'Participant', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.12)' },
 };
 
@@ -284,16 +284,18 @@ export default function Layout() {
                   width: 32,
                   height: 32,
                   borderRadius: 8,
-                  background: 'var(--bg-tertiary)',
-                  border: '1px solid var(--border-default)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: 'var(--text-primary)',
+                  color: '#f97316',
+                  filter: 'drop-shadow(0 0 6px rgba(249, 115, 22, 0.4))',
                 }}>
-                  H
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                    <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+                    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+                  </svg>
                 </div>
                 <div>
                   <div style={{
@@ -577,7 +579,7 @@ export default function Layout() {
                       width: 4,
                       height: 4,
                       borderRadius: '50%',
-                      background: 'var(--text-primary)',
+                      background: 'var(--accent-primary)',
                     }} />
                   )}
                 </Link>
@@ -713,7 +715,7 @@ export default function Layout() {
             position: 'sticky',
             top: 0,
             height: 64,
-            background: 'rgba(14, 14, 16, 0.8)',
+            background: 'rgba(10, 15, 30, 0.8)',
             backdropFilter: 'blur(12px)',
             borderBottom: '1px solid var(--border-subtle)',
             display: 'flex',
