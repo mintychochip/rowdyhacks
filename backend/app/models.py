@@ -657,6 +657,18 @@ class SiteConfig(Base):
     description = Column(String(255), nullable=True)
 
 
+class Event(Base):
+    __tablename__ = "events"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    type = Column(String(64), nullable=False, index=True)
+    payload = Column(JsonType, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<Event {self.type}>"
+
+
 # Import assistant models to ensure they are registered with SQLAlchemy
 # This must be at the end to avoid circular imports
 from app.models_assistant import AssistantConversation, AssistantDocument, AssistantMessage  # noqa: E402, F401
