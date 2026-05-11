@@ -8,11 +8,12 @@ import random
 import sys
 import uuid
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from faker import Faker
 from sqlalchemy import select
 
-sys.path.insert(0, "C:/Users/justi/dev/rowdyhacks/backend")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.database import async_session
 from app.models import Hackathon, Registration, RegistrationStatus, User, UserRole

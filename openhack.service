@@ -1,5 +1,5 @@
 [Unit]
-Description=HackVerify Platform
+Description=OpenHack Platform
 Requires=docker.service
 After=docker.service
 
