@@ -31,6 +31,7 @@ from app.routes.webhooks import router as webhooks_router
 from app.routes.websocket import router as websocket_router
 from app.routes.oauth import router as oauth_router
 from app.routes.admin_oauth import router as admin_oauth_router
+from app.routes.invites import router as invites_router
 
 # Configure structured logging
 configure_logging(log_level=settings.log_level, json_logs=settings.json_logs)
@@ -191,6 +192,7 @@ app.include_router(tracks_router)
 app.include_router(hacker_dashboard_router)
 app.include_router(registrations_router)
 app.include_router(registrations_org_router)
+app.include_router(invites_router)
 app.include_router(checkin_router)
 app.include_router(qr_router)
 app.include_router(crawler_router, prefix="/api/crawler", tags=["crawler"])

@@ -14,7 +14,7 @@ from app.clerk_auth import require_clerk_user
 from app.database import get_db
 from app.discord_bot import post_application_to_discord
 from app.email_service import send_email
-from app.models import Hackathon, HackathonOrganizer, Registration, RegistrationStatus, User, UserRole
+from app.models import Hackathon, HackathonInvite, HackathonOrganizer, Registration, RegistrationStatus, User, UserRole
 from app.schemas import RegistrationCreate
 from app.waitlist import auto_waitlist_if_full, get_waitlist_position, promote_from_waitlist
 
@@ -277,6 +277,24 @@ async def register_for_hackathon(
     hackathon = hk_result.scalar_one_or_none()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
+
+    # Invite-only validation
+    if hackathon.registration_mode == "invite_only":
+        invite_code = body.invite_code
+        if not invite_code:
+            raise HTTPException(status_code=400, detail="Invite code required for this hackathon")
+        invite_result = await db.execute(
+            select(HackathonInvite).where(
+                HackathonInvite.code == invite_code,
+                HackathonInvite.hackathon_id == hackathon_id,
+                HackathonInvite.uses_remaining > 0,
+                (HackathonInvite.expires_at.is_(None)) | (HackathonInvite.expires_at > datetime.now(UTC)),
+            )
+        )
+        invite = invite_result.scalar_one_or_none()
+        if not invite:
+            raise HTTPException(status_code=400, detail="Invalid or expired invite code")
+        invite.uses_remaining -= 1
 
     # Check application deadline
     if hackathon.application_deadline and datetime.now(UTC) > hackathon.application_deadline:

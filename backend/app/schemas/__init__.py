@@ -67,7 +67,7 @@ class SubmitScoreRequest(BaseModel):
 
 
 class RegistrationCreate(BaseModel):
-    hackathon_id: str
+    hackathon_id: Optional[str] = None
     team_name: Optional[str] = None
     team_members: Optional[List[Dict[str, Any]]] = None
     linkedin_url: Optional[str] = None
@@ -89,3 +89,4 @@ class RegistrationCreate(BaseModel):
     special_needs: Optional[str] = None
     school_company: Optional[str] = None
     graduation_year: Optional[int] = None
+    invite_code: Optional[str] = None
