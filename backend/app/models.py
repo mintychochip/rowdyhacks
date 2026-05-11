@@ -645,6 +645,18 @@ class ContentPage(Base):
     )
 
 
+class SiteConfig(Base):
+    __tablename__ = "site_config"
+
+    key = Column(String(64), primary_key=True, nullable=False)
+    value = Column(Text, nullable=False)
+    category = Column(String(32), default="general", nullable=False, index=True)
+    updated_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC), nullable=False
+    )
+    description = Column(String(255), nullable=True)
+
+
 # Import assistant models to ensure they are registered with SQLAlchemy
 # This must be at the end to avoid circular imports
 from app.models_assistant import AssistantConversation, AssistantDocument, AssistantMessage  # noqa: E402, F401

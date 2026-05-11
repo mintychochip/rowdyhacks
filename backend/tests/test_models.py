@@ -1,7 +1,17 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from app.models import CheckResultModel, CheckStatus, Hackathon, Submission, SubmissionStatus, User, UserRole, Verdict
+from app.models import (
+    CheckResultModel,
+    CheckStatus,
+    Hackathon,
+    SiteConfig,
+    Submission,
+    SubmissionStatus,
+    User,
+    UserRole,
+    Verdict,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -107,3 +117,16 @@ async def test_create_submission_with_check_results(db_session):
     assert fetched.check_results[0].check_name == "commit-timestamps"
     assert fetched.check_results[0].score == 10
     assert fetched.submitter.email == "participant@example.com"
+
+
+@pytest.mark.asyncio
+async def test_site_config_model(db_session):
+    """SiteConfig can be created and queried."""
+    config = SiteConfig(key="hackathon_name", value="TestHack", category="general")
+    db_session.add(config)
+    await db_session.commit()
+
+    result = await db_session.execute(select(SiteConfig).where(SiteConfig.key == "hackathon_name"))
+    found = result.scalar_one()
+    assert found.value == "TestHack"
+    assert found.category == "general"
