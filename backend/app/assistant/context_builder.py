@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.assistant.embedder import embedder
 from app.assistant.permissions import get_tools_for_role
 from app.assistant.vector_store import vector_store
+from app.config import settings
 from app.models import Hackathon, Registration, Track, User
 
 logger = logging.getLogger(__name__)
@@ -191,7 +192,11 @@ class ContextBuilder:
         parts = []
 
         # Identity and role
-        parts.append("You are an AI assistant for a hackathon management platform.")
+        system_prompt = (
+            f"You are an AI assistant for {settings.hackathon_name}, "
+            f"{settings.hackathon_tagline}."
+        )
+        parts.append(system_prompt)
         parts.append(f"The user's role is: {user.role}")
         parts.append(f"Current date: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 

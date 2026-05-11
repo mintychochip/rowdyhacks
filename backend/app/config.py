@@ -163,6 +163,15 @@ class Settings(BaseSettings):
             raise ValueError(f"Invalid cron expression: {e}") from e
         return v
 
+    # Branding configuration (self-hosted hackathon identity)
+    hackathon_name: str = Field(default="OpenHack", description="Hackathon display name")
+    hackathon_tagline: str = Field(default="The open-source hackathon framework", description="Short tagline shown in UI")
+    hackathon_email: str = Field(default="noreply@example.com", description="Default sender email address")
+    hackathon_primary_color: str = Field(default="#2563eb", description="Primary brand color (hex)")
+    hackathon_logo_url: str = Field(default="/openhack-logo.png", description="URL to logo image")
+    hackathon_favicon_url: str = Field(default="/openhack-logo.png", description="URL to favicon")
+    hackathon_year: int = Field(default=2025, description="Current hackathon year")
+
     # Email configuration
     email_provider: str = Field(default="smtp", description='Email provider: "sendgrid" or "smtp"')
     sendgrid_api_key: str = Field(default="", description="SendGrid API key for email sending")

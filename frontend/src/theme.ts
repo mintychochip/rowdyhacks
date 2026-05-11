@@ -161,6 +161,10 @@ export const GOLD = gold;
 export const GOLD_BG20 = 'rgba(251, 191, 36, 0.2)';
 export const GOLD_BG10 = 'rgba(251, 191, 36, 0.1)';
 
+// CSS custom property names for dynamic branding
+export const CSS_PRIMARY = 'var(--oh-primary)';
+export const CSS_THEME_COLOR = 'var(--oh-theme-color)';
+
 // Status badge colors
 export const STATUS_PENDING = warning;
 export const STATUS_ACCEPTED = success;

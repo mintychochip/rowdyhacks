@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import * as api from '../services/api';
+import { useBrandingStore } from '../stores/brandingStore';
 import CommandPalette, { useCommandPalette } from './CommandPalette';
 
 const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
@@ -164,6 +165,7 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hackathonId, setHackathonId] = useState<string | null>(null);
   const [expandedNav, setExpandedNav] = useState<Set<string>>(new Set(['Resources']));
+  const { branding } = useBrandingStore();
   const role = user?.role;
   const roleBadge = role && ROLE_LABELS[role];
 
@@ -280,23 +282,7 @@ export default function Layout() {
                 alignItems: 'center',
                 gap: 10,
               }}>
-                <div style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#f97316',
-                  filter: 'drop-shadow(0 0 6px rgba(249, 115, 22, 0.4))',
-                }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
-                    <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
-                    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
-                    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
-                  </svg>
-                </div>
+                <img src={branding.hackathon_logo_url} alt={branding.hackathon_name} style={{ height: 32 }} />
                 <div>
                   <div style={{
                     fontSize: 15,
@@ -304,14 +290,14 @@ export default function Layout() {
                     color: 'var(--text-primary)',
                     letterSpacing: '-0.01em',
                   }}>
-                    Hackathon
+                    {branding.hackathon_name}
                   </div>
                   <div style={{
                     fontSize: 11,
                     color: 'var(--text-muted)',
                     fontWeight: 500,
                   }}>
-                    2026
+                    {branding.hackathon_year}
                   </div>
                 </div>
               </div>
@@ -759,7 +745,7 @@ export default function Layout() {
                   color: 'var(--text-muted)',
                   fontWeight: 500,
                 }}>
-                  Platform
+                  {branding.hackathon_name}
                 </span>
                 <span style={{ color: 'var(--border-default)' }}>/</span>
                 <span style={{
@@ -767,7 +753,7 @@ export default function Layout() {
                   color: 'var(--text-primary)',
                   fontWeight: 500,
                 }}>
-                  2026
+                  {branding.hackathon_year}
                 </span>
               </div>
             </div>
