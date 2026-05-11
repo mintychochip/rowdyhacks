@@ -29,6 +29,8 @@ from app.routes.registrations_organizer import router as registrations_org_route
 from app.routes.tracks import router as tracks_router
 from app.routes.webhooks import router as webhooks_router
 from app.routes.websocket import router as websocket_router
+from app.routes.oauth import router as oauth_router
+from app.routes.admin_oauth import router as admin_oauth_router
 
 # Configure structured logging
 configure_logging(log_level=settings.log_level, json_logs=settings.json_logs)
@@ -171,6 +173,8 @@ app.add_middleware(
 )
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(oauth_router)
+app.include_router(admin_oauth_router)
 app.include_router(assistant_router, prefix="/api/assistant", tags=["assistant"])
 
 # LLM proxy — separate router at /api/llm (not nested under /api/assistant)
