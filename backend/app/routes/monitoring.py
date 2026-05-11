@@ -186,6 +186,77 @@ async def track_request(request: Request, call_next):
             _metrics["response_times"] = _metrics["response_times"][-1000:]
 
 
+@router.get("/diagnostics")
+async def diagnostics():
+    """Extended diagnostics for all subsystems."""
+    checks = {}
+
+    # Database
+    try:
+        async with async_session() as db:
+            await db.execute(text("SELECT 1"))
+            checks["database"] = {"status": "healthy"}
+    except Exception as e:
+        checks["database"] = {"status": "unhealthy", "error": str(e)}
+
+    # Redis
+    try:
+        redis = await get_redis()
+        if redis:
+            await redis.ping()
+            info = await redis.info()
+            checks["redis"] = {"status": "healthy", "version": info.get("redis_version", "unknown")}
+        else:
+            checks["redis"] = {"status": "not_configured"}
+    except Exception as e:
+        checks["redis"] = {"status": "unhealthy", "error": str(e)}
+
+    # Discord bot
+    try:
+        from app.discord_bot import bot
+
+        checks["discord"] = {
+            "status": "healthy" if bot.is_ready() else "not_ready",
+            "user": str(bot.user) if bot.user else None,
+            "guild_count": len(bot.guilds),
+        }
+    except Exception as e:
+        checks["discord"] = {"status": "unhealthy", "error": str(e)}
+
+    # Scheduler
+    try:
+        from app.background_jobs import scheduler
+
+        checks["scheduler"] = {
+            "status": "healthy" if scheduler and scheduler.running else "not_running",
+            "jobs": len(scheduler.get_jobs()) if scheduler and scheduler.running else 0,
+        }
+    except Exception as e:
+        checks["scheduler"] = {"status": "unhealthy", "error": str(e)}
+
+    # Disk
+    try:
+        import shutil
+
+        stat = shutil.disk_usage("/tmp")
+        free_percent = (stat.free / stat.total) * 100
+        checks["disk"] = {"status": "healthy", "free_percent": round(free_percent, 1)}
+    except Exception as e:
+        checks["disk"] = {"status": "unknown", "error": str(e)}
+
+    overall = (
+        "healthy"
+        if all(c.get("status") in ("healthy", "not_configured", "not_ready", "not_running") for c in checks.values())
+        else "degraded"
+    )
+
+    return {
+        "status": overall,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "checks": checks,
+    }
+
+
 @router.get("/version")
 async def version():
     """Get application version and build info."""
