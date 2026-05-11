@@ -42,3 +42,4 @@ faker>=22.0.0
 markdown>=3.5
 bleach>=6.1
 fastapi-limiter>=0.1.6
+testcontainers>=4.0.0
