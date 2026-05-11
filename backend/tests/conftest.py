@@ -1,6 +1,7 @@
 import uuid
 
 import pytest_asyncio
+from fastapi import Header
 from app.database import get_db
 from app.main import app
 from app.models import Base, UserRole
@@ -31,12 +32,15 @@ async def db_session(engine):
         await session.rollback()
 
 
-async def _override_require_clerk_user(authorization: str | None = None):
+async def _override_require_clerk_user(authorization: str | None = Header(alias="Authorization", default=None)):
     """Override require_clerk_user for testing.
 
     Supports test tokens of the form 'Bearer test-<user_id>' to return
     a specific user sub. Falls back to a random UUID for plain tokens.
     """
+    import sys
+
+    print(f"[DEBUG] _override_require_clerk_user called with authorization={authorization!r}", file=sys.stderr)
     user_id = str(uuid.uuid4())
     email = "test@example.com"
     if authorization and authorization.startswith("Bearer test-"):
@@ -44,6 +48,7 @@ async def _override_require_clerk_user(authorization: str | None = None):
         user_id = parts[0]
         if len(parts) > 1:
             email = parts[1]
+    print(f"[DEBUG] returning sub={user_id}", file=sys.stderr)
     return {"sub": user_id, "email": email}
 
 

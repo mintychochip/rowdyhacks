@@ -563,7 +563,7 @@ async def submit_scores(
         raise HTTPException(status_code=404, detail="No rubric found for this session")
 
     criteria_result = await db.execute(select(RubricCriterion).where(RubricCriterion.rubric_id == rubric.id))
-    criteria = {c.id: c for c in criteria_result.scalars().all()}
+    criteria = {str(c.id): c for c in criteria_result.scalars().all()}
 
     for item in body.scores:
         cid = str(item.criterion_id)

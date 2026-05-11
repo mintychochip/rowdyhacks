@@ -1,5 +1,6 @@
 """Stub schema exports to satisfy imports until full schemas are restored."""
 
+from datetime import datetime
 from typing import Any, List, Optional
 
 from pydantic import BaseModel
@@ -42,11 +43,30 @@ class SubmitRequest(BaseModel):
     hackathon_id: Optional[str] = None
 
 
+class CriterionCreate(BaseModel):
+    """Pydantic schema for a single rubric criterion.
+
+    Behavior:
+    1. Defines name, description, max_score, weight, and sort_order.
+    2. Consumed by JudgingSessionCreate to build the full rubric.
+
+    Raises: ValidationError on type mismatches.
+    Side Effects: None.
+    Dependencies: pydantic.BaseModel.
+    """
+
+    name: str
+    description: str = ""
+    max_score: int = 10
+    weight: int = 0
+    sort_order: int = 0
+
+
 class JudgingSessionCreate(BaseModel):
     """Pydantic schema for creating a new judging session.
 
     Behavior:
-    1. Accepts a list of scoring criteria.
+    1. Accepts timing, settings, and a list of scoring criteria.
     2. Passed to the judging session factory to initialize evaluation state.
 
     Raises: ValidationError on type mismatches.
@@ -55,7 +75,27 @@ class JudgingSessionCreate(BaseModel):
     Consumers: POST /api/judging/sessions route, admin judging panel.
     """
 
-    criteria: List[Any] = []
+    start_time: datetime
+    end_time: datetime
+    per_project_seconds: int = 300
+    leaderboard_public: bool = False
+    criteria: List[CriterionCreate] = []
+
+
+class ScoreItem(BaseModel):
+    """Pydantic schema for a single criterion score.
+
+    Behavior:
+    1. Maps a criterion_id to a numeric score.
+    2. Consumed by SubmitScoreRequest.
+
+    Raises: ValidationError on type mismatches.
+    Side Effects: None.
+    Dependencies: pydantic.BaseModel.
+    """
+
+    criterion_id: str
+    score: int
 
 
 class SubmitScoreRequest(BaseModel):
@@ -71,7 +111,7 @@ class SubmitScoreRequest(BaseModel):
     Consumers: POST /api/judging/score route, judge ballot form.
     """
 
-    scores: List[Any] = []
+    scores: List[ScoreItem] = []
 
 
 class RegistrationCreate(BaseModel):
