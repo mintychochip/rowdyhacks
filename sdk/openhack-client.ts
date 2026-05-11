@@ -16,9 +16,73 @@
 export interface AnnouncementCreate {
 }
 
+/** Pydantic schema returned after a successful branding asset upload. */
+/**  */
+/** Behavior: */
+/** 1. Returns the config key and public URL for the uploaded asset. */
+/** 2. Typically used for logo or favicon uploads. */
+/**  */
+/** Raises: ValidationError on missing key or url. */
+/** Side Effects: None. */
+/** Dependencies: pydantic.BaseModel. */
+/** Consumers: POST /api/config/assets route, admin asset manager. */
+export interface AssetUploadResponse {
+  key: string;
+  url: string;
+}
+
+/** Pydantic schema for public hackathon branding configuration. */
+/**  */
+/** Behavior: */
+/** 1. Returns seven branding fields: name, tagline, email, primary color, logo URL, favicon URL, year. */
+/** 2. Consumed by the frontend theme initialization and layout components. */
+/**  */
+/** Raises: ValidationError on missing fields or type mismatches. */
+/** Side Effects: None. */
+/** Dependencies: pydantic.BaseModel. */
+/** Consumers: GET /api/config/branding route, frontend theme.ts, Layout component. */
+export interface BrandingResponse {
+  hackathon_name: string;
+  hackathon_tagline: string;
+  hackathon_email: string;
+  hackathon_primary_color: string;
+  hackathon_logo_url: string;
+  hackathon_favicon_url: string;
+  hackathon_year: number;
+}
+
 export interface ChatLogRequest {
   messages: Record<string, unknown>[];
   conversation_id?: string | null;
+}
+
+/** Pydantic schema for a single key-value configuration entry. */
+/**  */
+/** Behavior: */
+/** 1. Returns the config key and its stored string value. */
+/** 2. Used when the client requests one specific setting. */
+/**  */
+/** Raises: ValidationError on missing key or value. */
+/** Side Effects: None. */
+/** Dependencies: pydantic.BaseModel. */
+/** Consumers: GET /api/config/{key} route. */
+export interface ConfigKeyResponse {
+  key: string;
+  value: string;
+}
+
+/** Pydantic schema confirming a batch configuration update. */
+/**  */
+/** Behavior: */
+/** 1. Returns the list of keys that were successfully updated. */
+/** 2. Lets the frontend know which settings changed. */
+/**  */
+/** Raises: ValidationError if updated list is missing. */
+/** Side Effects: None. */
+/** Dependencies: pydantic.BaseModel. */
+/** Consumers: PUT /api/config route, admin configuration panel. */
+export interface ConfigUpdateResponse {
+  updated: string[];
 }
 
 /** Pydantic schema for creating a new conflict-of-interest declaration. */
@@ -572,7 +636,7 @@ export class OpenHackClient {
    * GET /api/config/ — Get All Config
    * Tags: config
    */
-  async getAllConfigApiConfigGet(category?: string | null): Promise<unknown> {
+  async getAllConfigApiConfigGet(category?: string | null): Promise<Record<string, string>> {
     const params = new URLSearchParams();
     if (category != null) params.append('category', String(category));
     const url = `${this.baseUrl}/api/config/` + (params.toString() ? `?${params.toString()}` : '');
@@ -591,7 +655,7 @@ export class OpenHackClient {
    * PUT /api/config/ — Update Config
    * Tags: config
    */
-  async updateConfigApiConfigPut(body: Record<string, string>): Promise<unknown> {
+  async updateConfigApiConfigPut(body: Record<string, string>): Promise<{ updated: string[] }> {
     const url = `${this.baseUrl}/api/config/`;
     const res = await fetch(url, {
       method: 'PUT',
@@ -609,7 +673,7 @@ export class OpenHackClient {
    * POST /api/config/assets — Upload Asset
    * Tags: config
    */
-  async uploadAssetApiConfigAssetsPost(file: File | Blob, key?: string | null): Promise<unknown> {
+  async uploadAssetApiConfigAssetsPost(file: File | Blob, key?: string | null): Promise<{ key: string; url: string }> {
     const formData = new FormData();
     if (file != null) formData.append('file', file);
     if (key != null) formData.append('key', key);
@@ -630,7 +694,7 @@ export class OpenHackClient {
    * Backward-compat branding endpoint (deprecated).
    * Tags: config
    */
-  async getBrandingApiConfigBrandingGet(): Promise<unknown> {
+  async getBrandingApiConfigBrandingGet(): Promise<{ hackathon_name: string; hackathon_tagline: string; hackathon_email: string; hackathon_primary_color: string; hackathon_logo_url: string; hackathon_favicon_url: string; hackathon_year: number }> {
     const url = `${this.baseUrl}/api/config/branding`;
     const res = await fetch(url, {
       method: 'GET',
@@ -665,7 +729,7 @@ export class OpenHackClient {
    * GET /api/config/keys/{key} — Get Single Key
    * Tags: config
    */
-  async getSingleKeyApiConfigKeysKeyGet(key: string): Promise<unknown> {
+  async getSingleKeyApiConfigKeysKeyGet(key: string): Promise<{ key: string; value: string }> {
     const url = `${this.baseUrl}/api/config/keys/${key}`;
     const res = await fetch(url, {
       method: 'GET',

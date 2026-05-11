@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clerk_auth import require_organizer
 from app.database import get_db
+from app.schemas.config import AssetUploadResponse, BrandingResponse, ConfigKeyResponse, ConfigUpdateResponse
 from app.services.config_service import ConfigService
 from app.storage import StorageService
 
@@ -59,7 +60,7 @@ async def get_manifest(db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.get("/branding")
+@router.get("/branding", response_model=BrandingResponse)
 async def get_branding(db: AsyncSession = Depends(get_db)):
     """Backward-compat branding endpoint (deprecated)."""
     config = await config_service.get_all(db)
@@ -78,7 +79,7 @@ async def get_branding(db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.get("/keys/{key}")
+@router.get("/keys/{key}", response_model=ConfigKeyResponse)
 async def get_single_key(key: str, db: AsyncSession = Depends(get_db)):
     try:
         value = await config_service.get(key, db)
@@ -87,7 +88,7 @@ async def get_single_key(key: str, db: AsyncSession = Depends(get_db)):
     return {"key": key, "value": value}
 
 
-@router.get("/")
+@router.get("/", response_model=dict[str, str])
 async def get_all_config(category: str | None = None, db: AsyncSession = Depends(get_db)):
     if category and category not in _ALLOWED_CATEGORIES:
         raise HTTPException(
@@ -98,7 +99,7 @@ async def get_all_config(category: str | None = None, db: AsyncSession = Depends
     return config
 
 
-@router.put("/")
+@router.put("/", response_model=ConfigUpdateResponse)
 async def update_config(
     updates: dict[str, str],
     db: AsyncSession = Depends(get_db),
@@ -111,7 +112,7 @@ async def update_config(
     return {"updated": list(updates.keys())}
 
 
-@router.post("/assets")
+@router.post("/assets", response_model=AssetUploadResponse)
 async def upload_asset(
     file: UploadFile = File(...),
     key: str | None = Form(None),
