@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-04
 **Feature:** AI Assistant with Chat/Plan/Build Modes
-**Context:** 6-hour RowdyHacks hackathon
+**Context:** 6-hour OpenHack hackathon
 
 ---
 
@@ -290,7 +290,7 @@ Auto-generated README.md for exported projects:
 ```markdown
 # [Project Name]
 
-Generated for RowdyHacks 2026
+Generated for OpenHack 2026
 Target Track: [Track Name]
 
 ## Quick Start

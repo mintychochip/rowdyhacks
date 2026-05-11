@@ -1,6 +1,6 @@
-# Hack the Valley
+# OpenHack
 
-Bakersfield's hackathon platform — registration, check-in, judging, and everything in between. Bakersfield's largest student-run hackathon.
+Bakersfield's hackathon platform — registration, check-in, judging, and everything in between. The open-source hackathon framework.
 
 ## Features
 
@@ -59,8 +59,8 @@ Bakersfield's hackathon platform — registration, check-in, judging, and everyt
 ## Quick Start (Docker Compose)
 
 ```bash
-git clone https://github.com/mintychochip/rowdyhacks.git
-cd rowdyhacks
+git clone https://github.com/mintychochip/openhack.git
+cd openhack
 cp .env.example .env
 # Edit .env with your SECRET_KEY, POSTGRES_PASSWORD, etc.
 ./scripts/init-ssl.sh
@@ -116,7 +116,7 @@ All backend settings use the `HACKVERIFY_` prefix (loaded via pydantic-settings)
 ## Project Structure
 
 ```
-rowdyhacks/
+openhack/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py           # FastAPI entry point

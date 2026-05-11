@@ -1,6 +1,6 @@
 # HackVerify Project Journal
 
-**Repository:** mintychochip/rowdyhacks  
+**Repository:** mintychochip/openhack  
 **Status:** Production Ready  
 **Last Updated:** 2026-04-30
 
@@ -81,8 +81,8 @@ HackVerify is a PWA that detects cheating in hackathon submissions. It accepts D
 
 ```bash
 # Single command deploy on VPS
-git clone https://github.com/mintychochip/rowdyhacks.git
-cd rowdyhacks
+git clone https://github.com/mintychochip/openhack.git
+cd openhack
 ./scripts/init-ssl.sh yourdomain.com
 sudo docker-compose up -d
 ```
@@ -224,10 +224,10 @@ None currently.
 - Participants: Can view announcements for hackathons they're registered for
 - Judges: Can declare COI, view COI status for their assignments
 
-## Rebrand: Hack the Valley (2026-05-03)
+## Rebrand: OpenHack (2026-05-03)
 
 ### Overview
-Full rebrand from "RowdyHacks" to "Hack the Valley" - Bakersfield's largest student-run hackathon.
+Full rebrand from "OpenHack" to "OpenHack" - The open-source hackathon framework.
 
 ### Changes Made
 
@@ -238,8 +238,8 @@ Full rebrand from "RowdyHacks" to "Hack the Valley" - Bakersfield's largest stud
 - Typography: Inter + JetBrains Mono
 
 **Branding Updates:**
-- Logo: `/htv-logo.png` (Hack the Valley logo)
-- Title: "Hack the Valley | Bakersfield's Hackathon"
+- Logo: `/openhack-logo.png` (OpenHack logo)
+- Title: "OpenHack | Bakersfield's Hackathon"
 - Tagline: "Hack. Build. Create."
 - Hero: "Join 800+ hackers for 36 hours of innovation..."
 - Stats: 800+ Hackers / 36h / $50k+ in Prizes
@@ -247,7 +247,7 @@ Full rebrand from "RowdyHacks" to "Hack the Valley" - Bakersfield's largest stud
 **Files Modified:**
 - `frontend/index.html` - New title, favicon, meta tags
 - `frontend/src/theme.ts` - Blue color palette
-- `frontend/src/components/Layout.tsx` - HTV sidebar branding
+- `frontend/src/components/Layout.tsx` - OH sidebar branding
 - `frontend/src/pages/HomePage.tsx` - New hero content
 
 ### SSL/HTTPS Fixes (2026-05-03)
@@ -261,8 +261,8 @@ Full rebrand from "RowdyHacks" to "Hack the Valley" - Bakersfield's largest stud
 4. Modified `.github/workflows/deploy.yml` - Stops nginx container before deploy to free port 80/443
 
 **Deployment:**
-- Frontend: https://rowdyhackin.vercel.app
-- Backend API: https://rowdyhackin.duckdns.org/api
+- Frontend: https://openhack.vercel.app
+- Backend API: https://openhack.duckdns.org/api
 
 ### QA Testing Results (2026-05-03)
 

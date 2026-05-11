@@ -8,12 +8,12 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       pwaAssets: {
-        image: 'public/htv-logo.png',
+        image: 'public/openhack-logo.png',
       },
       manifest: {
-        name: 'Hack the Valley',
-        short_name: 'HTV',
-        description: "Canada's largest student-run hackathon",
+        name: 'OpenHack',
+        short_name: 'OH',
+        description: "The open-source hackathon framework",
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',

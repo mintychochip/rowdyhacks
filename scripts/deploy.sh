@@ -40,7 +40,7 @@ if command -v docker &> /dev/null && docker info &> /dev/null; then
     ok "Watchtower check triggered locally"
 else
     warn "Docker not available locally. Run this script on the VPS:"
-    echo "  cd /home/jlo/rowdyhacks && ./scripts/deploy.sh"
+    echo "  cd /home/jlo/openhack && ./scripts/deploy.sh"
     exit 1
 fi
 

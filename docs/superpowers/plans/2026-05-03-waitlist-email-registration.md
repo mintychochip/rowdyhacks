@@ -249,7 +249,7 @@ SMTP_HOST: str = os.getenv("SMTP_HOST", "")
 SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER: str = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
-EMAIL_FROM: str = os.getenv("EMAIL_FROM", "noreply@hackthevalley.io")
+EMAIL_FROM: str = os.getenv("EMAIL_FROM", "noreply@openhack.io")
 ```
 
 - [ ] **Step 2: Create email_service.py**
@@ -1201,7 +1201,7 @@ from sqlalchemy import select
 
 # Add parent to path
 import sys
-sys.path.insert(0, "/Users/justi/dev/rowdyhacks/backend")
+sys.path.insert(0, "/Users/justi/dev/openhack/backend")
 
 from app.database import async_session
 from app.models import (

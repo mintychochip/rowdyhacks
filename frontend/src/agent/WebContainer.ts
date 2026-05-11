@@ -27,7 +27,7 @@ export class Sandbox {
         this.setStatus('ready');
         wc.mount({
           'package.json': { file: { contents: '{"name":"hack-project","private":true}' } },
-          'README.md': { file: { contents: '# Hack the Valley Project' } },
+          'README.md': { file: { contents: '# OpenHack Project' } },
         });
         wc.on('server-ready', (_port: number, url: string) => {
           console.log(`[Sandbox] Server ready: ${url}`);

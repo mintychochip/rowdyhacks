@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Transform the AI assistant from a Q&A chatbot into a hackathon project accelerator with Chat/Plan/Build modes, enabling teams to go from idea to running prototype within the 6-hour RowdyHacks timeline.
+**Goal:** Transform the AI assistant from a Q&A chatbot into a hackathon project accelerator with Chat/Plan/Build modes, enabling teams to go from idea to running prototype within the 6-hour OpenHack timeline.
 
 **Architecture:** Three-mode state machine (Chat → Plan → Build) with in-browser Monaco editor, live preview panel, and seamless AI-assisted code generation. Files stored in memory during session with ZIP export.
 
@@ -1113,7 +1113,7 @@ export default function ExportButton() {
     const plan = project.plan;
     return `# ${project.name}
 
-Generated with RowdyHacks AI Assistant
+Generated with OpenHack AI Assistant
 ${plan ? `Target Track: ${plan.targetTrack || 'TBD'}` : ''}
 
 ## Files
@@ -1136,7 +1136,7 @@ ${plan.tasks.map((t) => `- [${t.completed ? 'x' : ' '}] ${t.description} (${t.es
 ${getSetupInstructions(project.type)}
 
 ---
-*Built at RowdyHacks 2026*
+*Built at OpenHack 2026*
 `;
   };
 

@@ -90,11 +90,11 @@ npm install @auth0/auth0-react
 ```typescript
 // auth0-config.ts
 export const auth0Config = {
-  domain: 'hackthevalley.us.auth0.com',  // or your domain
+  domain: 'openhack.us.auth0.com',  // or your domain
   clientId: 'your-client-id',
   authorizationParams: {
     redirect_uri: window.location.origin + '/auth/callback',
-    audience: 'https://api.hackthevalley.io',  // API identifier
+    audience: 'https://api.openhack.io',  // API identifier
   },
 };
 ```
@@ -160,10 +160,10 @@ pip install pyjwt[crypto]  # For RS256 JWT validation
 ### Environment Variables
 ```bash
 # Auth0 (new)
-AUTH0_DOMAIN=hackthevalley.us.auth0.com
+AUTH0_DOMAIN=openhack.us.auth0.com
 AUTH0_CLIENT_ID=xxx
 AUTH0_CLIENT_SECRET=xxx
-AUTH0_API_AUDIENCE=https://api.hackthevalley.io
+AUTH0_API_AUDIENCE=https://api.openhack.io
 
 # Remove (old)
 # HACKVERIFY_SECRET_KEY=xxx  # No longer needed for auth

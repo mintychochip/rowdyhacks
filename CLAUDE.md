@@ -1,14 +1,14 @@
-# Hack the Valley - Agent Context
+# OpenHack - Agent Context
 
 ## Quick Facts
 
 | | |
 |---|---|
-| **Repo** | mintychochip/rowdyhacks |
-| **Frontend URL** | https://rowdyhackin.vercel.app |
-| **Backend API** | https://rowdyhackin.duckdns.org/api |
+| **Repo** | mintychochip/openhack |
+| **Frontend URL** | https://openhack.vercel.app |
+| **Backend API** | https://openhack.duckdns.org/api |
 | **Status** | Production (Let's Encrypt SSL) |
-| **Branding** | "Hack the Valley" |
+| **Branding** | "OpenHack" |
 
 ## Tech Stack
 
@@ -44,8 +44,8 @@ Push to master triggers GitHub Actions deploy to DigitalOcean droplet.
 ### Check Logs
 ```bash
 ssh jlo@64.23.185.189
-docker logs rowdyhacks-backend-1 --tail 50
-docker logs rowdyhacks-nginx-1 --tail 50
+docker logs openhack-backend-1 --tail 50
+docker logs openhack-nginx-1 --tail 50
 ```
 
 ## Known Issues
@@ -65,6 +65,6 @@ docker logs rowdyhacks-nginx-1 --tail 50
 
 ## Backend Health Check
 ```bash
-curl https://rowdyhackin.duckdns.org/api/monitoring/health
+curl https://openhack.duckdns.org/api/monitoring/health
 # Should return: {"status":"healthy", ...}
 ```

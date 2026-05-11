@@ -1,4 +1,4 @@
-# Hack the Valley UI Modernization — Design Spec
+# OpenHack UI Modernization — Design Spec
 
 **Date:** 2026-05-04
 **Status:** Approved
@@ -6,7 +6,7 @@
 
 ## Overview
 
-Modernize the Hack the Valley hackathon platform with a clean, developer-first aesthetic that avoids the cliché "AI startup" or "SaaS product" look. The design should feel authentic to hacker culture—technical, minimal, and not trying too hard.
+Modernize the OpenHack hackathon platform with a clean, developer-first aesthetic that avoids the cliché "AI startup" or "SaaS product" look. The design should feel authentic to hacker culture—technical, minimal, and not trying too hard.
 
 ## Design Principles
 

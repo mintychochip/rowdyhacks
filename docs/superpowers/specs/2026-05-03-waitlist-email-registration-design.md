@@ -1,7 +1,7 @@
 # Design Specification: Waitlist, Email & Registration Data
 
 **Date:** 2026-05-03
-**Project:** Hack the Valley Hackathon Platform
+**Project:** OpenHack Hackathon Platform
 **Scope:** Waitlist management, email notifications, enhanced registration data
 
 ---

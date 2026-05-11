@@ -769,7 +769,7 @@ Add to `frontend/.env.example`:
 # Auth0 Configuration
 VITE_AUTH0_DOMAIN=your-tenant.us.auth0.com
 VITE_AUTH0_CLIENT_ID=your-client-id
-VITE_AUTH0_AUDIENCE=https://api.hackthevalley.io
+VITE_AUTH0_AUDIENCE=https://api.openhack.io
 ```
 
 - [ ] **Step 3: Commit**
@@ -1566,7 +1566,7 @@ Create/update docs:
 
 1. Create Auth0 tenant at https://auth0.com
 2. Create a Single Page Application
-3. Create an API with identifier (e.g., `https://api.hackthevalley.io`)
+3. Create an API with identifier (e.g., `https://api.openhack.io`)
 4. Configure connections:
    - Database (Username-Password)
    - Google (social)
@@ -1578,7 +1578,7 @@ Create/update docs:
 ### Backend
 ```
 AUTH0_DOMAIN=your-tenant.us.auth0.com
-AUTH0_API_AUDIENCE=https://api.hackthevalley.io
+AUTH0_API_AUDIENCE=https://api.openhack.io
 AUTH0_CLIENT_ID=...
 AUTH0_CLIENT_SECRET=...
 ```
@@ -1587,7 +1587,7 @@ AUTH0_CLIENT_SECRET=...
 ```
 VITE_AUTH0_DOMAIN=your-tenant.us.auth0.com
 VITE_AUTH0_CLIENT_ID=...
-VITE_AUTH0_AUDIENCE=https://api.hackthevalley.io
+VITE_AUTH0_AUDIENCE=https://api.openhack.io
 ```
 
 ## User Migration

@@ -2,7 +2,7 @@
 
 > For agentic workers: Use superpowers:subagent-driven-development to implement this plan.
 
-**Goal:** Modernize the Hack the Valley UI with a raw, minimal hacker aesthetic using IBM Plex fonts, monochrome colors, and sharp geometry.
+**Goal:** Modernize the OpenHack UI with a raw, minimal hacker aesthetic using IBM Plex fonts, monochrome colors, and sharp geometry.
 
 **Architecture:** Replace the existing navy/blue theme with a monochrome system supporting light and dark modes.
 

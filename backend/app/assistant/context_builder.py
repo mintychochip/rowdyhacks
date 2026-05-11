@@ -191,7 +191,7 @@ class ContextBuilder:
         parts = []
 
         # Identity and role
-        parts.append("You are an AI assistant for Hack the Valley, a hackathon management platform.")
+        parts.append("You are an AI assistant for OpenHack, a hackathon management platform.")
         parts.append(f"The user's role is: {user.role}")
         parts.append(f"Current date: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 

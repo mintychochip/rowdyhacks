@@ -235,7 +235,7 @@ export default function StandaloneEditor({ height = '100%', onFilesChange }: Sta
 
   const handleEditorDidMount = useCallback((editor: import('monaco-editor').editor.IStandaloneCodeEditor, monaco: typeof import('monaco-editor')) => {
     setEditorInstance(editor);
-    monaco.editor.defineTheme('hackthevalley-dark', {
+    monaco.editor.defineTheme('openhack-dark', {
       base: 'vs-dark', inherit: true,
       rules: [
         { token: 'comment', foreground: '64748B', fontStyle: 'italic' },
@@ -257,7 +257,7 @@ export default function StandaloneEditor({ height = '100%', onFilesChange }: Sta
         'scrollbarSlider.hoverBackground': '#64748BB0',
       },
     });
-    monaco.editor.setTheme('hackthevalley-dark');
+    monaco.editor.setTheme('openhack-dark');
   }, []);
 
   const handleEditorChange = useCallback((value: string | undefined) => {
@@ -442,7 +442,7 @@ export default function StandaloneEditor({ height = '100%', onFilesChange }: Sta
 
         <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
           {activeFile ? (
-            <Editor height="100%" language={activeFile.language} value={activeFile.content} theme="hackthevalley-dark"
+            <Editor height="100%" language={activeFile.language} value={activeFile.content} theme="openhack-dark"
               options={editorOptions} onChange={handleEditorChange}
               beforeMount={handleBeforeMount}
               onMount={handleEditorDidMount}

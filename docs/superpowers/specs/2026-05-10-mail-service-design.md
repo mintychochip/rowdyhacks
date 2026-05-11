@@ -1,6 +1,6 @@
 # Mail Service Design Spec
 
-**Project:** OpenHack (formerly RowdyHacks)
+**Project:** OpenHack (formerly OpenHack)
 **Date:** 2026-05-10
 **Topic:** Self-Hosted Mail Service
 

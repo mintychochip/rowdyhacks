@@ -10,8 +10,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE: ghcr.io/mintychochip/rowdyhacks/backend
-  FRONTEND_IMAGE: ghcr.io/mintychochip/rowdyhacks/frontend
+  BACKEND_IMAGE: ghcr.io/mintychochip/openhack/backend
+  FRONTEND_IMAGE: ghcr.io/mintychochip/openhack/frontend
 
 jobs:
   # ========================================================================

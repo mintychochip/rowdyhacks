@@ -672,7 +672,7 @@ async def generate_project(
         if not has_readme:
             readme_content = f"""# {plan_dict.get('name', 'Project')}
 
-Generated for RowdyHacks hackathon.
+Generated for OpenHack hackathon.
 
 ## Quick Start
 

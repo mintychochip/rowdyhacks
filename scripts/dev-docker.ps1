@@ -45,7 +45,7 @@ if ($ResetData) {
 }
 
 # Build if requested or first run
-if ($Build -or -not (docker images -q rowdyhacks-backend-dev 2>$null)) {
+if ($Build -or -not (docker images -q openhack-backend-dev 2>$null)) {
     Write-Step "Building backend image (first time may take 2-3 minutes)..."
     docker compose -f docker-compose.dev.yml build backend
 }

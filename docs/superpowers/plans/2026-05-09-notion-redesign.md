@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Migrate the entire Hack the Valley frontend from dark rocket/space theme to light Notion-inspired warm minimalism: white/cream surfaces, near-black text, Notion Blue accent, whisper borders, soft shadows.
+**Goal:** Migrate the entire OpenHack frontend from dark rocket/space theme to light Notion-inspired warm minimalism: white/cream surfaces, near-black text, Notion Blue accent, whisper borders, soft shadows.
 
 **Architecture:** Pure visual migration — no functional changes. Global CSS variables and theme tokens drive the look. Four files provide the global foundation; 7 pages need spot-fixes for hardcoded dark colors.
 

@@ -26,7 +26,7 @@ If a project already has files when "New Project" is clicked, a confirmation dia
 **Web App** (default, unchanged):
 ```
 README.md:
-  # My Project\n\nBuilt with Hack the Valley AI Assistant.
+  # My Project\n\nBuilt with OpenHack AI Assistant.
 src/index.html:
   <!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>My Project</title>\n  <link rel="stylesheet" href="css/style.css">\n</head>\n<body>\n  <h1>Hello World</h1>\n  <script src="js/app.js"></script>\n</body>\n</html>
 src/css/style.css:
@@ -38,7 +38,7 @@ src/js/app.js:
 **Python Script** (flat structure):
 ```
 README.md:
-  # Python Project\n\nBuilt with Hack the Valley AI Assistant.
+  # Python Project\n\nBuilt with OpenHack AI Assistant.
 main.py:
   import argparse\n\n\ndef main():\n    parser = argparse.ArgumentParser(description="Your script")\n    parser.add_argument("--name", default="World", help="Who to greet")\n    args = parser.parse_args()\n    print(f"Hello, {args.name}!")\n\n\nif __name__ == "__main__":\n    main()
 requirements.txt:
@@ -48,7 +48,7 @@ requirements.txt:
 **TypeScript App**:
 ```
 README.md:
-  # TypeScript Project\n\nBuilt with Hack the Valley AI Assistant.
+  # TypeScript Project\n\nBuilt with OpenHack AI Assistant.
 src/index.ts:
   interface AppConfig {\n  title: string;\n  version: string;\n}\n\nconst config: AppConfig = {\n  title: "My App",\n  version: "1.0.0",\n};\n\ndocument.addEventListener("DOMContentLoaded", () => {\n  const root = document.getElementById("root");\n  if (root) {\n    root.textContent = `Welcome to ${config.title}`;\n  }\n  console.log("App ready!", config);\n});
 tsconfig.json:
@@ -58,7 +58,7 @@ tsconfig.json:
 **Go App** (flat — no `src/`, as is idiomatic for Go):
 ```
 README.md:
-  # Go Project\n\nBuilt with Hack the Valley AI Assistant.
+  # Go Project\n\nBuilt with OpenHack AI Assistant.
 main.go:
   package main\n\nimport (\n\t"fmt"\n\t"log"\n\t"net/http"\n)\n\nfunc main() {\n\thttp.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {\n\t\tfmt.Fprintf(w, "Hello from Go!")\n\t})\n\tlog.Println("Server starting on :8080")\n\tlog.Fatal(http.ListenAndServe(":8080", nil))\n}
 go.mod:

@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: Hack the Valley
+name: OpenHack
 description: Hackathon management platform — dark, data-dense dashboard with gold accents
 
 colors:
@@ -158,7 +158,7 @@ components:
 
 ## Overview
 
-Hack the Valley is a dark-theme, data-dense dashboard for judging hackathon submissions. The brand anchors to a deep blue (`#001e40`) and gold (`#FFC72C`), brightened for dark backgrounds. The interface alternates between list/table views (submissions, results) and focused drill-down views (check details, narrative reports).
+OpenHack is a dark-theme, data-dense dashboard for judging hackathon submissions. The brand anchors to a deep blue (`#001e40`) and gold (`#FFC72C`), brightened for dark backgrounds. The interface alternates between list/table views (submissions, results) and focused drill-down views (check details, narrative reports).
 
 Design philosophy: **utilitarian but polished** — fast scanning, clear severity hierarchy, minimal chrome, gold reserved for brand moments (logo, key accents).
 

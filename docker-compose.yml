@@ -105,7 +105,7 @@ services:
       - "8000:8000"
 
   frontend:
-    image: ghcr.io/mintychochip/rowdyhacks/frontend:latest
+    image: ghcr.io/mintychochip/openhack/frontend:latest
     restart: unless-stopped
     environment:
       VITE_API_URL: /api

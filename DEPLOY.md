@@ -1,13 +1,13 @@
-# Hack the Valley Deployment Guide
+# OpenHack Deployment Guide
 
 ## Architecture Overview
 
-Hack the Valley uses a **split deployment**:
+OpenHack uses a **split deployment**:
 
 | Component | Platform | URL |
 |---|---|---|
 | **Frontend** | Vercel (auto-deploy from `master`) | Your Vercel project URL |
-| **Backend + DB** | DigitalOcean VPS (Docker Compose) | `rowdyhackin.duckdns.org` |
+| **Backend + DB** | DigitalOcean VPS (Docker Compose) | `openhack.duckdns.org` |
 
 The frontend on Vercel proxies `/api/*` requests to the backend VPS. The backend runs behind nginx with SSL termination on the droplet.
 
@@ -28,7 +28,7 @@ The frontend auto-deploys from `master` via Vercel's GitHub integration. No manu
 2. Set the **Root Directory** to `frontend`
 3. Set the **Install Command** to `npm install --legacy-peer-deps`
 4. Add environment variable: `VITE_API_URL=/api`
-5. Configure rewrites/proxy in `vercel.json` to forward `/api/*` to `https://rowdyhackin.duckdns.org/api/*`
+5. Configure rewrites/proxy in `vercel.json` to forward `/api/*` to `https://openhack.duckdns.org/api/*`
 
 ### Manual frontend build (local)
 ```bash
@@ -41,7 +41,7 @@ npm run build      # output in frontend/dist/
 
 ## Backend Deployment (DigitalOcean VPS)
 
-Ubuntu 22.04 LTS, 2GB RAM minimum. Domain via DuckDNS: `rowdyhackin.duckdns.org`.
+Ubuntu 22.04 LTS, 2GB RAM minimum. Domain via DuckDNS: `openhack.duckdns.org`.
 
 ### One-Time Setup
 
@@ -63,7 +63,7 @@ Update DuckDNS to point to your droplet IP. Add a cron job to keep it updated:
 
 ```bash
 # Add to crontab -e:
-*/5 * * * * curl -s "https://www.duckdns.org/update?domains=rowdyhackin&token=YOUR_DUCKDNS_TOKEN&ip=" > /dev/null
+*/5 * * * * curl -s "https://www.duckdns.org/update?domains=openhack&token=YOUR_DUCKDNS_TOKEN&ip=" > /dev/null
 ```
 
 #### 3. Check for port conflicts
@@ -83,9 +83,9 @@ systemctl disable nginx
 systemctl mask nginx   # prevent accidental restart
 ```
 
-**B. Run Hack the Valley on different ports** — in `docker-compose.yml`, change nginx ports from `"80:80"` / `"443:443"` to something like `"8080:80"` / `"8443:443"`, then use your existing nginx as a reverse proxy.
+**B. Run OpenHack on different ports** — in `docker-compose.yml`, change nginx ports from `"80:80"` / `"443:443"` to something like `"8080:80"` / `"8443:443"`, then use your existing nginx as a reverse proxy.
 
-**C. Skip Hack the Valley's nginx and route through your existing one** — remove the `nginx` and `certbot` services from docker-compose, then add a server block in your existing nginx pointing at `localhost:3000` (frontend) and `localhost:8000` (backend).
+**C. Skip OpenHack's nginx and route through your existing one** — remove the `nginx` and `certbot` services from docker-compose, then add a server block in your existing nginx pointing at `localhost:3000` (frontend) and `localhost:8000` (backend).
 
 #### Reverse proxy with existing nginx (Option C example)
 
@@ -119,8 +119,8 @@ server {
 #### 4. Clone and configure
 
 ```bash
-git clone https://github.com/mintychochip/rowdyhacks.git /home/jlo/rowdyhacks
-cd /home/jlo/rowdyhacks
+git clone https://github.com/mintychochip/openhack.git /home/jlo/openhack
+cd /home/jlo/openhack
 
 cp .env.example .env
 # Generate a real secret key:
@@ -131,7 +131,7 @@ nano .env  # Fill in SECRET_KEY, POSTGRES_PASSWORD, BASE_URL, etc.
 #### 5. SSL (skip if using your own reverse proxy)
 
 ```bash
-./scripts/init-ssl.sh rowdyhackin.duckdns.org admin@your-email.com
+./scripts/init-ssl.sh openhack.duckdns.org admin@your-email.com
 # Or for testing / IP-only (self-signed):
 ./scripts/init-ssl.sh
 ```
@@ -181,7 +181,7 @@ Required GitHub secrets (`Settings > Secrets and variables > Actions`):
 
 | Secret | Description |
 |---|---|
-| `DROPLET_HOST` | Droplet IP or `rowdyhackin.duckdns.org` |
+| `DROPLET_HOST` | Droplet IP or `openhack.duckdns.org` |
 | `DROPLET_USER` | SSH user (e.g. `jlo`) |
 | `DROPLET_SSH_KEY` | Private SSH key for the deploy user |
 | `SUDO_PASSWORD` | Password for sudo commands (stopping host nginx) |
@@ -189,15 +189,15 @@ Required GitHub secrets (`Settings > Secrets and variables > Actions`):
 Generate a deploy key:
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/rowdyhacks-deploy -N ""
-cat ~/.ssh/rowdyhacks-deploy.pub   # add this to ~/.ssh/authorized_keys on the droplet
-cat ~/.ssh/rowdyhacks-deploy       # put this in the DROPLET_SSH_KEY secret
+ssh-keygen -t ed25519 -f ~/.ssh/openhack-deploy -N ""
+cat ~/.ssh/openhack-deploy.pub   # add this to ~/.ssh/authorized_keys on the droplet
+cat ~/.ssh/openhack-deploy       # put this in the DROPLET_SSH_KEY secret
 ```
 
 **Option B — Manual deploy script (from your local machine):**
 
 ```bash
-./scripts/deploy.sh jlo@rowdyhackin.duckdns.org
+./scripts/deploy.sh jlo@openhack.duckdns.org
 ```
 
 ### Docker Compose Services
@@ -220,7 +220,7 @@ cat ~/.ssh/rowdyhacks-deploy       # put this in the DROPLET_SSH_KEY secret
 | `POSTGRES_PASSWORD` | Database password | Yes |
 | `POSTGRES_USER` | Database user (default: `hackverify`) | No |
 | `POSTGRES_DB` | Database name (default: `hackverify`) | No |
-| `BASE_URL` | Public URL, e.g. `https://rowdyhackin.duckdns.org` | Yes |
+| `BASE_URL` | Public URL, e.g. `https://openhack.duckdns.org` | Yes |
 | `LLM_API_KEY` | Anthropic/Poolside API key | Optional |
 | `GITHUB_TOKEN` | GitHub PAT for API rate limits | Optional |
 | `DISCORD_BOT_TOKEN` | Discord bot token | Optional |
@@ -261,4 +261,4 @@ curl -s http://localhost:8000/api/monitoring/health | python3 -m json.tool
 - **Backend can't connect to DB**: The `HACKVERIFY_DATABASE_URL` in docker-compose uses host `db` (the compose service name) — don't change it
 - **OOM during Docker build**: The 2GB droplet can run out of memory. Builds are staggered (backend first, then frontend) to avoid this. If still failing, add swap: `fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile`
 - **Deploy health check times out**: Backend may take up to 60s to start (DB migrations, demo seeding). Check `docker compose logs backend` for errors.
-- **DuckDNS not resolving**: Verify the cron job is running (`crontab -l`) and the token is correct. Test with `curl "https://www.duckdns.org/update?domains=rowdyhackin&token=YOUR_TOKEN&ip=&verbose=true"`.
+- **DuckDNS not resolving**: Verify the cron job is running (`crontab -l`) and the token is correct. Test with `curl "https://www.duckdns.org/update?domains=openhack&token=YOUR_TOKEN&ip=&verbose=true"`.

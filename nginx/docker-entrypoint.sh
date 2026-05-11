@@ -2,7 +2,7 @@
 set -e
 
 CERT_DIR="/etc/nginx/ssl"
-LE_DIR="/etc/letsencrypt/live/rowdyhackin.duckdns.org"
+LE_DIR="/etc/letsencrypt/live/openhack.duckdns.org"
 
 mkdir -p "$CERT_DIR"
 
@@ -22,7 +22,7 @@ elif [ ! -f "$CERT_DIR/fullchain.pem" ] || [ ! -f "$CERT_DIR/privkey.pem" ]; the
         -keyout "$CERT_DIR/privkey.pem" \
         -out "$CERT_DIR/fullchain.pem" \
         -subj "/CN=localhost" \
-        -addext "subjectAltName=DNS:rowdyhackin.duckdns.org,DNS:localhost,IP:127.0.0.1"
+        -addext "subjectAltName=DNS:openhack.duckdns.org,DNS:localhost,IP:127.0.0.1"
     echo "Self-signed certificates generated."
 fi
 

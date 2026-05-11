@@ -1,5 +1,5 @@
 // ============================================================
-// Hack the Valley Design System — Rocket Theme
+// OpenHack Design System — Rocket Theme
 // Space Launch: Deep layers, flame accents, star highlights
 // ============================================================
 

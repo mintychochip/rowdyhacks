@@ -1,8 +1,8 @@
-# AGENTS.md — Hack the Valley Context for AI Agents
+# AGENTS.md — OpenHack Context for AI Agents
 
 ## Project Overview
 
-Hack the Valley (HTV) is a hackathon management platform for Bakersfield's largest student-run hackathon. It handles registration, check-in (QR + Apple/Google Wallet), judging (ELO-based), submission integrity analysis, and a Devpost crawler.
+OpenHack (OH) is a hackathon management platform for The open-source hackathon framework. It handles registration, check-in (QR + Apple/Google Wallet), judging (ELO-based), submission integrity analysis, and a Devpost crawler.
 
 ## Deployment Architecture
 
@@ -16,7 +16,7 @@ Hack the Valley (HTV) is a hackathon management platform for Bakersfield's large
                                ▼
 ┌──────────────────────────────────────────────────────────┐
 │              DigitalOcean VPS (2GB RAM)                   │
-│              DuckDNS domain: rowdyhackin.duckdns.org      │
+│              DuckDNS domain: openhack.duckdns.org      │
 │                                                          │
 │  ┌─────────────────────────────────────────────────────┐ │
 │  │              Nginx (ports 80/443)                    │ │
@@ -46,7 +46,7 @@ Hack the Valley (HTV) is a hackathon management platform for Bakersfield's large
 
 ### Backend Deployment (DigitalOcean VPS + DuckDNS)
 - Hosted on a **DigitalOcean droplet** (Ubuntu 22.04, 2GB RAM)
-- Domain: **rowdyhackin.duckdns.org** via DuckDNS dynamic DNS
+- Domain: **openhack.duckdns.org** via DuckDNS dynamic DNS
 - Deployed via GitHub Actions (`deploy.yml`) — SSHes into the droplet, pulls latest code, rebuilds Docker containers
 - All services run in Docker Compose: PostgreSQL, Redis, FastAPI backend, nginx (SSL termination)
 - Backend: Python 3.11, FastAPI, SQLAlchemy 2.0 (async), asyncpg
@@ -55,7 +55,7 @@ Hack the Valley (HTV) is a hackathon management platform for Bakersfield's large
 ## Repository Structure
 
 ```
-rowdyhacks/
+openhack/
 ├── AGENTS.md                  # This file — context for AI agents
 ├── DEPLOY.md                  # Detailed deployment guide
 ├── README.md                  # Project overview and quick start
@@ -249,16 +249,16 @@ Auto-pull and rolling restart of containers
 ### Manual Deployment (Emergency)
 If you need to force an immediate deployment check:
 ```bash
-cd /home/jlo/rowdyhacks
+cd /home/jlo/openhack
 ./scripts/deploy.sh
 ```
 
 ### Rolling Back
 If a deployment fails, roll back by editing docker-compose.yml on the VPS:
 ```bash
-cd /home/jlo/rowdyhacks
+cd /home/jlo/openhack
 # Edit docker-compose.yml to use specific SHA tag:
-# image: ghcr.io/mintychochip/rowdyhacks/backend:abc1234
+# image: ghcr.io/mintychochip/openhack/backend:abc1234
 docker compose up -d
 ```
 Or simply wait for a new fix and redeploy.

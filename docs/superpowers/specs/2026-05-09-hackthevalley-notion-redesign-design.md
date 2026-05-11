@@ -1,8 +1,8 @@
-# Hack the Valley — Notion Warm Minimalism Redesign
+# OpenHack — Notion Warm Minimalism Redesign
 
 ## Overview
 
-Redesign the entire Hack the Valley application from the current dark rocket/space theme to a light, warm minimalism inspired by Notion's design system.
+Redesign the entire OpenHack application from the current dark rocket/space theme to a light, warm minimalism inspired by Notion's design system.
 
 The app currently uses dark space backgrounds (`#060913`) with flame-orange and star-gold accents. This redesign flips to a light-mode-only warm palette: white and cream surfaces, near-black text, Notion Blue (`#0075de`) as the singular accent, whisper-thin borders, and soft multi-layer shadows.
 

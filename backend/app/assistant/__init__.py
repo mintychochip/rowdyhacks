@@ -1,4 +1,4 @@
-"""AI Assistant package for Hack the Valley."""
+"""AI Assistant package for OpenHack."""
 
 from app.assistant.embedder import embedder
 from app.assistant.permissions import (
