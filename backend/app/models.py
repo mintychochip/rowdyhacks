@@ -232,6 +232,7 @@ class Hackathon(Base):
     tracks = relationship("Track", back_populates="hackathon", cascade="all, delete-orphan")
     teams = relationship("Team", back_populates="hackathon", cascade="all, delete-orphan")
     workshops = relationship("Workshop", back_populates="hackathon", cascade="all, delete-orphan")
+    sponsors = relationship("Sponsor", back_populates="hackathon", cascade="all, delete-orphan")
     assistant_conversations = relationship("AssistantConversation", back_populates="hackathon")
     assistant_documents = relationship("AssistantDocument", back_populates="hackathon", cascade="all, delete-orphan")
 
@@ -438,6 +439,24 @@ class Workshop(Base):
 
     def __repr__(self) -> str:
         return f"<Workshop {self.title}>"
+
+
+class Sponsor(Base):
+    __tablename__ = "sponsors"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=False)
+    name = Column(String(200), nullable=False)
+    tier = Column(String(50), nullable=False, default="silver")
+    logo_url = Column(Text, nullable=True)
+    website_url = Column(Text, nullable=True)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    hackathon = relationship("Hackathon", back_populates="sponsors")
+
+    def __repr__(self) -> str:
+        return f"<Sponsor {self.name}>"
 
 
 class Scan(Base):
