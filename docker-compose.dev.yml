@@ -54,6 +54,10 @@ services:
       HACKVERIFY_REDIS_URL: redis://redis:6379/0
       HACKVERIFY_QDRANT_URL: http://qdrant:6333
       HACKVERIFY_LOG_LEVEL: DEBUG
+      HACKVERIFY_SMTP_HOST: mail
+      HACKVERIFY_SMTP_PORT: 1025
+      HACKVERIFY_SMTP_USE_TLS: "false"
+      HACKVERIFY_EMAIL_PROVIDER: smtp
     volumes:
       - ./backend:/app
       - /app/.venv  # Don't overwrite the venv
@@ -80,7 +84,22 @@ services:
       - "5173:5173"
     command: sh -c "npm install --legacy-peer-deps && npm run dev -- --host 0.0.0.0"
 
+  mail:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_DATABASE: /data/mailpit.db
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    volumes:
+      - mailpit_data:/data
+
 volumes:
   postgres_data:
   redis_data:
   qdrant_data:
+  mailpit_data:
