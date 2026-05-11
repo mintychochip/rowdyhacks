@@ -233,6 +233,7 @@ class Hackathon(Base):
     teams = relationship("Team", back_populates="hackathon", cascade="all, delete-orphan")
     workshops = relationship("Workshop", back_populates="hackathon", cascade="all, delete-orphan")
     sponsors = relationship("Sponsor", back_populates="hackathon", cascade="all, delete-orphan")
+    prizes = relationship("Prize", back_populates="hackathon", cascade="all, delete-orphan")
     assistant_conversations = relationship("AssistantConversation", back_populates="hackathon")
     assistant_documents = relationship("AssistantDocument", back_populates="hackathon", cascade="all, delete-orphan")
 
@@ -258,9 +259,29 @@ class Track(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     hackathon = relationship("Hackathon", back_populates="tracks")
+    prizes = relationship("Prize", back_populates="track", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Track {self.name}>"
+
+
+class Prize(Base):
+    __tablename__ = "prizes"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=False)
+    track_id = Column(Guid, ForeignKey("tracks.id"), nullable=True)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    amount = Column(String(100), nullable=True)
+    currency = Column(String(10), nullable=False, default="USD")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    hackathon = relationship("Hackathon", back_populates="prizes")
+    track = relationship("Track", back_populates="prizes")
+
+    def __repr__(self) -> str:
+        return f"<Prize {self.name}>"
 
 
 class HackathonOrganizer(Base):
