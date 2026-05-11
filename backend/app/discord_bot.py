@@ -171,7 +171,7 @@ class ApplicationView(discord.ui.View):
         )
 
 
-class RowdyBot(discord.Client):
+class OpenHackBot(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
         super().__init__(intents=intents)
@@ -186,7 +186,7 @@ class RowdyBot(discord.Client):
         logger.info(f"Discord bot logged in as {self.user}")
 
 
-bot = RowdyBot()
+bot = OpenHackBot()
 
 
 @bot.tree.command(name="applications", description="List pending hackathon applications")

@@ -239,7 +239,7 @@ Full rebrand from "OpenHack" to "OpenHack" - The open-source hackathon framework
 
 **Branding Updates:**
 - Logo: `/openhack-logo.png` (OpenHack logo)
-- Title: "OpenHack | Bakersfield's Hackathon"
+- Title: "OpenHack"
 - Tagline: "Hack. Build. Create."
 - Hero: "Join 800+ hackers for 36 hours of innovation..."
 - Stats: 800+ Hackers / 36h / $50k+ in Prizes
