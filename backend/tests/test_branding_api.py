@@ -1,14 +1,9 @@
-from fastapi.testclient import TestClient
-from app.routes.config import router
-from fastapi import FastAPI
-
-app = FastAPI()
-app.include_router(router)
-client = TestClient(app)
+import pytest
 
 
-def test_get_branding_defaults():
-    response = client.get("/api/config/branding")
+@pytest.mark.asyncio
+async def test_get_branding_defaults(client):
+    response = await client.get("/api/config/branding")
     assert response.status_code == 200
     data = response.json()
     assert data["hackathon_name"] == "OpenHack"
@@ -20,8 +15,9 @@ def test_get_branding_defaults():
     assert data["hackathon_year"] == 2025
 
 
-def test_get_manifest_defaults():
-    response = client.get("/api/config/manifest.json")
+@pytest.mark.asyncio
+async def test_get_manifest_defaults(client):
+    response = await client.get("/api/config/manifest.json")
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == "OpenHack"
