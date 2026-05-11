@@ -1,0 +1,37 @@
+version: '3.8'
+
+# Optional overlay: replace Mailpit with Postfix for real outbound relay.
+# Usage:
+#   export SMTP_RELAY_HOST=smtp.mailgun.org
+#   export SMTP_RELAY_USER=postmaster@yourdomain.com
+#   export SMTP_RELAY_PASSWORD=your-key
+#   export MAIL_HOSTNAME=yourdomain.com
+#   docker-compose -f docker-compose.yml -f docker-compose.mail.yml up -d
+#
+# WARNING: Without SPF/DKIM/DMARC on your domain, deliverability will be poor.
+
+services:
+  mail:
+    image: juanluisbaptiste/postfix:latest
+    restart: unless-stopped
+    environment:
+      SMTP_SERVER: ${SMTP_RELAY_HOST:-}
+      SMTP_USERNAME: ${SMTP_RELAY_USER:-}
+      SMTP_PASSWORD: ${SMTP_RELAY_PASSWORD:-}
+      SERVER_HOSTNAME: ${MAIL_HOSTNAME:-openhack.local}
+    ports:
+      - "127.0.0.1:25:25"
+      - "127.0.0.1:587:587"
+    volumes:
+      - postfix_spool:/var/spool/postfix
+
+  backend:
+    environment:
+      # Switch backend from Mailpit defaults to Postfix overlay
+      HACKVERIFY_EMAIL_PROVIDER: smtp
+      HACKVERIFY_SMTP_HOST: mail
+      HACKVERIFY_SMTP_PORT: 587
+      HACKVERIFY_SMTP_USE_TLS: "false"
+
+volumes:
+  postfix_spool:
