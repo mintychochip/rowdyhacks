@@ -234,6 +234,7 @@ class Hackathon(Base):
     workshops = relationship("Workshop", back_populates="hackathon", cascade="all, delete-orphan")
     sponsors = relationship("Sponsor", back_populates="hackathon", cascade="all, delete-orphan")
     prizes = relationship("Prize", back_populates="hackathon", cascade="all, delete-orphan")
+    help_requests = relationship("HelpRequest", back_populates="hackathon", cascade="all, delete-orphan")
     assistant_conversations = relationship("AssistantConversation", back_populates="hackathon")
     assistant_documents = relationship("AssistantDocument", back_populates="hackathon", cascade="all, delete-orphan")
 
@@ -282,6 +283,28 @@ class Prize(Base):
 
     def __repr__(self) -> str:
         return f"<Prize {self.name}>"
+
+
+class HelpRequest(Base):
+    __tablename__ = "help_requests"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=False)
+    requester_id = Column(String(64), ForeignKey("users.id"), nullable=False)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String(20), nullable=False, default="open")
+    mentor_id = Column(String(64), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    claimed_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+
+    hackathon = relationship("Hackathon", back_populates="help_requests")
+    requester = relationship("User", foreign_keys=[requester_id])
+    mentor = relationship("User", foreign_keys=[mentor_id])
+
+    def __repr__(self) -> str:
+        return f"<HelpRequest {self.title} status={self.status}>"
 
 
 class HackathonOrganizer(Base):
