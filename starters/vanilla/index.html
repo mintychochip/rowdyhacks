@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="icon" type="image/png" href="/openhack-logo.png" />
+  <title>OpenHack Starter</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="brand">
+        <img id="logo" src="/openhack-logo.png" alt="logo" class="logo" />
+        <span id="hackathon-name" class="name">OpenHack</span>
+      </div>
+      <div id="auth-container">
+        <!-- Auth button injected by app.js -->
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="loader" id="loader">Loading...</div>
+      <div class="content" id="content" style="display: none;">
+        <h1 id="title">OpenHack</h1>
+        <p id="tagline">The open-source hackathon framework</p>
+        <div class="actions">
+          <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+          <a href="/apply" class="btn btn-secondary">Register</a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
