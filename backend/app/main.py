@@ -29,6 +29,7 @@ from app.routes.qr import router as qr_router
 from app.routes.registrations import router as registrations_router
 from app.routes.registrations_organizer import router as registrations_org_router
 from app.routes.tracks import router as tracks_router
+from app.routes.config import router as config_router
 from app.routes.webhooks import router as webhooks_router
 from app.routes.websocket import router as websocket_router
 
@@ -193,6 +194,7 @@ app.include_router(webhooks_router)
 app.include_router(websocket_router)
 app.include_router(monitoring_router)
 app.include_router(content_router)
+app.include_router(config_router)
 
 
 # Add request tracking middleware
