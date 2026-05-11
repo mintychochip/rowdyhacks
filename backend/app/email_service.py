@@ -12,7 +12,16 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import EMAIL_FROM, EMAIL_PROVIDER, SENDGRID_API_KEY, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_USE_TLS, SMTP_USER
+from app.config import (
+    EMAIL_FROM,
+    EMAIL_PROVIDER,
+    SENDGRID_API_KEY,
+    SMTP_HOST,
+    SMTP_PASSWORD,
+    SMTP_PORT,
+    SMTP_USE_TLS,
+    SMTP_USER,
+)
 from app.models import EmailLog
 
 # Email templates

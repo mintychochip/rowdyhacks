@@ -15,6 +15,7 @@ class BrandingResponse(BaseModel):
     Dependencies: pydantic.BaseModel.
     Consumers: GET /api/config/branding route, frontend theme.ts, Layout component.
     """
+
     hackathon_name: str
     hackathon_tagline: str
     hackathon_email: str
@@ -36,6 +37,7 @@ class ConfigKeyResponse(BaseModel):
     Dependencies: pydantic.BaseModel.
     Consumers: GET /api/config/{key} route.
     """
+
     key: str
     value: str
 
@@ -52,6 +54,7 @@ class ConfigUpdateResponse(BaseModel):
     Dependencies: pydantic.BaseModel.
     Consumers: PUT /api/config route, admin configuration panel.
     """
+
     updated: list[str]
 
 
@@ -67,5 +70,6 @@ class AssetUploadResponse(BaseModel):
     Dependencies: pydantic.BaseModel.
     Consumers: POST /api/config/assets route, admin asset manager.
     """
+
     key: str
     url: str

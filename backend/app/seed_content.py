@@ -3,7 +3,6 @@
 This module provides functions to seed default content pages on application startup.
 """
 
-import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import select
@@ -172,9 +171,7 @@ async def seed_default_content(db: AsyncSession) -> None:
     Requires at least one organizer user to exist in the database.
     """
     # Find an organizer to use as the creator
-    result = await db.execute(
-        select(User).where(User.role == UserRole.organizer).limit(1)
-    )
+    result = await db.execute(select(User).where(User.role == UserRole.organizer).limit(1))
     organizer = result.scalar_one_or_none()
 
     if not organizer:
@@ -188,9 +185,7 @@ async def seed_default_content(db: AsyncSession) -> None:
 
     for page_data in DEFAULT_CONTENT_PAGES:
         # Check if page already exists
-        result = await db.execute(
-            select(ContentPage).where(ContentPage.slug == page_data["slug"])
-        )
+        result = await db.execute(select(ContentPage).where(ContentPage.slug == page_data["slug"]))
         existing = result.scalar_one_or_none()
 
         if existing:

@@ -11,6 +11,7 @@ def mailpit_container():
     """Spin up Mailpit and yield its API URL."""
     try:
         import docker
+
         docker.from_env().ping()
     except Exception:
         pytest.skip("Docker not available")

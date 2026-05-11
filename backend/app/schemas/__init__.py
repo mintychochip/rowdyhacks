@@ -17,6 +17,7 @@ class UserResponse(BaseModel):
     Dependencies: pydantic.BaseModel.
     Consumers: Auth routes, user lookup endpoints, leaderboard serializers.
     """
+
     id: str
     email: str
     name: Optional[str] = None
@@ -36,6 +37,7 @@ class SubmitRequest(BaseModel):
     Dependencies: pydantic.BaseModel.
     Consumers: POST /api/submit route, crawler trigger.
     """
+
     url: str
     hackathon_id: Optional[str] = None
 
@@ -52,6 +54,7 @@ class JudgingSessionCreate(BaseModel):
     Dependencies: pydantic.BaseModel.
     Consumers: POST /api/judging/sessions route, admin judging panel.
     """
+
     criteria: List[Any] = []
 
 
@@ -67,6 +70,7 @@ class SubmitScoreRequest(BaseModel):
     Dependencies: pydantic.BaseModel.
     Consumers: POST /api/judging/score route, judge ballot form.
     """
+
     scores: List[Any] = []
 
 
@@ -82,6 +86,7 @@ class RegistrationCreate(BaseModel):
     Dependencies: pydantic.BaseModel.
     Consumers: POST /api/registrations route, signup wizard.
     """
+
     pass
 
 
@@ -97,6 +102,7 @@ class AnnouncementCreate(BaseModel):
     Dependencies: pydantic.BaseModel.
     Consumers: POST /api/announcements route, organizer broadcast panel.
     """
+
     pass
 
 
@@ -112,6 +118,7 @@ class AnnouncementResponse(BaseModel):
     Dependencies: pydantic.BaseModel.
     Consumers: GET /api/announcements route, dashboard feed, public timeline.
     """
+
     pass
 
 
@@ -127,6 +134,7 @@ class ConflictOfInterestCreate(BaseModel):
     Dependencies: pydantic.BaseModel.
     Consumers: POST /api/coi route, judge declaration form.
     """
+
     pass
 
 
@@ -142,6 +150,7 @@ class ConflictOfInterestResponse(BaseModel):
     Dependencies: pydantic.BaseModel.
     Consumers: GET /api/coi route, admin review panel.
     """
+
     pass
 
 
@@ -157,4 +166,5 @@ class HackathonCreate(BaseModel):
     Dependencies: pydantic.BaseModel.
     Consumers: POST /api/hackathons route, organizer event wizard.
     """
+
     pass

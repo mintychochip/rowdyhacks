@@ -22,11 +22,9 @@ TOOL_DEFINITIONS = {
         "description": "Get general information about a hackathon including dates, venue, WiFi, parking, etc.",
         "parameters": {
             "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "The specific question about the hackathon"}
-            },
-            "required": ["query"]
-        }
+            "properties": {"query": {"type": "string", "description": "The specific question about the hackathon"}},
+            "required": ["query"],
+        },
     },
     "get_tracks": {
         "name": "get_tracks",
@@ -34,10 +32,13 @@ TOOL_DEFINITIONS = {
         "parameters": {
             "type": "object",
             "properties": {
-                "hackathon_id": {"type": "string", "description": "The hackathon ID (optional, defaults to current context)"}
+                "hackathon_id": {
+                    "type": "string",
+                    "description": "The hackathon ID (optional, defaults to current context)",
+                }
             },
-            "required": []
-        }
+            "required": [],
+        },
     },
     "view_schedule": {
         "name": "view_schedule",
@@ -47,19 +48,17 @@ TOOL_DEFINITIONS = {
             "properties": {
                 "day": {"type": "string", "description": "Specific day (optional, e.g., 'Saturday', 'Sunday')"}
             },
-            "required": []
-        }
+            "required": [],
+        },
     },
     "faq_query": {
         "name": "faq_query",
         "description": "Search the FAQ for answers to common questions",
         "parameters": {
             "type": "object",
-            "properties": {
-                "question": {"type": "string", "description": "The question to search for"}
-            },
-            "required": ["question"]
-        }
+            "properties": {"question": {"type": "string", "description": "The question to search for"}},
+            "required": ["question"],
+        },
     },
     # Participant tools
     "ideation_help": {
@@ -68,11 +67,15 @@ TOOL_DEFINITIONS = {
         "parameters": {
             "type": "object",
             "properties": {
-                "interests": {"type": "array", "items": {"type": "string"}, "description": "List of interests/technologies"},
-                "track_id": {"type": "string", "description": "Specific track to focus on (optional)"}
+                "interests": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of interests/technologies",
+                },
+                "track_id": {"type": "string", "description": "Specific track to focus on (optional)"},
             },
-            "required": ["interests"]
-        }
+            "required": ["interests"],
+        },
     },
     "submission_guidance": {
         "name": "submission_guidance",
@@ -80,19 +83,18 @@ TOOL_DEFINITIONS = {
         "parameters": {
             "type": "object",
             "properties": {
-                "topic": {"type": "string", "description": "Specific submission topic (e.g., 'demo video', 'devpost', 'github')"}
+                "topic": {
+                    "type": "string",
+                    "description": "Specific submission topic (e.g., 'demo video', 'devpost', 'github')",
+                }
             },
-            "required": []
-        }
+            "required": [],
+        },
     },
     "view_own_submission_status": {
         "name": "view_own_submission_status",
         "description": "View the status of your team's submission",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "parameters": {"type": "object", "properties": {}, "required": []},
     },
     # Judge tools
     "judging_guidelines": {
@@ -100,31 +102,23 @@ TOOL_DEFINITIONS = {
         "description": "Get detailed judging criteria and guidelines for a track",
         "parameters": {
             "type": "object",
-            "properties": {
-                "track_id": {"type": "string", "description": "Specific track ID"}
-            },
-            "required": []
-        }
+            "properties": {"track_id": {"type": "string", "description": "Specific track ID"}},
+            "required": [],
+        },
     },
     "view_assigned_submissions": {
         "name": "view_assigned_submissions",
         "description": "List all submissions assigned to you for judging",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "view_submission_details": {
         "name": "view_submission_details",
         "description": "Get detailed information about a specific submission",
         "parameters": {
             "type": "object",
-            "properties": {
-                "submission_id": {"type": "string", "description": "The submission ID"}
-            },
-            "required": ["submission_id"]
-        }
+            "properties": {"submission_id": {"type": "string", "description": "The submission ID"}},
+            "required": ["submission_id"],
+        },
     },
     # Organizer tools
     "participant_search": {
@@ -132,49 +126,33 @@ TOOL_DEFINITIONS = {
         "description": "Search participants by name, email, school, or team",
         "parameters": {
             "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "Search query"}
-            },
-            "required": ["query"]
-        }
+            "properties": {"query": {"type": "string", "description": "Search query"}},
+            "required": ["query"],
+        },
     },
     "submission_analytics": {
         "name": "submission_analytics",
         "description": "Get analytics and statistics about submissions",
         "parameters": {
             "type": "object",
-            "properties": {
-                "track_id": {"type": "string", "description": "Filter by specific track (optional)"}
-            },
-            "required": []
-        }
+            "properties": {"track_id": {"type": "string", "description": "Filter by specific track (optional)"}},
+            "required": [],
+        },
     },
     "admin_stats": {
         "name": "admin_stats",
         "description": "Get overall hackathon statistics: registrations, check-ins, teams, etc.",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "check_in_status": {
         "name": "check_in_status",
         "description": "Get real-time check-in statistics and status",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "judging_progress": {
         "name": "judging_progress",
         "description": "Get judging progress and completion rates",
-        "parameters": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "modify_faq": {
         "name": "modify_faq",
@@ -183,10 +161,10 @@ TOOL_DEFINITIONS = {
             "type": "object",
             "properties": {
                 "question": {"type": "string", "description": "FAQ question"},
-                "answer": {"type": "string", "description": "FAQ answer"}
+                "answer": {"type": "string", "description": "FAQ answer"},
             },
-            "required": ["question", "answer"]
-        }
+            "required": ["question", "answer"],
+        },
     },
     # Site navigation tool (all roles)
     "query_site_pages": {
@@ -195,10 +173,13 @@ TOOL_DEFINITIONS = {
         "parameters": {
             "type": "object",
             "properties": {
-                "query": {"type": "string", "description": "What the user is looking for, e.g., 'submitting a project', 'checking scores', 'finding resources'"}
+                "query": {
+                    "type": "string",
+                    "description": "What the user is looking for, e.g., 'submitting a project', 'checking scores', 'finding resources'",
+                }
             },
-            "required": ["query"]
-        }
+            "required": ["query"],
+        },
     },
 }
 
@@ -259,14 +240,16 @@ def get_tools_for_role(role: str) -> list[dict]:
     for tool_name in allowed_tools:
         if tool_name in TOOL_DEFINITIONS:
             tool_def = TOOL_DEFINITIONS[tool_name]
-            tools.append({
-                "type": "function",
-                "function": {
-                    "name": tool_def["name"],
-                    "description": tool_def["description"],
-                    "parameters": tool_def["parameters"]
+            tools.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool_def["name"],
+                        "description": tool_def["description"],
+                        "parameters": tool_def["parameters"],
+                    },
                 }
-            })
+            )
     return tools
 
 

@@ -15,9 +15,7 @@ async def test_dashboard_requires_auth(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_create_hackathon_201(client: AsyncClient, db_session):
     # Create an organizer user
-    organizer = User(
-        email="dashorg@test.com", name="Organizer", role=UserRole.organizer
-    )
+    organizer = User(email="dashorg@test.com", name="Organizer", role=UserRole.organizer)
     db_session.add(organizer)
     await db_session.commit()
 

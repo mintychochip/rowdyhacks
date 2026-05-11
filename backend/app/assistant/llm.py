@@ -119,6 +119,7 @@ class LLMClient:
                                 continue
             except Exception as e:
                 import traceback
+
                 error_detail = f"{type(e).__name__}: {str(e)}"
                 print(f"[ERROR] chat_completion_stream: {error_detail}")
                 print(f"[ERROR] Traceback: {traceback.format_exc()[:500]}")

@@ -1,4 +1,5 @@
 """Auth route tests - Clerk-only auth. Tests removed for removed endpoints."""
+
 import pytest
 
 

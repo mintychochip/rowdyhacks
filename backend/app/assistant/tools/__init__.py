@@ -48,7 +48,9 @@ class ToolExecutor:
             "name": self.hackathon.name,
             "start_date": str(self.hackathon.start_date),
             "end_date": str(self.hackathon.end_date),
-            "application_deadline": str(self.hackathon.application_deadline) if self.hackathon.application_deadline else None,
+            "application_deadline": str(self.hackathon.application_deadline)
+            if self.hackathon.application_deadline
+            else None,
             "venue": self.hackathon.venue,
             "address": self.hackathon.address,
             "wifi_ssid": self.hackathon.wifi_ssid,
@@ -67,9 +69,7 @@ class ToolExecutor:
             return {"error": "No hackathon specified"}
 
         result = await self.db.execute(
-            select(Track)
-            .where(Track.hackathon_id == target_hackathon_id)
-            .order_by(Track.name)
+            select(Track).where(Track.hackathon_id == target_hackathon_id).order_by(Track.name)
         )
         tracks = result.scalars().all()
 
@@ -96,7 +96,7 @@ class ToolExecutor:
             "hackathon_name": self.hackathon.name,
             "start": str(self.hackathon.start_date),
             "end": str(self.hackathon.end_date),
-            "note": "Detailed schedule events will be available soon"
+            "note": "Detailed schedule events will be available soon",
         }
 
         return schedule
@@ -119,10 +119,7 @@ class ToolExecutor:
 
         if results:
             return {
-                "matches": [
-                    {"question": r["metadata"].get("question", ""), "answer": r["content"]}
-                    for r in results
-                ]
+                "matches": [{"question": r["metadata"].get("question", ""), "answer": r["content"]} for r in results]
             }
 
         return {"matches": [], "message": "No FAQ matches found. Try rephrasing your question."}
@@ -141,14 +138,12 @@ class ToolExecutor:
             "resources": [
                 "Check the hackathon's track descriptions for specific criteria",
                 "Review the judging rubric to understand what scores well",
-            ]
+            ],
         }
 
         if track_id:
             # Get specific track info
-            result = await self.db.execute(
-                select(Track).where(Track.id == track_id)
-            )
+            result = await self.db.execute(select(Track).where(Track.id == track_id))
             track = result.scalar_one_or_none()
             if track:
                 suggestions["track_focus"] = {
@@ -173,7 +168,7 @@ class ToolExecutor:
                 "Test your demo video link before submitting",
                 "Make sure your GitHub repo is public",
                 "Include screenshots if applicable",
-            ]
+            ],
         }
 
         if topic:
@@ -181,15 +176,18 @@ class ToolExecutor:
             if "video" in topic_lower:
                 guidance["focus"] = {
                     "topic": "demo video",
-                    "advice": "Keep it under 3 minutes. Show the problem, your solution, and a quick demo."}
+                    "advice": "Keep it under 3 minutes. Show the problem, your solution, and a quick demo.",
+                }
             elif "devpost" in topic_lower:
                 guidance["focus"] = {
                     "topic": "devpost",
-                    "advice": "Fill out all required fields. Use clear formatting and bullet points."}
+                    "advice": "Fill out all required fields. Use clear formatting and bullet points.",
+                }
             elif "github" in topic_lower:
                 guidance["focus"] = {
                     "topic": "GitHub",
-                    "advice": "Ensure code is well-commented and README explains how to run the project."}
+                    "advice": "Ensure code is well-commented and README explains how to run the project.",
+                }
 
         return guidance
 
@@ -228,10 +226,7 @@ class ToolExecutor:
             return {"error": "No hackathon context"}
 
         # Get judging session for this hackathon
-        result = await self.db.execute(
-            select(JudgingSession)
-            .where(JudgingSession.hackathon_id == self.hackathon.id)
-        )
+        result = await self.db.execute(select(JudgingSession).where(JudgingSession.hackathon_id == self.hackathon.id))
         session = result.scalar_one_or_none()
 
         if not session:
@@ -247,13 +242,11 @@ class ToolExecutor:
             "session_info": {
                 "name": session.name,
                 "description": session.description,
-            }
+            },
         }
 
         if track_id:
-            result = await self.db.execute(
-                select(Track).where(Track.id == track_id)
-            )
+            result = await self.db.execute(select(Track).where(Track.id == track_id))
             track = result.scalar_one_or_none()
             if track:
                 guidelines["track_specific"] = {
@@ -290,10 +283,7 @@ class ToolExecutor:
 
     async def tool_view_submission_details(self, submission_id: str) -> Dict[str, Any]:
         """Get detailed submission information."""
-        result = await self.db.execute(
-            select(Submission)
-            .where(Submission.id == submission_id)
-        )
+        result = await self.db.execute(select(Submission).where(Submission.id == submission_id))
         submission = result.scalar_one_or_none()
 
         if not submission:
@@ -326,10 +316,10 @@ class ToolExecutor:
             .join(Registration, User.id == Registration.user_id)
             .where(Registration.hackathon_id == self.hackathon.id)
             .where(
-                (User.name.ilike(search_pattern)) |
-                (User.email.ilike(search_pattern)) |
-                (Registration.school.ilike(search_pattern)) |
-                (Registration.team_name.ilike(search_pattern))
+                (User.name.ilike(search_pattern))
+                | (User.email.ilike(search_pattern))
+                | (Registration.school.ilike(search_pattern))
+                | (Registration.team_name.ilike(search_pattern))
             )
             .limit(20)
         )
@@ -354,8 +344,7 @@ class ToolExecutor:
 
         # Count total submissions
         result = await self.db.execute(
-            select(func.count(Submission.id))
-            .where(Submission.hackathon_id == self.hackathon.id)
+            select(func.count(Submission.id)).where(Submission.hackathon_id == self.hackathon.id)
         )
         total = result.scalar()
 
@@ -369,8 +358,7 @@ class ToolExecutor:
 
         # Average risk score
         result = await self.db.execute(
-            select(func.avg(Submission.risk_score))
-            .where(Submission.hackathon_id == self.hackathon.id)
+            select(func.avg(Submission.risk_score)).where(Submission.hackathon_id == self.hackathon.id)
         )
         avg_risk = result.scalar()
 
@@ -401,8 +389,7 @@ class ToolExecutor:
 
         # Submission stats
         result = await self.db.execute(
-            select(func.count(Submission.id))
-            .where(Submission.hackathon_id == self.hackathon.id)
+            select(func.count(Submission.id)).where(Submission.hackathon_id == self.hackathon.id)
         )
         submission_count = result.scalar()
 
@@ -505,22 +492,21 @@ class ToolExecutor:
         )
 
         if not results:
-            return {
-                "pages": [],
-                "message": "No relevant pages found. Try a different search."
-            }
+            return {"pages": [], "message": "No relevant pages found. Try a different search."}
 
         pages = []
         for r in results:
             path = r.get("metadata", {}).get("path", "")
-            pages.append({
-                "title": r.get("title", ""),
-                "url": path,
-                "description": r.get("metadata", {}).get("description", ""),
-                "relevance": round(r.get("score", 0), 3),
-            })
+            pages.append(
+                {
+                    "title": r.get("title", ""),
+                    "url": path,
+                    "description": r.get("metadata", {}).get("description", ""),
+                    "relevance": round(r.get("score", 0), 3),
+                }
+            )
 
         return {
             "pages": pages,
-            "message": f"Found {len(pages)} relevant page(s). You can share the URLs with the user."
+            "message": f"Found {len(pages)} relevant page(s). You can share the URLs with the user.",
         }
