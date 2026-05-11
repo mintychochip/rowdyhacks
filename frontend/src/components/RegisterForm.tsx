@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import {
@@ -31,6 +31,12 @@ export default function RegisterForm({ onToggle }: RegisterFormProps) {
   const { register } = useAuth();
   const { isMobile } = useMediaQuery();
 
+  useEffect(() => {
+    if (!success) return;
+    const t = setTimeout(() => onToggle(), 1500);
+    return () => clearTimeout(t);
+  }, [success, onToggle]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
@@ -42,15 +48,17 @@ export default function RegisterForm({ onToggle }: RegisterFormProps) {
     }
 
     setLoading(true);
-    const ok = await register(email, password, name);
-    setLoading(false);
-    if (ok) {
-      setSuccess(true);
-      setTimeout(() => {
-        onToggle();
-      }, 1500);
-    } else {
-      setError("Registration failed. Email may already be in use.");
+    try {
+      const ok = await register(email, password, name);
+      if (ok) {
+        setSuccess(true);
+      } else {
+        setError("Registration failed. Email may already be in use.");
+      }
+    } catch {
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 

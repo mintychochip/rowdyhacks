@@ -27,16 +27,18 @@ export default function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) 
     e.preventDefault();
     setLoading(true);
     try {
-      await fetch("/api/auth/forgot-password", {
+      const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
+      if (!res.ok) throw new Error("Request failed");
     } catch {
-      // Backend returns 200 even if email doesn't exist, to prevent enumeration
+      // Silently ignore errors to prevent enumeration
+    } finally {
+      setSent(true);
+      setLoading(false);
     }
-    setSent(true);
-    setLoading(false);
   };
 
   return (

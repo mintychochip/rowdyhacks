@@ -30,6 +30,7 @@ export default function ResetPasswordForm({ onBack }: ResetPasswordFormProps) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const { isMobile } = useMediaQuery();
+  const [token] = useState(() => getTokenFromUrl());
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -45,7 +46,6 @@ export default function ResetPasswordForm({ onBack }: ResetPasswordFormProps) {
       return;
     }
 
-    const token = getTokenFromUrl();
     if (!token) {
       setError("Invalid or missing reset token");
       return;
@@ -66,8 +66,9 @@ export default function ResetPasswordForm({ onBack }: ResetPasswordFormProps) {
       }
     } catch {
       setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

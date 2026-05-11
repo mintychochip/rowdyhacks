@@ -52,12 +52,17 @@ export default function LoginForm({ onToggle, onForgotPassword }: LoginFormProps
     e.preventDefault();
     setError("");
     setLoading(true);
-    const ok = await login(email, password);
-    setLoading(false);
-    if (ok) {
-      navigate("/");
-    } else {
-      setError("Invalid email or password");
+    try {
+      const ok = await login(email, password);
+      if (ok) {
+        navigate("/");
+      } else {
+        setError("Invalid email or password");
+      }
+    } catch {
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -65,11 +70,15 @@ export default function LoginForm({ onToggle, onForgotPassword }: LoginFormProps
     setOAuthLoading(provider);
     try {
       const res = await fetch(`/api/auth/oauth/${provider}/login`);
+      if (!res.ok) throw new Error("Failed to initiate OAuth");
       const data = await res.json();
       if (data.authorization_url) {
-        window.location.href = data.authorization_url;
+        const url = new URL(data.authorization_url);
+        window.location.href = url.href;
       }
     } catch {
+      setError("Failed to initiate OAuth login. Please try again.");
+    } finally {
       setOAuthLoading(null);
     }
   };
