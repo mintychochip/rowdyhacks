@@ -3,7 +3,7 @@ import uuid
 import pytest_asyncio
 from app.database import get_db
 from app.main import app
-from app.models import Base
+from app.models import Base, UserRole
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -31,15 +31,65 @@ async def db_session(engine):
         await session.rollback()
 
 
-async def _override_require_clerk_user():
-    """Override require_clerk_user for testing."""
-    return {"sub": str(uuid.uuid4()), "email": "test@example.com"}
+async def _override_require_clerk_user(authorization: str | None = None):
+    """Override require_clerk_user for testing.
+
+    Supports test tokens of the form 'Bearer test-<user_id>' to return
+    a specific user sub. Falls back to a random UUID for plain tokens.
+    """
+    user_id = str(uuid.uuid4())
+    email = "test@example.com"
+    if authorization and authorization.startswith("Bearer test-"):
+        parts = authorization.removeprefix("Bearer test-").split(":", 1)
+        user_id = parts[0]
+        if len(parts) > 1:
+            email = parts[1]
+    return {"sub": user_id, "email": email}
+
+
+async def _override_require_organizer():
+    """Override require_organizer for testing."""
+    return {
+        "sub": "test-organizer-id",
+        "email": "organizer@test.com",
+        "user": type(
+            "FakeUser",
+            (),
+            {
+                "role": UserRole.organizer,
+                "id": "test-organizer-id",
+                "email": "organizer@test.com",
+                "name": "Test Organizer",
+            },
+        )(),
+        "payload": {},
+    }
+
+
+async def _override_require_clerk_user_with_db():
+    """Override require_clerk_user_with_db for testing."""
+    fake_user = type(
+        "FakeUser",
+        (),
+        {
+            "role": UserRole.participant,
+            "id": "test-user-id",
+            "email": "test@example.com",
+            "name": "Test User",
+        },
+    )()
+    return {
+        "user": fake_user,
+        "sub": "test-user-id",
+        "email": "test@example.com",
+        "payload": {},
+    }
 
 
 @pytest_asyncio.fixture
 async def client(engine):
     """Provide an async test client that uses the test DB."""
-    from app.clerk_auth import require_clerk_user
+    from app.clerk_auth import require_clerk_user, require_clerk_user_with_db, require_organizer
 
     async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -52,6 +102,8 @@ async def client(engine):
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[require_clerk_user] = _override_require_clerk_user
+    app.dependency_overrides[require_clerk_user_with_db] = _override_require_clerk_user_with_db
+    app.dependency_overrides[require_organizer] = _override_require_organizer
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

@@ -33,6 +33,7 @@ from app.routes.workshops import router as workshops_router
 from app.routes.help_requests import router as help_requests_router
 from app.routes.prizes import router as prizes_router
 from app.routes.sponsors import router as sponsors_router
+from app.routes.plugins import router as plugins_router
 from app.routes.webhooks import router as webhooks_router
 from app.routes.websocket import router as websocket_router
 
@@ -221,6 +222,7 @@ app.include_router(websocket_router)
 app.include_router(monitoring_router)
 app.include_router(content_router)
 app.include_router(config_router)
+app.include_router(plugins_router)
 
 
 # Add request tracking middleware

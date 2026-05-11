@@ -816,6 +816,21 @@ class WebhookDeliveryLog(Base):
         return f"<WebhookDeliveryLog {self.status}>"
 
 
+class Plugin(Base):
+    __tablename__ = "plugins"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    name = Column(String(100), nullable=False, unique=True)
+    version = Column(String(50), nullable=False, default="0.1.0")
+    description = Column(Text, nullable=True)
+    enabled = Column(Boolean, nullable=False, default=True)
+    config = Column(JsonType, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<Plugin {self.name}>"
+
+
 # Import assistant models to ensure they are registered with SQLAlchemy
 # This must be at the end to avoid circular imports
 from app.models_assistant import AssistantConversation, AssistantDocument, AssistantMessage  # noqa: E402, F401
