@@ -12,6 +12,7 @@ from app.discord_bot import start_bot
 from app.logging_config import configure_logging
 from app.routes import content_router
 from app.routes.auth import router as auth_router
+from app.routes.backup import router as backup_router
 from app.routes.config import router as config_router
 from app.routes.assistant import router as assistant_router
 from app.routes.checkin import router as checkin_router
@@ -210,6 +211,7 @@ app.include_router(workshops_router)
 app.include_router(sponsors_router)
 app.include_router(prizes_router)
 app.include_router(help_requests_router)
+app.include_router(backup_router)
 app.include_router(checkin_router)
 app.include_router(qr_router)
 app.include_router(crawler_router, prefix="/api/crawler", tags=["crawler"])
