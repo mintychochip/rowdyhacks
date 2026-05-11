@@ -1,14 +1,14 @@
 # OpenHack Rebrand — Design Spec
 
 **Date:** 2026-05-10
-**Project:** OpenHack (formerly OpenHack / OpenHack)
+**Project:** OpenHack (formerly RowdyHacks / Hack the Valley)
 **Goal:** Transform the hackathon platform from a single-event branded product into a self-hosted, configurable, open-source hackathon framework.
 
 ---
 
 ## Overview
 
-The current codebase is deeply branded for "OpenHack" / "OpenHack" — hardcoded names, URLs, logos, colors, and Docker image names. This spec defines a three-phase rebrand:
+The current codebase is deeply branded for "Hack the Valley" / "RowdyHacks" — hardcoded names, URLs, logos, colors, and Docker image names. This spec defines a three-phase rebrand:
 
 1. **Mechanical rename** — every instance of the old brand becomes `openhack` / `OpenHack` or a generic placeholder.
 2. **Env-based branding system** — backend serves per-deployment config; frontend consumes it at runtime.
@@ -24,20 +24,20 @@ The current codebase is deeply branded for "OpenHack" / "OpenHack" — hardcoded
 
 | Old String | Replacement | Notes |
 |---|---|---|
-| `openhack` | `openhack` | Repo name, package names, container names, image names |
-| `OpenHack` | `OpenHack` | Human-readable brand name |
-| `OpenHack` | `OpenHack` | CamelCase variants |
-| `openhack` | `openhack` | Lowercase / domain-style variants |
-| `openhack` | `openhack` | Domain slug |
-| `openhack-logo` | `openhack-logo` | Asset filenames |
-| `openhack-dark` | `openhack-dark` | Monaco editor theme name |
-| `openhack.dev` | `openhack.dev` | Email domain placeholder |
-| `localhost` | `localhost` | Default domain placeholder |
-| `localhost:5173` | `localhost:5173` | Default dev URL placeholder |
-| `The open-source hackathon framework` | `The open-source hackathon framework` | Tagline placeholder |
-| `OH` | `OH` | Short name / abbreviation |
-| `The open-source hackathon framework` | `The open-source hackathon framework` | PWA description |
-| `ghcr.io/mintychochip/openhack` | `ghcr.io/mintychochip/openhack` | Docker registry path (hardcoded for rename; `DOCKER_REGISTRY` env var support deferred to Phase 2) |
+| `rowdyhacks` | `openhack` | Repo name, package names, container names, image names |
+| `Hack the Valley` | `OpenHack` | Human-readable brand name |
+| `RowdyHacks` | `OpenHack` | CamelCase variants |
+| `rowdyhackin` | `openhack` | Lowercase / domain-style variants |
+| `rowdyhackin` | `openhack` | Domain slug |
+| `htv-logo` | `openhack-logo` | Asset filenames |
+| `htv-dark` | `openhack-dark` | Monaco editor theme name |
+| `rowdyhackin.duckdns.org` | `openhack.dev` | Email domain placeholder |
+| `rowdyhackin.duckdns.org` | `localhost` | Default domain placeholder |
+| `rowdyhackin.vercel.app` | `localhost:5173` | Default dev URL placeholder |
+| `Hack. Build. Create.` | `The open-source hackathon framework` | Tagline placeholder |
+| `HTV` | `OH` | Short name / abbreviation |
+| `Hackathon verification platform` | `The open-source hackathon framework` | PWA description |
+| `ghcr.io/mintychochip/rowdyhacks` | `ghcr.io/mintychochip/openhack` | Docker registry path (hardcoded for rename; `DOCKER_REGISTRY` env var support deferred to Phase 2) |
 | `2026` | `2025` | Event-specific year in UI text (treated as static for rename; dynamic `hackathon_year` field deferred to Phase 2) |
 
 ### File Groups (representative targets)
@@ -54,7 +54,7 @@ The current codebase is deeply branded for "OpenHack" / "OpenHack" — hardcoded
 | **Docs** | `README.md`, `CLAUDE.md`, `AGENTS.md`, `DEPLOY.md`, `PROJECT_JOURNAL.md`, `DESIGN.md` |
 | **Frontend code** | `frontend/index.html`, `frontend/vite.config.ts`, `frontend/src/theme.ts`, `frontend/src/index.css`, `frontend/src/components/Layout.tsx`, `frontend/src/agent/context.ts`, `frontend/src/agent/WebContainer.ts`, `frontend/src/utils/languageConfig.ts`, `frontend/src/components/assistant/StandaloneEditor.tsx`, `frontend/public/sitemap.xml`, `frontend/.env.production`, and **all `frontend/src/pages/*.tsx` files** |
 | **Backend code** | `backend/app/config.py`, `backend/app/assistant/__init__.py`, `backend/app/assistant/context_builder.py`, `backend/app/assistant/site_pages.py`, `backend/app/routes/assistant.py`, `backend/app/models.py`, `backend/app/models_assistant.py`, `backend/scripts/bulk_seed.py`, and **all `backend/app/routes/*.py` and `backend/app/checks/*.py` files** |
-| **Static assets** | `frontend/public/openhack-logo.png` → `frontend/public/openhack-logo.png` |
+| **Static assets** | `frontend/public/htv-logo.png` → `frontend/public/openhack-logo.png` |
 | **Design docs** | All `docs/superpowers/` specs and plans |
 | **Root artifacts** | `assistant-*.md`, `dock-*.md`, `auth-check.md`, `auth_page.yml`, `current_state.yml`, `resources-page.yaml`, `signin_page.yml`, `final-state.md`, `linear-dock.md` |
 
@@ -62,7 +62,7 @@ The current codebase is deeply branded for "OpenHack" / "OpenHack" — hardcoded
 
 | File | Required Change |
 |---|---|
-| `frontend/.env.production` | `VITE_API_URL=https://localhost/api` → `VITE_API_URL=https://localhost/api` (placeholder domain, string replacement only) |
+| `frontend/.env.production` | `VITE_API_URL=https://rowdyhackin.duckdns.org/api` → `VITE_API_URL=https://localhost/api` (placeholder domain, string replacement only) |
 
 > **Note:** The `email_from` deprecation and `VITE_API_URL` functional routing change are addressed in Phase 2 as logic changes. Between Phase 1 and Phase 2 completion, the production build uses a placeholder domain that is non-functional but passes string verification.
 
@@ -75,10 +75,10 @@ SQLAlchemy `__tablename__` values and Alembic revision IDs are **not** in scope 
 After Phase 1, the following grep commands must return **zero** results:
 
 ```bash
-grep -ri "openhack" --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=__pycache__ --exclude="package-lock.json" --exclude="*.lock" .
-grep -ri "openhack" --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=__pycache__ --exclude="package-lock.json" --exclude="*.lock" .
-grep -ri "openhack" --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=__pycache__ --exclude="package-lock.json" --exclude="*.lock" .
-grep -ri "openhack" --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=__pycache__ --exclude="package-lock.json" --exclude="*.lock" .
+grep -ri "rowdyhacks" --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=__pycache__ --exclude="package-lock.json" --exclude="*.lock" .
+grep -ri "hack the valley" --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=__pycache__ --exclude="package-lock.json" --exclude="*.lock" .
+grep -ri "rowdyhackin" --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=__pycache__ --exclude="package-lock.json" --exclude="*.lock" .
+grep -ri "HTV" --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=__pycache__ --exclude="package-lock.json" --exclude="*.lock" .
 ```
 
 **Post-rename step:** Run `npm install` in `frontend/` to regenerate `package-lock.json` after `package.json` name change.

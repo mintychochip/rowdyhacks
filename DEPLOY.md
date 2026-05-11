@@ -166,9 +166,9 @@ For real outbound email, you have two options:
 #### 8. Auto-start on boot
 
 ```bash
-cp hackverify.service /etc/systemd/system/
+cp openhack.service /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable hackverify
+systemctl enable openhack
 ```
 
 ### Deploying Updates

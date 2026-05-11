@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 from faker import Faker
 from sqlalchemy import select
 
-sys.path.insert(0, "C:/Users/justi/dev/openhack/backend")
+sys.path.insert(0, "C:/Users/justi/dev/rowdyhacks/backend")
 
 from app.database import async_session
 from app.models import Hackathon, Registration, RegistrationStatus, User, UserRole

@@ -69,7 +69,7 @@ HackVerify is a PWA that detects cheating in hackathon submissions. It accepts D
 - `Dockerfile`s for backend (Python) and frontend (Node/nginx)
 - `nginx.conf`: SSL, rate limiting, WebSocket proxying
 - `init-ssl.sh`: Let's Encrypt or self-signed certificate setup
-- `hackverify.service`: systemd auto-start
+- `openhack.service`: systemd auto-start
 - `DEPLOY.md`: Complete deployment guide
 
 ### Test Results
@@ -224,10 +224,10 @@ None currently.
 - Participants: Can view announcements for hackathons they're registered for
 - Judges: Can declare COI, view COI status for their assignments
 
-## Rebrand: OpenHack (2026-05-03)
+## Rebrand: Hack the Valley (2026-05-03)
 
 ### Overview
-Full rebrand from "OpenHack" to "OpenHack" - The open-source hackathon framework.
+Full rebrand from "RowdyHacks" to "Hack the Valley".
 
 ### Changes Made
 
@@ -238,8 +238,8 @@ Full rebrand from "OpenHack" to "OpenHack" - The open-source hackathon framework
 - Typography: Inter + JetBrains Mono
 
 **Branding Updates:**
-- Logo: `/openhack-logo.png` (OpenHack logo)
-- Title: "OpenHack"
+- Logo: `/htv-logo.png` (Hack the Valley logo)
+- Title: "Hack the Valley"
 - Tagline: "Hack. Build. Create."
 - Hero: "Join 800+ hackers for 36 hours of innovation..."
 - Stats: 800+ Hackers / 36h / $50k+ in Prizes
@@ -247,7 +247,7 @@ Full rebrand from "OpenHack" to "OpenHack" - The open-source hackathon framework
 **Files Modified:**
 - `frontend/index.html` - New title, favicon, meta tags
 - `frontend/src/theme.ts` - Blue color palette
-- `frontend/src/components/Layout.tsx` - OH sidebar branding
+- `frontend/src/components/Layout.tsx` - HTV sidebar branding
 - `frontend/src/pages/HomePage.tsx` - New hero content
 
 ### SSL/HTTPS Fixes (2026-05-03)
@@ -261,8 +261,8 @@ Full rebrand from "OpenHack" to "OpenHack" - The open-source hackathon framework
 4. Modified `.github/workflows/deploy.yml` - Stops nginx container before deploy to free port 80/443
 
 **Deployment:**
-- Frontend: https://localhost:5173
-- Backend API: https://localhost/api
+- Frontend: https://rowdyhackin.vercel.app
+- Backend API: https://rowdyhackin.duckdns.org/api
 
 ### QA Testing Results (2026-05-03)
 

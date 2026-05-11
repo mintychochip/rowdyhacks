@@ -61,7 +61,7 @@ openhack/
 ├── README.md                  # Project overview and quick start
 ├── PROJECT_JOURNAL.md         # Development history and decisions
 ├── docker-compose.yml         # Production Docker Compose (VPS)
-├── hackverify.service         # systemd unit for auto-start on VPS
+├── openhack.service           # systemd unit for auto-start on VPS
 ├── .env.example               # Environment variable template
 │
 ├── .github/workflows/
