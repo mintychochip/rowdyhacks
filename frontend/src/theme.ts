@@ -1,5 +1,5 @@
 // ============================================================
-// OpenHack Design System — Rocket Theme
+// Hackathon Platform Design System — Rocket Theme
 // Space Launch: Deep layers, flame accents, star highlights
 // ============================================================
 

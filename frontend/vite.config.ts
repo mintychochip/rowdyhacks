@@ -8,11 +8,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       pwaAssets: {
-        image: 'public/openhack-logo.png',
+        image: 'public/logo.png',
       },
       manifest: {
-        name: 'OpenHack',
-        short_name: 'OH',
+        name: 'Hackathon Platform',
+        short_name: 'Hackathon',
         description: "The open-source hackathon framework",
         theme_color: '#0f172a',
         background_color: '#0f172a',

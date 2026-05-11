@@ -134,26 +134,26 @@ async def prometheus_metrics():
     uptime = time.monotonic() - _metrics["start_time"]
 
     lines = [
-        "# HELP hackverify_uptime_seconds Total uptime in seconds",
-        "# TYPE hackverify_uptime_seconds gauge",
-        f"hackverify_uptime_seconds {uptime}",
+        "# HELP hackathon_uptime_seconds Total uptime in seconds",
+        "# TYPE hackathon_uptime_seconds gauge",
+        f"hackathon_uptime_seconds {uptime}",
         "",
-        "# HELP hackverify_requests_total Total requests",
-        "# TYPE hackverify_requests_total counter",
-        f"hackverify_requests_total {_metrics['requests_total']}",
+        "# HELP hackathon_requests_total Total requests",
+        "# TYPE hackathon_requests_total counter",
+        f"hackathon_requests_total {_metrics['requests_total']}",
         "",
-        "# HELP hackverify_errors_total Total errors",
-        "# TYPE hackverify_errors_total counter",
-        f"hackverify_errors_total {_metrics['errors_total']}",
+        "# HELP hackathon_errors_total Total errors",
+        "# TYPE hackathon_errors_total counter",
+        f"hackathon_errors_total {_metrics['errors_total']}",
         "",
-        "# HELP hackverify_active_connections Current active connections",
-        "# TYPE hackverify_active_connections gauge",
-        f"hackverify_active_connections {_metrics['active_connections']}",
+        "# HELP hackathon_active_connections Current active connections",
+        "# TYPE hackathon_active_connections gauge",
+        f"hackathon_active_connections {_metrics['active_connections']}",
     ]
 
     # Add per-endpoint metrics
     for endpoint, count in _metrics["requests_by_endpoint"].items():
-        lines.append(f'hackverify_requests_by_endpoint{{endpoint="{endpoint}"}} {count}')
+        lines.append(f'hackathon_requests_by_endpoint{{endpoint="{endpoint}"}} {count}')
 
     return "\n".join(lines)
 

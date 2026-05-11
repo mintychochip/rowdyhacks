@@ -329,7 +329,7 @@ export default function HomePage() {
             { icon: <UsersIcon />, value: '800+', label: 'Hackers', sublabel: 'University students & developers' },
             { icon: <ClockIcon />, value: '36h', label: 'Duration', sublabel: 'Non-stop building & learning' },
             { icon: <TrophyIcon />, value: '$50K', label: 'Prizes', sublabel: 'Cash, internships & swag' },
-            { icon: <MapPinIcon />, value: 'Your City', label: 'Location', sublabel: 'Downtown venue' },
+            { icon: <MapPinIcon />, value: 'Global', label: 'Location', sublabel: 'Anywhere you are' },
           ].map((stat, i) => (
             <div key={i} style={{
               padding: 24,

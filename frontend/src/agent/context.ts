@@ -2,7 +2,7 @@
 import type { AgentTool } from './types';
 import { ragSearch } from '../services/assistant';
 
-const SYSTEM_PROMPT_TEMPLATE = `You are an AI assistant for OpenHack, a hackathon.
+const SYSTEM_PROMPT_TEMPLATE = `You are an AI assistant for a hackathon platform.
 You help participants with hackathon questions AND with writing code in their project sandbox.
 
 ## Your Tools

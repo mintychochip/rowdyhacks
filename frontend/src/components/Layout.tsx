@@ -304,7 +304,7 @@ export default function Layout() {
                     color: 'var(--text-primary)',
                     letterSpacing: '-0.01em',
                   }}>
-                    OpenHack
+                    Hackathon
                   </div>
                   <div style={{
                     fontSize: 11,
@@ -759,7 +759,7 @@ export default function Layout() {
                   color: 'var(--text-muted)',
                   fontWeight: 500,
                 }}>
-                  OpenHack
+                  Platform
                 </span>
                 <span style={{ color: 'var(--border-default)' }}>/</span>
                 <span style={{

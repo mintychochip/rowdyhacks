@@ -59,7 +59,7 @@ async def analyze_submission(submission_id: uuid.UUID) -> None:
             t2 = time.monotonic()
             github_url = sub.github_url or scraped.github_url
             if github_url and is_github_url(github_url):
-                tmp_dir = tempfile.mkdtemp(prefix="hackverify_")
+                tmp_dir = tempfile.mkdtemp(prefix="hackathon_")
                 try:
                     proc = await asyncio.create_subprocess_exec(
                         "git",

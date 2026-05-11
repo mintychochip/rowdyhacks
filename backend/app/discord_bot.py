@@ -171,7 +171,7 @@ class ApplicationView(discord.ui.View):
         )
 
 
-class OpenHackBot(discord.Client):
+class HackathonBot(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
         super().__init__(intents=intents)
@@ -186,7 +186,7 @@ class OpenHackBot(discord.Client):
         logger.info(f"Discord bot logged in as {self.user}")
 
 
-bot = OpenHackBot()
+bot = HackathonBot()
 
 
 @bot.tree.command(name="applications", description="List pending hackathon applications")
