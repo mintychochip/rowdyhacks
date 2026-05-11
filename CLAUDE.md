@@ -41,6 +41,12 @@ vercel --prod
 ### Deploy Backend
 Push to master triggers GitHub Actions deploy to DigitalOcean droplet.
 
+### Update Server (Self-Hosted)
+```bash
+./scripts/update.sh           # production
+./scripts/update.sh --dev     # development stack
+```
+
 ### Check Logs
 ```bash
 ssh jlo@64.23.185.189
@@ -62,6 +68,21 @@ docker logs openhack-nginx-1 --tail 50
 | Docker compose | `docker-compose.yml` |
 | Deploy script | `.github/workflows/deploy.yml` |
 | SSL setup | `nginx/docker-entrypoint.sh` |
+| Update script | `scripts/update.sh` |
+| Dev start script | `scripts/dev.sh` |
+
+## Backend API Modules
+
+| Feature | Service | Routes | Tests |
+|---------|---------|--------|-------|
+| Teams | `app/services/team_service.py` | `app/routes/teams.py` | `tests/routes/test_teams.py` |
+| Workshops | `app/services/workshop_service.py` | `app/routes/workshops.py` | `tests/routes/test_workshops.py` |
+| Sponsors | `app/services/sponsor_service.py` | `app/routes/sponsors.py` | `tests/routes/test_sponsors.py` |
+| Prizes | `app/services/prize_service.py` | `app/routes/prizes.py` | `tests/routes/test_prizes.py` |
+| Help Queue | `app/services/help_request_service.py` | `app/routes/help_requests.py` | `tests/routes/test_help_requests.py` |
+| Backup/Restore | `app/services/backup_service.py` | `app/routes/backup.py` | `tests/routes/test_backup.py` |
+| Plugin Registry | `app/services/plugin_service.py` | `app/routes/plugins.py` | `tests/routes/test_plugins.py` |
+| Monitoring | — | `app/routes/monitoring.py` | `tests/routes/test_monitoring.py` |
 
 ## Backend Health Check
 ```bash
