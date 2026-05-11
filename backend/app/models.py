@@ -49,8 +49,7 @@ class Guid(TypeDecorator):
             return value
         if dialect.name == "postgresql":
             return value  # Already a UUID
-        # For SQLite, keep strings to avoid UUID binding errors with String columns
-        return value
+        return uuid.UUID(value)
 
 
 class ArrayOfStrings(TypeDecorator):
@@ -231,6 +230,7 @@ class Hackathon(Base):
     registrations = relationship("Registration", back_populates="hackathon")
     co_organizers = relationship("HackathonOrganizer", back_populates="hackathon", cascade="all, delete-orphan")
     tracks = relationship("Track", back_populates="hackathon", cascade="all, delete-orphan")
+    teams = relationship("Team", back_populates="hackathon", cascade="all, delete-orphan")
     assistant_conversations = relationship("AssistantConversation", back_populates="hackathon")
     assistant_documents = relationship("AssistantDocument", back_populates="hackathon", cascade="all, delete-orphan")
 
@@ -294,6 +294,7 @@ class Submission(Base):
     claimed_tech = Column(ArrayOfStrings, nullable=True)
     team_members = Column(JsonType, nullable=True)
     hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=True, index=True)
+    team_id = Column(Guid, ForeignKey("teams.id"), nullable=True, index=True)
     submitted_by = Column(String(64), ForeignKey("users.id"), nullable=True)
     status = Column(SAEnum(SubmissionStatus), nullable=False, default=SubmissionStatus.pending, index=True)
     risk_score = Column(Integer, nullable=True)
@@ -307,6 +308,7 @@ class Submission(Base):
     )  # {completed: ["check1"], pending: ["check2", ...], current: "check name"}
 
     hackathon = relationship("Hackathon", back_populates="submissions")
+    team = relationship("Team", back_populates="submissions")
     submitter = relationship("User", back_populates="submissions")
     check_results = relationship("CheckResultModel", back_populates="submission", cascade="all, delete-orphan")
 
@@ -382,6 +384,40 @@ class Registration(Base):
 
     def __repr__(self) -> str:
         return f"<Registration {self.id} status={self.status}>"
+
+
+class Team(Base):
+    __tablename__ = "teams"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=False)
+    name = Column(String(200), nullable=False)
+    join_code = Column(String(16), nullable=False, unique=True, index=True)
+    captain_id = Column(String(64), ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    hackathon = relationship("Hackathon", back_populates="teams")
+    captain = relationship("User", foreign_keys=[captain_id])
+    members = relationship("TeamMember", back_populates="team", cascade="all, delete-orphan")
+    submissions = relationship("Submission", back_populates="team")
+
+    def __repr__(self) -> str:
+        return f"<Team {self.name}>"
+
+
+class TeamMember(Base):
+    __tablename__ = "team_members"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    team_id = Column(Guid, ForeignKey("teams.id"), nullable=False)
+    user_id = Column(String(64), ForeignKey("users.id"), nullable=False)
+    joined_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    team = relationship("Team", back_populates="members")
+    user = relationship("User")
+
+    def __repr__(self) -> str:
+        return f"<TeamMember team={self.team_id} user={self.user_id}>"
 
 
 class Scan(Base):

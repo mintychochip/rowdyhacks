@@ -9,7 +9,7 @@ from app.database import get_db
 from app.models import UserRole
 from app.routes.webhooks import router as webhooks_router
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 app = FastAPI()
 app.include_router(webhooks_router)

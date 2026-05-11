@@ -185,7 +185,6 @@ class Settings(BaseSettings):
     email_from: str = Field(
         default="", description="[Deprecated] Use hackathon_email instead. Default sender email address"
     )
-    smtp_use_tls: bool = Field(default=True, description="Enable STARTTLS for SMTP connections")
 
     model_config = {"env_prefix": "HACKVERIFY_", "env_file": ".env", "extra": "ignore"}
 

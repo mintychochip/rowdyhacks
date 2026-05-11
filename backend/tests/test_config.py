@@ -80,8 +80,9 @@ def test_invalid_refresh_window_raises():
         )
 
 
-def test_smtp_use_tls_default():
+def test_smtp_use_tls_default(monkeypatch):
     from app.config import Settings
 
+    monkeypatch.delenv("HACKVERIFY_SMTP_USE_TLS", raising=False)
     s = Settings(_env_file=None)
     assert s.smtp_use_tls is True

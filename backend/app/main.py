@@ -26,6 +26,7 @@ from app.routes.monitoring import track_request
 from app.routes.qr import router as qr_router
 from app.routes.registrations import router as registrations_router
 from app.routes.registrations_organizer import router as registrations_org_router
+from app.routes.teams import router as teams_router
 from app.routes.tracks import router as tracks_router
 from app.routes.webhooks import router as webhooks_router
 from app.routes.websocket import router as websocket_router
@@ -200,6 +201,7 @@ app.include_router(tracks_router)
 app.include_router(hacker_dashboard_router)
 app.include_router(registrations_router)
 app.include_router(registrations_org_router)
+app.include_router(teams_router)
 app.include_router(checkin_router)
 app.include_router(qr_router)
 app.include_router(crawler_router, prefix="/api/crawler", tags=["crawler"])
