@@ -35,15 +35,22 @@ import ResourceDetailPage from './pages/ResourceDetailPage';
 import ContentEditorPage from './pages/ContentEditorPage';
 
 function BrandingLoader({ children }: { children: React.ReactNode }) {
-  const { loaded, loadBranding } = useBrandingStore();
+  const { loaded, loadBranding, branding } = useBrandingStore();
   useEffect(() => {
     loadBranding();
   }, [loadBranding]);
 
   if (!loaded) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0f172a', color: '#f1f5f9' }}>
-        <div>Loading OpenHack...</div>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        background: branding.hackathon_background_color || '#0f172a',
+        color: '#f1f5f9',
+      }}>
+        <div>Loading {branding.hackathon_name || 'OpenHack'}...</div>
       </div>
     );
   }
