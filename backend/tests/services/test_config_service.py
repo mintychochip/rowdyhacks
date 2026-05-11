@@ -50,21 +50,23 @@ async def test_get_returns_default_when_db_empty(service, db):
         patch("app.services.config_service.cache_set", new_callable=AsyncMock) as mock_cache_set,
         patch("app.services.config_service.cache_delete", new_callable=AsyncMock) as mock_cache_delete,
     ):
-        result = await service.get("hackathon_name", db)
-        assert result == "OpenHack"
+        # Use a key with no env_attr so the DB is actually queried
+        result = await service.get("hackathon_background_color", db)
+        assert result == "#0f172a"
         db.execute.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_get_returns_db_value_over_default(service, db):
-    db.execute.return_value = FakeResult(scalar=FakeRow("DBName"))
+    db.execute.return_value = FakeResult(scalar=FakeRow("#1a1a1a"))
     with (
         patch("app.services.config_service.cache_get", new_callable=AsyncMock) as mock_cache_get,
         patch("app.services.config_service.cache_set", new_callable=AsyncMock) as mock_cache_set,
         patch("app.services.config_service.cache_delete", new_callable=AsyncMock) as mock_cache_delete,
     ):
-        result = await service.get("hackathon_name", db)
-        assert result == "DBName"
+        # Use a key with no env_attr so the DB value is actually read
+        result = await service.get("hackathon_background_color", db)
+        assert result == "#1a1a1a"
         db.execute.assert_awaited_once()
 
 
@@ -109,3 +111,50 @@ async def test_get_theme_css_emits_defaults(service, db):
         assert css.startswith(":root {")
         assert "--oh-primary: #2563eb;" in css
         assert css.endswith("}")
+
+
+@pytest.mark.asyncio
+async def test_set_writes_to_db_and_invalidates_cache(service, db):
+    db.execute.return_value = FakeResult(scalar=FakeRow("OldVal"))
+    with (
+        patch("app.services.config_service.cache_get", new_callable=AsyncMock),
+        patch("app.services.config_service.cache_set", new_callable=AsyncMock),
+        patch("app.services.config_service.cache_delete", new_callable=AsyncMock) as mock_cache_delete,
+    ):
+        await service.set("hackathon_name", "NewVal", db)
+        db.commit.assert_awaited_once()
+        mock_cache_delete.assert_awaited_once_with(_CACHE_KEY)
+
+
+@pytest.mark.asyncio
+async def test_set_many_updates_multiple_keys(service, db):
+    db.execute.return_value = FakeResult(scalar=FakeRow("OldVal"))
+    with (
+        patch("app.services.config_service.cache_get", new_callable=AsyncMock),
+        patch("app.services.config_service.cache_set", new_callable=AsyncMock),
+        patch("app.services.config_service.cache_delete", new_callable=AsyncMock) as mock_cache_delete,
+    ):
+        await service.set_many({"hackathon_name": "NewName", "hackathon_tagline": "NewTagline"}, db)
+        db.commit.assert_awaited_once()
+        mock_cache_delete.assert_awaited_once_with(_CACHE_KEY)
+
+
+@pytest.mark.asyncio
+async def test_get_all_filtered_by_category(service, db):
+    db.execute.side_effect = [
+        FakeResult(
+            scalars=[
+                type("R", (), {"key": "hackathon_background_color", "value": "#000000"})(),
+                type("R", (), {"key": "hackathon_name", "value": "OpenHack"})(),
+            ]
+        ),
+    ]
+    with (
+        patch("app.services.config_service.cache_get", new_callable=AsyncMock, return_value=None) as mock_cache_get,
+        patch("app.services.config_service.cache_set", new_callable=AsyncMock),
+        patch("app.services.config_service.cache_delete", new_callable=AsyncMock),
+    ):
+        result = await service.get_all(db, category="theme")
+        assert "hackathon_background_color" in result
+        assert "hackathon_name" not in result
+        assert result["hackathon_background_color"] == "#000000"

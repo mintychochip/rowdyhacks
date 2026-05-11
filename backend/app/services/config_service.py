@@ -45,7 +45,7 @@ class ConfigService:
         default_value, env_attr, _ = DEFAULTS[key]
         if env_attr:
             env_val = getattr(settings, env_attr, None)
-            if env_val is not None and str(env_val) != str(default_value):
+            if env_val is not None:
                 return str(env_val)
         result = await db.execute(select(SiteConfig).where(SiteConfig.key == key))
         row = result.scalar_one_or_none()
@@ -102,9 +102,10 @@ class ConfigService:
         await cache_delete(_CACHE_KEY)
 
     async def get_theme_css(self, db: AsyncSession) -> str:
+        all_config = await self.get_all(db)
         lines = [":root {"]
         for key, css_var in _CSS_MAP.items():
-            val = await self.get(key, db)
+            val = all_config.get(key, DEFAULTS.get(key, ("", None, ""))[0])
             lines.append(f"  {css_var}: {val};")
         lines.append("}")
         return "\n".join(lines)
