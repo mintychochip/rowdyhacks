@@ -18,6 +18,7 @@ from app.assistant.llm import llm_client
 from app.assistant.permissions import can_use_tool, get_tools_for_role
 from app.assistant.tools import ToolExecutor
 from app.assistant.vector_store import vector_store
+from app.auth import get_current_user, verify_access_token
 from app.database import get_db
 from app.models import Hackathon, User
 from app.models_assistant import (
@@ -26,15 +27,6 @@ from app.models_assistant import (
     AssistantMessageStatus,
     ConversationRole,
 )
-from app.clerk_auth import require_clerk_user_with_db
-
-
-async def get_current_user(
-    auth: dict = Depends(require_clerk_user_with_db),
-) -> User:
-    """Get current User ORM object from Clerk auth."""
-    return auth["user"]
-
 
 from app.schemas.builder import (
     GenerateProjectRequest,
@@ -137,54 +129,32 @@ async def get_current_user_sse(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Get current user from either Authorization header or query param (for SSE). Clerk-only."""
-    from app.clerk_auth import is_clerk_token, decode_clerk_token, extract_clerk_user_id
+    """Get current user from Authorization header or query param (for SSE)."""
     from app.database import set_current_user_id
 
-    # Try header first
     auth_header = request.headers.get("Authorization")
     token = None
-
     if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header[7:]  # Remove "Bearer " prefix
+        token = auth_header[7:]
     else:
-        # Try query parameter (for EventSource which can't set headers)
         token = request.query_params.get("token")
 
     if not token:
         raise HTTPException(status_code=401, detail="Missing authentication token")
 
-    if not is_clerk_token(token):
-        raise HTTPException(status_code=401, detail="Clerk token required")
-
     try:
-        payload = await decode_clerk_token(token)
-        user_id = extract_clerk_user_id(payload)
-        user_email = payload.get("email") or payload.get("public_metadata", {}).get("email")
-        user_name = payload.get("name") or payload.get("public_metadata", {}).get("name")
+        payload = verify_access_token(token)
+        user_id = payload.get("sub")
     except ValueError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid Clerk token: {e}")
+        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
 
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token: no user ID")
 
-    # Set RLS context
     set_current_user_id(user_id)
 
-    # Look up user
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-
-    # Auto-create user for Clerk tokens
-    if not user and user_email:
-        user = User(
-            id=user_id,
-            email=user_email,
-            name=user_name or user_email.split("@")[0],
-        )
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
 
     if not user:
         raise HTTPException(status_code=401, detail="User not found")

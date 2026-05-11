@@ -59,7 +59,6 @@ services:
       HACKVERIFY_EMAIL_PROVIDER: smtp
       HACKVERIFY_DEBUG: true
       HACKVERIFY_LLM_API_KEY: ${HACKVERIFY_LLM_API_KEY:-}
-      # Clerk secret is loaded from backend/.env file
       HACKVERIFY_GITHUB_TOKEN: ${HACKVERIFY_GITHUB_TOKEN:-}
       HACKVERIFY_DISCORD_BOT_TOKEN: ${HACKVERIFY_DISCORD_BOT_TOKEN:-}
       HACKVERIFY_S3_ENDPOINT: http://minio:9000
@@ -85,7 +84,6 @@ services:
     working_dir: /app
     environment:
       # No VITE_API_URL = use Vite proxy to backend (same-origin, no CORS)
-      VITE_CLERK_PUBLISHABLE_KEY: pk_test_cHJvbW90ZWQtcHl0aG9uLTc1LmNsZXJrLmFjY291bnRzLmRldiQ
     volumes:
       - ./frontend:/app
       - /app/node_modules

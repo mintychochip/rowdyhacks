@@ -10,9 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.analyzer import analyze_submission
-from app.auth import create_anonymous_token
+from app.auth import create_anonymous_token, verify_access_token
 from app.checks import WEIGHTS
-from app.clerk_auth import is_clerk_token, decode_clerk_token, extract_clerk_user_id
 from app.database import get_db
 from app.models import Hackathon, Submission, SubmissionStatus
 from app.schemas import SubmitRequest
@@ -166,20 +165,17 @@ async def get_check_report(
     is_organizer = False
     if authorization and authorization.startswith("Bearer "):
         jwt_token = authorization.removeprefix("Bearer ")
-        if is_clerk_token(jwt_token):
-            try:
-                payload = await decode_clerk_token(jwt_token)
-                # Look up user role from DB
-                user_id = extract_clerk_user_id(payload)
-                if user_id:
-                    from app.models import User
-
-                    result = await db.execute(select(User).where(User.id == user_id))
-                    user = result.scalar_one_or_none()
-                    if user and user.role.value == "organizer":
-                        is_organizer = True
-            except Exception:
-                pass
+        try:
+            payload = verify_access_token(jwt_token)
+            user_id = payload.get("sub")
+            if user_id:
+                from app.models import User
+                result = await db.execute(select(User).where(User.id == user_id))
+                user = result.scalar_one_or_none()
+                if user and user.role.value == "organizer":
+                    is_organizer = True
+        except Exception:
+            pass
 
     # Token check (skip if organizer)
     if not is_organizer and sub.access_token and sub.access_token != token:

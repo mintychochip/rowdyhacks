@@ -9,7 +9,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.clerk_auth import require_organizer
+from app.auth import require_organizer
 from app.database import get_db
 from app.models import (
     Hackathon,
@@ -68,7 +68,7 @@ async def create_judging_session(
     hackathon_id: uuid.UUID,
     body: JudgingSessionCreate,
     db: AsyncSession = Depends(get_db),
-    auth: dict = Depends(require_organizer),
+    _user = Depends(require_organizer),
 ):
     """Create or replace a judging session with rubric criteria for a hackathon."""
     # Verify hackathon exists

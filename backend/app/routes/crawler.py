@@ -9,10 +9,10 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clerk_auth import require_organizer
+from app.auth import require_organizer
 from app.crawler.scheduler import is_crawling, run_crawl
 from app.database import get_db
-from app.models import CrawledHackathon, CrawledProject
+from app.models import CrawledHackathon, CrawledProject, User
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -26,7 +26,7 @@ class CreateCrawledHackathonRequest(BaseModel):
 
 
 @router.post("/trigger", status_code=202)
-async def trigger_crawl(auth: dict = Depends(require_organizer)):
+async def trigger_crawl(_user: User = Depends(require_organizer)):
     """Manually trigger a full crawl cycle (organizer-only).
 
     Returns 409 if a crawl is already running.
@@ -44,7 +44,7 @@ async def trigger_crawl(auth: dict = Depends(require_organizer)):
 @router.post("/hackathons", status_code=201)
 async def create_crawled_hackathon(
     req: CreateCrawledHackathonRequest,
-    auth: dict = Depends(require_organizer),
+    _user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Manually add a crawled hackathon (admin/debug use)."""
@@ -68,7 +68,7 @@ async def create_crawled_hackathon(
 
 @router.get("/hackathons")
 async def list_crawled_hackathons(
-    auth: dict = Depends(require_organizer),
+    _user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """List all crawled hackathons with project counts."""
@@ -111,7 +111,7 @@ async def list_crawled_projects(
     hackathon_id: str,
     offset: int = 0,
     limit: int = 50,
-    auth: dict = Depends(require_organizer),
+    _user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """List projects for a specific crawled hackathon."""
@@ -171,7 +171,7 @@ async def search_crawled_projects(
     q: str = "",
     offset: int = 0,
     limit: int = 50,
-    auth: dict = Depends(require_organizer),
+    _user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Search crawled projects by title."""

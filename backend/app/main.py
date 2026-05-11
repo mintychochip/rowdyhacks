@@ -57,6 +57,13 @@ async def lifespan(app: FastAPI):
 
         traceback.print_exc()
 
+    try:
+        await _bootstrap_admin()
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+
     # Seed default content pages
     try:
         from app.database import async_session
@@ -138,6 +145,32 @@ async def _seed_demo_data():
             else:
                 # Create local DB record - Auth0 auth0_id will be linked on first login
                 db.add(User(email=email, name=name, role=role))
+        await db.commit()
+
+
+async def _bootstrap_admin():
+    """Create first organizer from env vars if no users exist."""
+    from sqlalchemy import select, func
+    from app.database import async_session
+    from app.models import User, UserRole
+    from app.auth import hash_password
+
+    if not settings.admin_email or not settings.admin_password:
+        return
+
+    async with async_session() as db:
+        result = await db.execute(select(func.count()).select_from(User))
+        count = result.scalar()
+        if count and count > 0:
+            return
+
+        user = User(
+            email=settings.admin_email,
+            name="Admin",
+            role=UserRole.organizer,
+            password_hash=hash_password(settings.admin_password),
+        )
+        db.add(user)
         await db.commit()
 
 

@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.clerk_auth import require_clerk_user
+from app.auth import get_current_user
 from app.database import get_db
 from app.models import Hackathon, Registration
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/hackathons", tags=["hacker-dashboard"])
 @router.get("/{hackathon_id}/hacker-dashboard")
 async def get_hacker_dashboard(
     hackathon_id: uuid.UUID,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the hacker dashboard for the current user's registration at a hackathon.
@@ -33,7 +33,7 @@ async def get_hacker_dashboard(
     # Load user's registration for this hackathon
     reg_result = await db.execute(
         select(Registration)
-        .where(Registration.hackathon_id == hackathon_id, Registration.user_id == user_payload["sub"])
+        .where(Registration.hackathon_id == hackathon_id, Registration.user_id == current_user.id)
         .options(selectinload(Registration.scans))
         .options(selectinload(Registration.user))
     )

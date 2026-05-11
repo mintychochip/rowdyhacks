@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache import cache_delete_pattern, cached
-from app.clerk_auth import require_clerk_user
+from app.auth import get_current_user
 from app.database import get_db
 from app.models import Hackathon, Track, User, UserRole
 
@@ -17,17 +17,8 @@ TRACKS_CACHE_TTL = 300  # 5 minutes
 CACHE_PFX = "tracks"
 
 
-async def _get_current_user(db: AsyncSession, user_payload: dict) -> User:
-    result = await db.execute(select(User).where(User.id == user_payload["sub"]))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-
-async def _require_organizer(hackathon_id: str, db: AsyncSession, user_payload: dict) -> Hackathon:
-    user = await _get_current_user(db, user_payload)
-    if user.role != UserRole.organizer:
+async def _require_organizer(hackathon_id: str, db: AsyncSession, current_user: User) -> Hackathon:
+    if current_user.role != UserRole.organizer:
         raise HTTPException(status_code=403, detail="Only organizers can manage tracks")
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
@@ -144,10 +135,10 @@ async def list_tracks(hackathon_id: str, db: AsyncSession = Depends(get_db)):
 async def create_track(
     hackathon_id: str,
     body: dict,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _require_organizer(hackathon_id, db, user_payload)
+    await _require_organizer(hackathon_id, db, current_user)
     track = Track(
         hackathon_id=hackathon_id,
         name=body["name"],
@@ -188,10 +179,10 @@ async def update_track(
     hackathon_id: str,
     track_id: str,
     body: dict,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _require_organizer(hackathon_id, db, user_payload)
+    await _require_organizer(hackathon_id, db, current_user)
     result = await db.execute(select(Track).where(Track.id == track_id, Track.hackathon_id == hackathon_id))
     track = result.scalar_one_or_none()
     if not track:
@@ -237,10 +228,10 @@ async def update_track(
 async def delete_track(
     hackathon_id: str,
     track_id: str,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _require_organizer(hackathon_id, db, user_payload)
+    await _require_organizer(hackathon_id, db, current_user)
     result = await db.execute(select(Track).where(Track.id == track_id, Track.hackathon_id == hackathon_id))
     track = result.scalar_one_or_none()
     if not track:

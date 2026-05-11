@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 import pytest
 import pytest_asyncio
 from app.auth import get_current_user, require_organizer
-from app.clerk_auth import require_clerk_user
 from app.main import app
 from app.models import Hackathon, HackathonInvite, User, UserRole
 from httpx import AsyncClient
@@ -148,11 +147,7 @@ async def test_register_with_invite_code(client: AsyncClient, db_session: AsyncS
     async def _override_get_current_user():
         return participant
 
-    async def _override_require_clerk_user():
-        return {"sub": participant.id, "email": participant.email}
-
     app.dependency_overrides[get_current_user] = _override_get_current_user
-    app.dependency_overrides[require_clerk_user] = _override_require_clerk_user
 
     # Register with invite code
     res = await client.post(
@@ -170,7 +165,6 @@ async def test_register_with_invite_code(client: AsyncClient, db_session: AsyncS
     assert invite.uses_remaining == 0
 
     app.dependency_overrides.pop(get_current_user, None)
-    app.dependency_overrides.pop(require_clerk_user, None)
 
 
 @pytest.mark.asyncio
@@ -186,11 +180,7 @@ async def test_register_invite_only_without_code(client: AsyncClient, db_session
     async def _override_get_current_user():
         return participant
 
-    async def _override_require_clerk_user():
-        return {"sub": participant.id, "email": participant.email}
-
     app.dependency_overrides[get_current_user] = _override_get_current_user
-    app.dependency_overrides[require_clerk_user] = _override_require_clerk_user
 
     res = await client.post(
         f"/api/hackathons/{hackathon.id}/register",
@@ -201,7 +191,6 @@ async def test_register_invite_only_without_code(client: AsyncClient, db_session
     assert "Invite code required" in res.json()["detail"]
 
     app.dependency_overrides.pop(get_current_user, None)
-    app.dependency_overrides.pop(require_clerk_user, None)
 
 
 @pytest.mark.asyncio
@@ -217,11 +206,7 @@ async def test_register_invite_only_invalid_code(client: AsyncClient, db_session
     async def _override_get_current_user():
         return participant
 
-    async def _override_require_clerk_user():
-        return {"sub": participant.id, "email": participant.email}
-
     app.dependency_overrides[get_current_user] = _override_get_current_user
-    app.dependency_overrides[require_clerk_user] = _override_require_clerk_user
 
     res = await client.post(
         f"/api/hackathons/{hackathon.id}/register",
@@ -232,4 +217,3 @@ async def test_register_invite_only_invalid_code(client: AsyncClient, db_session
     assert "Invalid or expired invite code" in res.json()["detail"]
 
     app.dependency_overrides.pop(get_current_user, None)
-    app.dependency_overrides.pop(require_clerk_user, None)

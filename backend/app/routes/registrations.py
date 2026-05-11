@@ -9,8 +9,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.auth import create_qr_token, decode_token
-from app.clerk_auth import require_clerk_user
+from app.auth import create_qr_token, decode_token, get_current_user
 from app.database import get_db
 from app.discord_bot import post_application_to_discord
 from app.email_service import send_email
@@ -95,14 +94,14 @@ async def _ensure_hackathon_organizer(
 @router.get("/hackathons/{hackathon_id}/registrations")
 async def list_hackathon_registrations(
     hackathon_id: uuid.UUID,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     status: str | None = Query(None, description="Filter by status: pending, accepted, rejected, checked_in"),
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
     """Organizer view: list all registrations for a hackathon."""
-    await _ensure_hackathon_organizer(db, user_payload["sub"], hackathon_id)
+    await _ensure_hackathon_organizer(db, current_user.id, hackathon_id)
 
     filters = [Registration.hackathon_id == hackathon_id]
     if status:
@@ -140,11 +139,11 @@ async def list_hackathon_registrations(
 async def accept_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Accept a pending or waitlisted registration (organizer only)."""
-    hackathon = await _ensure_hackathon_organizer(db, user_payload["sub"], hackathon_id)
+    hackathon = await _ensure_hackathon_organizer(db, current_user.id, hackathon_id)
 
     result = await db.execute(
         select(Registration)
@@ -184,11 +183,11 @@ async def accept_registration(
 async def reject_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Reject a pending registration (organizer only)."""
-    await _ensure_hackathon_organizer(db, user_payload["sub"], hackathon_id)
+    await _ensure_hackathon_organizer(db, current_user.id, hackathon_id)
 
     result = await db.execute(
         select(Registration)
@@ -221,11 +220,11 @@ async def reject_registration(
 async def checkin_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Check in a registration (organizer action). Only accepted registrations can be checked in."""
-    await _ensure_hackathon_organizer(db, user_payload["sub"], hackathon_id)
+    await _ensure_hackathon_organizer(db, current_user.id, hackathon_id)
 
     result = await db.execute(
         select(Registration)
@@ -260,16 +259,15 @@ async def register_for_hackathon(
     hackathon_id: uuid.UUID,
     body: RegistrationCreate,
     background_tasks: BackgroundTasks,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Register current user for a hackathon."""
-    # Parallel: user + hackathon lookups are independent
-    user_task = db.execute(select(User).where(User.id == user_payload["sub"]))
-    hk_task = db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
-    user_result, hk_result = await asyncio.gather(user_task, hk_task)
+    user = current_user
 
-    user = user_result.scalar_one_or_none()
+    hk_task = db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
+    hk_result = await hk_task
+
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
@@ -363,16 +361,13 @@ async def register_for_hackathon(
 
 @router.get("/registrations")
 async def list_my_registrations(
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
     """List registrations for the current user. RLS: own registrations only."""
-    result = await db.execute(select(User).where(User.id == user_payload["sub"]))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
+    user = current_user
 
     # RLS: only current user's registrations
     count_query = select(func.count(Registration.id)).where(Registration.user_id == user.id)
@@ -400,14 +395,11 @@ async def list_my_registrations(
 @router.get("/registrations/{registration_id}")
 async def get_registration(
     registration_id: uuid.UUID,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a single registration. RLS: own only."""
-    result = await db.execute(select(User).where(User.id == user_payload["sub"]))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
+    user = current_user
 
     query = (
         select(Registration)

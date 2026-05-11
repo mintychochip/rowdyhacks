@@ -16,6 +16,8 @@ class Settings(BaseSettings):
         default="change-me-to-a-secret-key-at-least-32-chars",
         description="JWT signing key (min 32 chars)",
     )
+    admin_email: str = Field(default="", description="First-run admin email (bootstrap)")
+    admin_password: str = Field(default="", description="First-run admin password (bootstrap)")
     # OAuth provider credentials (all free)
     google_client_id: str = Field(default="", description="Google OAuth client ID")
     google_client_secret: str = Field(default="", description="Google OAuth client secret")
@@ -68,8 +70,6 @@ class Settings(BaseSettings):
     )
 
     discord_bot_token: str = Field(default="", description="Discord bot token for application management")
-    clerk_secret_key: str = Field(default="", description="Clerk secret key for JWT verification")
-    clerk_webhook_secret: str = Field(default="", description="Clerk webhook signing secret (Svix)")
     base_url: str = Field(default="http://localhost:8000", description="Public base URL for QR code links")
     frontend_url: str = Field(default="http://localhost:8000", description="Frontend origin for OAuth redirects")
 
