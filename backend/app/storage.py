@@ -1,5 +1,7 @@
 """Async S3/MinIO storage wrapper for asset uploads."""
 
+import asyncio
+import logging
 import os
 import re
 import uuid
@@ -9,6 +11,8 @@ from botocore.config import Config as BotoConfig
 from fastapi import UploadFile
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/svg+xml", "image/webp"}
 MAX_FILE_SIZE = 2 * 1024 * 1024
@@ -56,12 +60,13 @@ class StorageService:
             safe = "asset"
         return f"{safe}{ext}"
 
-    def ensure_bucket(self):
+    async def ensure_bucket(self):
         s3 = self._get_client()
         try:
-            s3.head_bucket(Bucket=self._bucket)
-        except Exception:
-            s3.create_bucket(Bucket=self._bucket)
+            await asyncio.to_thread(s3.head_bucket, Bucket=self._bucket)
+        except Exception as e:
+            logger.info(f"Bucket {self._bucket} not found, creating: {e}")
+            await asyncio.to_thread(s3.create_bucket, Bucket=self._bucket)
 
     async def upload(self, file: UploadFile, folder: str = "assets") -> dict:
         contents = await file.read()
@@ -82,9 +87,10 @@ class StorageService:
         safe_name = self._sanitize_filename(file.filename or "asset")
         object_key = f"{folder}/{uuid.uuid4().hex}-{safe_name}"
 
-        self.ensure_bucket()
+        await self.ensure_bucket()
         s3 = self._get_client()
-        s3.put_object(
+        await asyncio.to_thread(
+            s3.put_object,
             Bucket=self._bucket,
             Key=object_key,
             Body=contents,
