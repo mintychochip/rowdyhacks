@@ -106,6 +106,19 @@ See you soon!
 {hackathon_name} Team
 """,
     },
+    "password_reset": {
+        "subject": "Password Reset Request",
+        "body": """Hi,
+
+You requested a password reset. Click the link below to reset your password:
+
+{reset_url}
+
+This link will expire in 1 hour.
+
+If you did not request this, please ignore this email.
+""",
+    },
 }
 
 
