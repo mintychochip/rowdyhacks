@@ -63,6 +63,10 @@ async def get_manifest(db: AsyncSession = Depends(get_db)):
 async def get_branding(db: AsyncSession = Depends(get_db)):
     """Backward-compat branding endpoint (deprecated)."""
     config = await config_service.get_all(db)
+    try:
+        year = int(config.get("hackathon_year", "2025"))
+    except (ValueError, TypeError):
+        year = 2025
     return {
         "hackathon_name": config.get("hackathon_name", "OpenHack"),
         "hackathon_tagline": config.get("hackathon_tagline", "The open-source hackathon framework"),
@@ -70,7 +74,7 @@ async def get_branding(db: AsyncSession = Depends(get_db)):
         "hackathon_primary_color": config.get("hackathon_primary_color", "#2563eb"),
         "hackathon_logo_url": config.get("hackathon_logo_url", "/openhack-logo.png"),
         "hackathon_favicon_url": config.get("hackathon_favicon_url", "/openhack-logo.png"),
-        "hackathon_year": int(config.get("hackathon_year", "2025")),
+        "hackathon_year": year,
     }
 
 
@@ -111,7 +115,6 @@ async def update_config(
 async def upload_asset(
     file: UploadFile = File(...),
     key: str | None = Form(None),
-    db: AsyncSession = Depends(get_db),
     auth: dict = Depends(require_organizer),
 ):
     try:

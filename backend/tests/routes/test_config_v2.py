@@ -103,3 +103,17 @@ async def test_get_branding_backward_compat(config_client):
     assert data["hackathon_logo_url"] == "/openhack-logo.png"
     assert data["hackathon_favicon_url"] == "/openhack-logo.png"
     assert data["hackathon_year"] == 2025
+
+
+@pytest.mark.asyncio
+async def test_get_custom_css_empty(config_client):
+    response = await config_client.get("/api/config/custom.css")
+    assert response.status_code == 200
+    assert response.text == ""
+    assert response.headers["content-type"] == "text/css; charset=utf-8"
+
+
+@pytest.mark.asyncio
+async def test_get_single_key_invalid(config_client):
+    response = await config_client.get("/api/config/keys/nonexistent_key_12345")
+    assert response.status_code == 400
