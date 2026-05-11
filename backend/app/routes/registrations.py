@@ -333,6 +333,20 @@ async def register_for_hackathon(
     # Discord notification via background task
     background_tasks.add_task(post_application_to_discord, str(reg.id))
 
+    # Publish event for webhooks
+    from app.services.event_service import publish_event
+
+    await publish_event(
+        db,
+        "registration.created",
+        {
+            "registration_id": str(reg.id),
+            "hackathon_id": str(hackathon_id),
+            "user_id": str(user.id),
+            "status": reg.status.value,
+        },
+    )
+
     response = _registration_to_response(reg, user)
 
     # If waitlisted, add position info

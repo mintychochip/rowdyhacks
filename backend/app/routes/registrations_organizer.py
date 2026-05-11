@@ -127,6 +127,14 @@ async def accept_registration(
 
     await db.commit()
 
+    from app.services.event_service import publish_event
+
+    await publish_event(
+        db,
+        "registration.accepted",
+        {"registration_id": str(reg.id), "hackathon_id": str(hackathon_id), "user_id": str(reg.user_id)},
+    )
+
     return {
         "id": str(reg.id),
         "status": reg.status.value,
@@ -194,6 +202,14 @@ async def checkin_registration(
     reg.status = RegistrationStatus.checked_in
     reg.checked_in_at = datetime.now(UTC)
     await db.commit()
+
+    from app.services.event_service import publish_event
+
+    await publish_event(
+        db,
+        "registration.checked_in",
+        {"registration_id": str(reg.id), "hackathon_id": str(hackathon_id), "user_id": str(reg.user_id)},
+    )
 
     return {"id": str(reg.id), "status": reg.status.value, "checked_in_at": reg.checked_in_at.isoformat()}
 

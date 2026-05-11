@@ -160,6 +160,14 @@ async def create_judging_session(
         criteria_created.append(criterion)
     await db.commit()
 
+    from app.services.event_service import publish_event
+
+    await publish_event(
+        db,
+        "judging.session_started",
+        {"hackathon_id": str(hackathon_id), "session_id": str(session.id)},
+    )
+
     return _session_detail_from_parts(session, rubric, criteria_created)
 
 
@@ -611,6 +619,19 @@ async def submit_scores(
                 s.submitted_at = now
 
     await db.commit()
+
+    from app.services.event_service import publish_event
+
+    await publish_event(
+        db,
+        "submission.scored",
+        {
+            "assignment_id": str(assignment.id),
+            "submission_id": str(assignment.submission_id),
+            "judge_id": str(assignment.judge_id),
+            "is_completed": bool(assignment.is_completed),
+        },
+    )
 
     return {
         "submitted": True,

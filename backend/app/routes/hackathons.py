@@ -760,6 +760,18 @@ async def create_announcement(
     await db.commit()
     await db.refresh(announcement)
 
+    from app.services.event_service import publish_event
+
+    await publish_event(
+        db,
+        "announcement.published",
+        {
+            "announcement_id": str(announcement.id),
+            "hackathon_id": str(hackathon_id),
+            "title": announcement.title,
+        },
+    )
+
     return AnnouncementResponse.model_validate(announcement)
 
 

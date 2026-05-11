@@ -40,3 +40,12 @@ class EventService:
         """Remove a callback."""
         if event_type in self._subscribers:
             self._subscribers[event_type] = [c for c in self._subscribers[event_type] if c != callback]
+
+
+# Singleton instance for app-wide use
+_event_service = EventService()
+
+
+async def publish_event(db: AsyncSession, type: str, payload: dict) -> Event:
+    """Convenience wrapper around the singleton EventService."""
+    return await _event_service.publish(db, type, payload)

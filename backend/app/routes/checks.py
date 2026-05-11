@@ -100,6 +100,14 @@ async def submit_for_check(
     # Trigger analysis in background
     asyncio.create_task(analyze_submission(sub.id))
 
+    from app.services.event_service import publish_event
+
+    await publish_event(
+        db,
+        "submission.submitted",
+        {"submission_id": str(sub.id), "hackathon_id": str(hackathon_id), "url": body.url},
+    )
+
     return {"id": str(sub.id), "access_token": access_token, "status": "pending"}
 
 
