@@ -15,6 +15,7 @@ from app.logging_config import configure_logging
 from app.models import Base
 from app.routes import content_router
 from app.routes.auth import router as auth_router
+from app.routes.config import router as config_router
 from app.routes.assistant import router as assistant_router
 from app.routes.checkin import router as checkin_router
 from app.routes.checks import router as checks_router
@@ -193,6 +194,7 @@ app.include_router(webhooks_router)
 app.include_router(websocket_router)
 app.include_router(monitoring_router)
 app.include_router(content_router)
+app.include_router(config_router)
 
 
 # Add request tracking middleware
