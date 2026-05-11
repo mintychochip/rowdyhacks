@@ -146,7 +146,24 @@ docker compose ps        # confirm all services are up
 docker compose logs -f backend  # watch for startup errors
 ```
 
-#### 7. Auto-start on boot
+#### 7. Email Setup
+
+By default, the dev stack uses [Mailpit](https://github.com/axllent/mailpit) to capture all outgoing emails locally. Browse them at http://localhost:8025. No external email provider is required.
+
+For real outbound email, you have two options:
+
+1. **SendGrid** (recommended for production): Set `HACKVERIFY_EMAIL_PROVIDER=sendgrid` and `HACKVERIFY_SENDGRID_API_KEY=SG.xxx` in your `.env`.
+
+2. **Self-hosted Postfix relay** (advanced, poor deliverability without domain DNS records):
+   ```bash
+   export SMTP_RELAY_HOST=smtp.mailgun.org
+   export SMTP_RELAY_USER=postmaster@yourdomain.com
+   export SMTP_RELAY_PASSWORD=your-key
+   export MAIL_HOSTNAME=yourdomain.com
+   docker compose -f docker-compose.yml -f docker-compose.mail.yml up -d
+   ```
+
+#### 8. Auto-start on boot
 
 ```bash
 cp hackverify.service /etc/systemd/system/
@@ -193,6 +210,7 @@ cat ~/.ssh/rowdyhacks-deploy       # put this in the DROPLET_SSH_KEY secret
 | `frontend` | custom (Node→nginx) | 127.0.0.1:3000→3000 | — |
 | `nginx` | nginx:alpine | 80, 443 | backend (healthy), frontend (started) |
 | `certbot` | certbot/certbot | — | — |
+| `mail` | axllent/mailpit | 127.0.0.1:8025, 1025 | — |
 
 ### Environment Variables
 

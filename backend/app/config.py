@@ -172,6 +172,7 @@ class Settings(BaseSettings):
     smtp_password: str = Field(default="", description="SMTP password")
     smtp_use_tls: bool = Field(default=True, description="Enable STARTTLS for SMTP")
     email_from: str = Field(default="noreply@hackthevalley.io", description="Default sender email address")
+    smtp_use_tls: bool = Field(default=True, description="Enable STARTTLS for SMTP connections")
 
     model_config = {"env_prefix": "HACKVERIFY_", "env_file": ".env", "extra": "ignore"}
 
@@ -210,3 +211,4 @@ SMTP_USER = settings.smtp_user
 SMTP_PASSWORD = settings.smtp_password
 SMTP_USE_TLS = settings.smtp_use_tls
 EMAIL_FROM = settings.email_from
+SMTP_USE_TLS = settings.smtp_use_tls
