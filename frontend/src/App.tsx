@@ -89,6 +89,8 @@ export default function App() {
                   <Route path="/hackathons/:id" element={<HackathonDetailPage />} />
                   <Route path="/judge" element={<JudgeRedirect />} />
                   <Route path="/auth/*" element={<AuthPage />} />
+                  <Route path="/forgot-password" element={<AuthPage />} />
+                  <Route path="/reset-password" element={<AuthPage />} />
                   <Route path="/sign-up/*" element={<SignUpPage />} />
                 </Route>
               </Routes>
