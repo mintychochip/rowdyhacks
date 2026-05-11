@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import * as api from '../services/api';
+import InviteCodeManager from '../components/InviteCodeManager';
+import OAuthAdminPanel from '../components/OAuthAdminPanel';
 import {
   CARD_BG, INPUT_BG, PRIMARY, SUCCESS, SUCCESS_BG10,
   TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_WHITE,
@@ -29,6 +31,7 @@ interface HackathonData {
   discord_invite_url: string | null;
   discord_webhook_url: string | null;
   devpost_url: string | null;
+  registration_mode: string | null;
 }
 
 export default function HackathonSettings() {
@@ -50,6 +53,7 @@ export default function HackathonSettings() {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [registrationMode, setRegistrationMode] = useState('open');
 
   useEffect(() => {
     if (!id || !user) { setLoading(false); return; }
@@ -67,6 +71,7 @@ export default function HackathonSettings() {
       setDiscordUrl(data.discord_invite_url || '');
       setWebhookUrl(data.discord_webhook_url || '');
       setDevpostUrl(data.devpost_url || '');
+      setRegistrationMode(data.registration_mode || 'open');
     } catch (e: any) {
       setError(e.message || 'Failed to load hackathon');
     }
@@ -109,6 +114,7 @@ export default function HackathonSettings() {
         discord_invite_url: discordUrl || undefined,
         discord_webhook_url: webhookUrl || undefined,
         devpost_url: devpostUrl || undefined,
+        registration_mode: registrationMode || undefined,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -430,6 +436,35 @@ export default function HackathonSettings() {
           )}
         </div>
       </div>
+
+      {/* Registration Section */}
+      <div style={{
+        background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg,
+        padding: SPACE.lg, marginBottom: SPACE.md,
+      }}>
+        <h3 style={{ ...TYPO.h3, marginBottom: SPACE.md }}>Registration</h3>
+        <div>
+          <label style={{ display: 'block', fontSize: 12, color: TEXT_MUTED, marginBottom: 4 }}>Registration Mode</label>
+          <select
+            value={registrationMode}
+            onChange={(e) => setRegistrationMode(e.target.value)}
+            style={{
+              width: '100%', padding: '10px 14px', background: INPUT_BG,
+              border: `1px solid ${INPUT_BORDER}`, borderRadius: RADIUS.md,
+              color: TEXT_PRIMARY, fontSize: 14, boxSizing: 'border-box', outline: 'none',
+            }}
+          >
+            <option value="open">Open</option>
+            <option value="invite_only">Invite Only</option>
+          </select>
+          <p style={{ fontSize: 12, color: TEXT_MUTED, marginTop: SPACE.xs }}>
+            Open allows anyone to register. Invite Only requires a code.
+          </p>
+        </div>
+      </div>
+
+      <InviteCodeManager hackathonId={id!} />
+      <OAuthAdminPanel />
 
       {/* Save Button */}
       <button
