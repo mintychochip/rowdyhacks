@@ -165,7 +165,9 @@ class Settings(BaseSettings):
 
     # Branding configuration (self-hosted hackathon identity)
     hackathon_name: str = Field(default="OpenHack", description="Hackathon display name")
-    hackathon_tagline: str = Field(default="The open-source hackathon framework", description="Short tagline shown in UI")
+    hackathon_tagline: str = Field(
+        default="The open-source hackathon framework", description="Short tagline shown in UI"
+    )
     hackathon_email: str = Field(default="noreply@example.com", description="Default sender email address")
     hackathon_primary_color: str = Field(default="#2563eb", description="Primary brand color (hex)")
     hackathon_logo_url: str = Field(default="/openhack-logo.png", description="URL to logo image")
@@ -180,17 +182,10 @@ class Settings(BaseSettings):
     smtp_user: str = Field(default="", description="SMTP username")
     smtp_password: str = Field(default="", description="SMTP password")
     smtp_use_tls: bool = Field(default=True, description="Enable STARTTLS for SMTP")
-    email_from: str = Field(default="", description="[Deprecated] Use hackathon_email instead. Default sender email address")
+    email_from: str = Field(
+        default="", description="[Deprecated] Use hackathon_email instead. Default sender email address"
+    )
     smtp_use_tls: bool = Field(default=True, description="Enable STARTTLS for SMTP connections")
-
-    # Branding configuration (self-hosted hackathon identity)
-    hackathon_name: str = Field(default="OpenHack", description="Hackathon display name")
-    hackathon_tagline: str = Field(default="The open-source hackathon framework", description="Short tagline shown in UI")
-    hackathon_email: str = Field(default="noreply@example.com", description="Default sender email address")
-    hackathon_primary_color: str = Field(default="#2563eb", description="Primary brand color (hex)")
-    hackathon_logo_url: str = Field(default="/openhack-logo.png", description="URL to logo image")
-    hackathon_favicon_url: str = Field(default="/openhack-logo.png", description="URL to favicon")
-    hackathon_year: int = Field(default=2025, description="Current hackathon year")
 
     model_config = {"env_prefix": "HACKVERIFY_", "env_file": ".env", "extra": "ignore"}
 
