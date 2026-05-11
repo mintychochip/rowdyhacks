@@ -5,6 +5,7 @@ from alembic import context
 
 from app.config import settings
 from app.models import Base
+
 # Import assistant models to include in migrations
 from app.models_assistant import (  # noqa: F401
     AssistantConversation,

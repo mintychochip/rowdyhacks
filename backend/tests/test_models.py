@@ -6,6 +6,23 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 
+# --- Self-hosted auth model unit tests ---
+
+
+def test_user_has_email_verified():
+    from app.models import User
+
+    u = User(email="test@example.com", name="Test", password_hash="hash")
+    assert u.email_verified is False
+
+
+def test_refresh_token_model():
+    from app.models import RefreshToken
+
+    rt = RefreshToken(user_id="uuid", token_hash="sha256hash", expires_at=datetime.now(UTC))
+    assert rt.revoked_at is None
+
+
 @pytest.mark.asyncio
 async def test_create_user(db_session):
     """Create a user and verify it persists."""

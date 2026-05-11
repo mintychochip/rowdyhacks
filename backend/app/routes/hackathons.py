@@ -9,14 +9,14 @@ from datetime import UTC, datetime
 
 import httpx
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache import cache_delete_pattern, cached
 from app.checks.similarity import run_similarity
-from app.clerk_auth import require_clerk_user_with_db, require_organizer
+from app.clerk_auth import require_clerk_user_with_db
 from app.database import get_db
 from app.models import (
     Announcement,
@@ -109,10 +109,12 @@ async def create_hackathon(
     # Index hackathon data for assistant
     try:
         from app.assistant.indexer import DocumentIndexer
+
         indexer = DocumentIndexer(db)
         await indexer.index_hackathon(hackathon)
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).error(f"Failed to index hackathon: {e}")
 
     await _bust_hackathon_list_cache()

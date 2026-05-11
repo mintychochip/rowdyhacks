@@ -173,6 +173,7 @@ async def get_check_report(
                 user_id = extract_clerk_user_id(payload)
                 if user_id:
                     from app.models import User
+
                     result = await db.execute(select(User).where(User.id == user_id))
                     user = result.scalar_one_or_none()
                     if user and user.role.value == "organizer":

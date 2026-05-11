@@ -1,12 +1,12 @@
 """Organizer dashboard routes."""
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clerk_auth import require_organizer
 from app.database import get_db
-from app.models import Submission, User, UserRole
+from app.models import Submission
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 

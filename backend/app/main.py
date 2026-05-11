@@ -3,16 +3,13 @@ from contextlib import asynccontextmanager
 import sentry_sdk
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 
 from app.background_jobs import shutdown_scheduler, start_scheduler
 from app.cache import close_redis
 from app.config import settings
-from app.database import engine
 from app.discord_bot import bot as discord_bot
 from app.discord_bot import start_bot
 from app.logging_config import configure_logging
-from app.models import Base
 from app.routes import content_router
 from app.routes.auth import router as auth_router
 from app.routes.config import router as config_router
@@ -30,7 +27,6 @@ from app.routes.qr import router as qr_router
 from app.routes.registrations import router as registrations_router
 from app.routes.registrations_organizer import router as registrations_org_router
 from app.routes.tracks import router as tracks_router
-from app.routes.config import router as config_router
 from app.routes.webhooks import router as webhooks_router
 from app.routes.websocket import router as websocket_router
 
@@ -55,16 +51,19 @@ async def lifespan(app: FastAPI):
         await _seed_demo_data()
     except Exception:
         import traceback
+
         traceback.print_exc()
 
     # Seed default content pages
     try:
         from app.database import async_session
         from app.seed_content import seed_default_content
+
         async with async_session() as db:
             await seed_default_content(db)
     except Exception:
         import traceback
+
         traceback.print_exc()
 
     # Initialize vector store for assistant
@@ -175,7 +174,8 @@ app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(assistant_router, prefix="/api/assistant", tags=["assistant"])
 
 # LLM proxy — separate router at /api/llm (not nested under /api/assistant)
-from app.routes.assistant import llm_chat_proxy, LLMChatRequest  # noqa: E402
+from app.routes.assistant import llm_chat_proxy  # noqa: E402
+
 llm_router = APIRouter(prefix="/api/llm", tags=["llm"])
 llm_router.add_api_route("/chat", llm_chat_proxy, methods=["POST"])
 app.include_router(llm_router)

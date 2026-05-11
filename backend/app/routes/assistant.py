@@ -28,15 +28,16 @@ from app.models_assistant import (
 )
 from app.clerk_auth import require_clerk_user_with_db
 
+
 async def get_current_user(
     auth: dict = Depends(require_clerk_user_with_db),
 ) -> User:
     """Get current User ORM object from Clerk auth."""
     return auth["user"]
+
+
 from app.schemas.builder import (
     GenerateProjectRequest,
-    GenerateProjectResponse,
-    ProjectPlanSchema,
 )
 
 logger = logging.getLogger(__name__)
@@ -52,9 +53,7 @@ async def get_hackathon(
     if not hackathon_id:
         return None
 
-    result = await db.execute(
-        select(Hackathon).where(Hackathon.id == hackathon_id)
-    )
+    result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     return result.scalar_one_or_none()
 
 
@@ -101,9 +100,7 @@ async def create_chat_message(
     # Get hackathon context
     hackathon = None
     if hackathon_id:
-        result = await db.execute(
-            select(Hackathon).where(Hackathon.id == hackathon_id)
-        )
+        result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
         hackathon = result.scalar_one_or_none()
 
     # Save user message
@@ -220,18 +217,13 @@ async def stream_response(
         return {"content": message.content, "completed": True}
 
     # Get conversation context
-    result = await db.execute(
-        select(AssistantConversation)
-        .where(AssistantConversation.id == message.conversation_id)
-    )
+    result = await db.execute(select(AssistantConversation).where(AssistantConversation.id == message.conversation_id))
     conversation = result.scalar_one()
 
     # Get hackathon
     hackathon = None
     if conversation.hackathon_id:
-        result = await db.execute(
-            select(Hackathon).where(Hackathon.id == conversation.hackathon_id)
-        )
+        result = await db.execute(select(Hackathon).where(Hackathon.id == conversation.hackathon_id))
         hackathon = result.scalar_one_or_none()
 
     async def generate_stream() -> AsyncGenerator[str, None]:
@@ -239,7 +231,7 @@ async def stream_response(
         try:
             # Send initial heartbeat to confirm connection
             yield f"data: {json.dumps({'connected': True})}\n\n"
-            
+
             # Update status to streaming
             message.status = AssistantMessageStatus.STREAMING
             await db.commit()
@@ -274,12 +266,11 @@ async def stream_response(
             # Build messages for LLM
             messages = [
                 {"role": "system", "content": system_prompt},
-                *[{ "role": h["role"], "content": h["content"] } for h in history],
+                *[{"role": h["role"], "content": h["content"]} for h in history],
                 {"role": "user", "content": user_message.content},
             ]
 
             # Debug: log what we're sending
-            import json as json_lib
             print(f"[DEBUG ASSISTANT] Sending {len(messages)} messages to LLM")
             print(f"[DEBUG ASSISTANT] Tools count: {len(tools) if tools else 0}")
             print(f"[DEBUG ASSISTANT] First message role: {messages[0]['role'] if messages else 'none'}")
@@ -287,6 +278,7 @@ async def stream_response(
 
             # Determine which model to use
             from app.config import settings
+
             selected_model = None
             if message.model_used:
                 if message.model_used == "thinking":
@@ -309,9 +301,9 @@ async def stream_response(
                 if chunk.startswith('{"error":'):
                     yield f"data: {chunk}\n\n"
                     return
-                
+
                 # Try to parse tool calls (custom format from LLM)
-                if chunk.startswith("{\"tool\":"):
+                if chunk.startswith('{"tool":'):
                     try:
                         tool_data = json.loads(chunk)
                         tool_calls.append(tool_data)
@@ -349,10 +341,12 @@ async def stream_response(
                     # Add to tool results
                     if not message.tool_results:
                         message.tool_results = []
-                    message.tool_results.append({
-                        "tool": tool_name,
-                        "result": tool_result,
-                    })
+                    message.tool_results.append(
+                        {
+                            "tool": tool_name,
+                            "result": tool_result,
+                        }
+                    )
 
             # Update message with final content
             message.content = "".join(full_content)
@@ -549,22 +543,16 @@ async def generate_plan(
     hackathon = None
     tracks = []
     if hackathon_id:
-        result = await db.execute(
-            select(Hackathon).where(Hackathon.id == hackathon_id)
-        )
+        result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
         hackathon = result.scalar_one_or_none()
 
         if hackathon:
             # Get tracks
             from app.models import Track
-            result = await db.execute(
-                select(Track).where(Track.hackathon_id == hackathon_id)
-            )
+
+            result = await db.execute(select(Track).where(Track.hackathon_id == hackathon_id))
             track_rows = result.scalars().all()
-            tracks = [
-                {"name": t.name, "description": t.description or ""}
-                for t in track_rows
-            ]
+            tracks = [{"name": t.name, "description": t.description or ""} for t in track_rows]
 
     # Build prompt
     prompt = build_plan_generation_prompt(
@@ -575,7 +563,10 @@ async def generate_plan(
 
     # Call LLM
     messages = [
-        {"role": "system", "content": "You are a helpful AI that generates project plans. Always respond with valid JSON."},
+        {
+            "role": "system",
+            "content": "You are a helpful AI that generates project plans. Always respond with valid JSON.",
+        },
         {"role": "user", "content": prompt},
     ]
 
@@ -598,6 +589,7 @@ async def generate_plan(
 
         # Add generated ID
         from uuid import uuid4
+
         plan_data["id"] = str(uuid4())
 
         return {
@@ -610,7 +602,7 @@ async def generate_plan(
         return {
             "success": False,
             "error": "Failed to generate valid plan",
-            "raw_response": content if 'content' in locals() else None,
+            "raw_response": content if "content" in locals() else None,
         }
     except Exception as e:
         logger.error(f"Error generating plan: {e}")
@@ -639,7 +631,10 @@ async def generate_project(
 
     # Call LLM
     messages = [
-        {"role": "system", "content": "You are a helpful AI that generates code. Always respond with valid JSON containing a 'files' array."},
+        {
+            "role": "system",
+            "content": "You are a helpful AI that generates code. Always respond with valid JSON containing a 'files' array.",
+        },
         {"role": "user", "content": prompt},
     ]
 
@@ -670,7 +665,7 @@ async def generate_project(
         # Generate README if not present
         has_readme = any(f.get("name") == "README.md" for f in project_data["files"])
         if not has_readme:
-            readme_content = f"""# {plan_dict.get('name', 'Project')}
+            readme_content = f"""# {plan_dict.get("name", "Project")}
 
 Generated for this hackathon.
 
@@ -686,12 +681,14 @@ Generated for this hackathon.
             for f in project_data["files"]:
                 readme_content += f"- {f.get('name', 'file')} - {f.get('description', 'Project file')}\n"
 
-            project_data["files"].append({
-                "path": "README.md",
-                "name": "README.md",
-                "content": readme_content,
-                "language": "markdown",
-            })
+            project_data["files"].append(
+                {
+                    "path": "README.md",
+                    "name": "README.md",
+                    "content": readme_content,
+                    "language": "markdown",
+                }
+            )
 
         return {
             "files": project_data["files"],
@@ -704,7 +701,7 @@ Generated for this hackathon.
         return {
             "success": False,
             "error": "Failed to generate valid project files",
-            "raw_response": content if 'content' in locals() else None,
+            "raw_response": content if "content" in locals() else None,
         }
     except Exception as e:
         logger.error(f"Error generating project: {e}")
@@ -794,11 +791,7 @@ async def chat_log(
     if not conversation_id:
         conv = AssistantConversation(
             user_id=current_user.id,
-            title=(
-                request.messages[0].get("content", "")[:100]
-                if request.messages
-                else "New conversation"
-            ),
+            title=(request.messages[0].get("content", "")[:100] if request.messages else "New conversation"),
         )
         db.add(conv)
         await db.flush()
@@ -828,6 +821,7 @@ async def chat_log(
 
 
 # ── LLM Proxy (mounted at /api/llm in main.py, not on the assistant router) ──
+
 
 class LLMChatRequest(BaseModel):
     messages: list[dict]

@@ -82,5 +82,6 @@ def test_invalid_refresh_window_raises():
 
 def test_smtp_use_tls_default():
     from app.config import Settings
+
     s = Settings(_env_file=None)
     assert s.smtp_use_tls is True

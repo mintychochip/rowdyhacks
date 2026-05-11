@@ -10,9 +10,7 @@ class PlanTaskSchema(BaseModel):
 
     id: str = Field(..., description="Unique identifier for the task")
     description: str = Field(..., description="Task description")
-    estimatedMinutes: int = Field(
-        ..., description="Estimated time to complete in minutes", ge=15, le=480
-    )
+    estimatedMinutes: int = Field(..., description="Estimated time to complete in minutes", ge=15, le=480)
     completed: bool = Field(default=False, description="Whether the task is completed")
     dependencies: Optional[List[str]] = Field(
         default=None, description="IDs of tasks that must complete before this one"
@@ -26,14 +24,10 @@ class ProjectPlanSchema(BaseModel):
     name: str = Field(..., description="Project name")
     description: str = Field(..., description="Project description")
     targetTrack: str = Field(..., description="Target hackathon track")
-    estimatedHours: int = Field(
-        ..., description="Estimated total hours to complete", ge=1, le=48
-    )
+    estimatedHours: int = Field(..., description="Estimated total hours to complete", ge=1, le=48)
     techStack: List[str] = Field(..., description="Recommended technologies")
     tasks: List[PlanTaskSchema] = Field(..., description="List of tasks to complete")
-    stretchGoals: Optional[List[str]] = Field(
-        default=None, description="Optional stretch goals"
-    )
+    stretchGoals: Optional[List[str]] = Field(default=None, description="Optional stretch goals")
 
 
 class GeneratedFileSchema(BaseModel):
@@ -58,7 +52,5 @@ class GenerateProjectRequest(BaseModel):
 class GenerateProjectResponse(BaseModel):
     """Response schema for project generation."""
 
-    files: List[GeneratedFileSchema] = Field(
-        ..., description="Generated project files"
-    )
+    files: List[GeneratedFileSchema] = Field(..., description="Generated project files")
     readme: str = Field(..., description="Generated README content")

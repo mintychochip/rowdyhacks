@@ -54,6 +54,7 @@ _memory_cache = _MemoryCache()
 
 _redis_available = None  # Cache the availability check
 
+
 async def get_redis():
     """Get or create Redis client (returns None if redis not installed or unreachable)."""
     global _redis_client, _redis, _redis_available

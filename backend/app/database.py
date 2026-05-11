@@ -13,7 +13,7 @@ class Base(DeclarativeBase):
 
 
 # Context variable to track current user ID for RLS
-_current_user_context: ContextVar[Optional[str]] = ContextVar('current_user_id', default=None)
+_current_user_context: ContextVar[Optional[str]] = ContextVar("current_user_id", default=None)
 
 
 engine = create_async_engine(settings.database_url, echo=False)
@@ -28,8 +28,6 @@ def set_current_user_id(user_id: Optional[str]) -> None:
 def get_current_user_id() -> Optional[str]:
     """Get the current user ID from RLS context."""
     return _current_user_context.get()
-
-
 
 
 async def get_db() -> AsyncSession:

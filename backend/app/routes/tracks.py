@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -176,6 +176,7 @@ async def create_track(
             await indexer.index_hackathon(hackathon)
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).error(f"Failed to reindex after track creation: {e}")
 
     await _bust_tracks_cache(hackathon_id)
@@ -196,7 +197,18 @@ async def update_track(
     if not track:
         raise HTTPException(status_code=404, detail="Track not found")
 
-    for field in ("name", "description", "challenge", "icon", "color", "prize", "track_type", "criteria", "resources", "resources_markdown"):
+    for field in (
+        "name",
+        "description",
+        "challenge",
+        "icon",
+        "color",
+        "prize",
+        "track_type",
+        "criteria",
+        "resources",
+        "resources_markdown",
+    ):
         if field in body:
             setattr(track, field, body[field])
     await db.commit()
@@ -214,6 +226,7 @@ async def update_track(
             await indexer.index_hackathon(hackathon)
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).error(f"Failed to reindex after track update: {e}")
 
     await _bust_tracks_cache(hackathon_id)
@@ -247,6 +260,7 @@ async def delete_track(
             await indexer.index_hackathon(hackathon)
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).error(f"Failed to reindex after track deletion: {e}")
 
     await _bust_tracks_cache(hackathon_id)

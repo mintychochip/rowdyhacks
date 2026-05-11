@@ -4,7 +4,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.clerk_auth import require_organizer
 from app.crawler.scheduler import is_crawling, run_crawl
 from app.database import get_db
-from app.models import CrawledHackathon, CrawledProject, UserRole
+from app.models import CrawledHackathon, CrawledProject
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

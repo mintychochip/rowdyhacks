@@ -54,6 +54,7 @@ async def get_current_user_ws(token: str | None) -> dict | None:
 
     # Try Clerk token first
     from app.clerk_auth import is_clerk_token, decode_clerk_token, extract_clerk_user_id
+
     if is_clerk_token(token):
         try:
             payload = await decode_clerk_token(token)

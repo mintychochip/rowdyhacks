@@ -12,7 +12,6 @@ from app.clerk_auth import (
     extract_clerk_user_email,
     fetch_clerk_user_details,
     is_clerk_token,
-    require_clerk_user_with_db,
 )
 from app.database import get_db
 from app.models import User

@@ -119,7 +119,9 @@ def build_plan_generation_prompt(
     parts.append("6. Stretch Goals: 2-4 additional features if time permits")
     parts.append("")
     parts.append("Format the response as a JSON object matching this structure:")
-    parts.append('{"name": "...", "targetTrack": "...", "estimatedHours": 4, "techStack": [...], "tasks": [...], "stretchGoals": [...]}')
+    parts.append(
+        '{"name": "...", "targetTrack": "...", "estimatedHours": 4, "techStack": [...], "tasks": [...], "stretchGoals": [...]}'
+    )
     parts.append("")
     parts.append("Make the plan specific and actionable, not generic.")
 
@@ -141,7 +143,7 @@ def build_project_generation_prompt(
     parts.append(f"- Tech Stack: {', '.join(plan.get('techStack', []))}")
     parts.append("")
     parts.append("Tasks to implement:")
-    for i, task in enumerate(plan.get('tasks', []), 1):
+    for i, task in enumerate(plan.get("tasks", []), 1):
         parts.append(f"{i}. {task.get('description', 'Task')}")
     parts.append("")
     parts.append("Generate the following files:")
@@ -192,10 +194,7 @@ class ContextBuilder:
         parts = []
 
         # Identity and role
-        system_prompt = (
-            f"You are an AI assistant for {settings.hackathon_name}, "
-            f"{settings.hackathon_tagline}."
-        )
+        system_prompt = f"You are an AI assistant for {settings.hackathon_name}, {settings.hackathon_tagline}."
         parts.append(system_prompt)
         parts.append(f"The user's role is: {user.role}")
         parts.append(f"Current date: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
@@ -244,7 +243,9 @@ class ContextBuilder:
         parts.append("- When helping with ideation, be creative but practical")
         parts.append("- For judging questions, emphasize fairness and consistency")
         parts.append("- Format responses clearly with bullet points or numbered lists when appropriate")
-        parts.append("- You can help users navigate the platform: use the query_site_pages tool to find relevant pages, then share the URL path with the user")
+        parts.append(
+            "- You can help users navigate the platform: use the query_site_pages tool to find relevant pages, then share the URL path with the user"
+        )
 
         return "\n".join(parts)
 
@@ -269,20 +270,18 @@ class ContextBuilder:
 
         history = []
         for msg in messages:
-            history.append({
-                "role": msg.role.value,
-                "content": msg.content,
-            })
+            history.append(
+                {
+                    "role": msg.role.value,
+                    "content": msg.content,
+                }
+            )
 
         return history
 
     async def _get_tracks(self, hackathon_id: str) -> list[dict[str, Any]]:
         """Get tracks for a hackathon."""
-        result = await self.db.execute(
-            select(Track)
-            .where(Track.hackathon_id == hackathon_id)
-            .order_by(Track.name)
-        )
+        result = await self.db.execute(select(Track).where(Track.hackathon_id == hackathon_id).order_by(Track.name))
         tracks = result.scalars().all()
 
         return [
@@ -331,22 +330,25 @@ class ContextBuilder:
 
         hackathons = []
         for reg, hack in rows:
-            hackathons.append({
-                "id": str(hack.id),
-                "name": hack.name,
-                "role": "participant",
-                "status": reg.status,
-            })
+            hackathons.append(
+                {
+                    "id": str(hack.id),
+                    "name": hack.name,
+                    "role": "participant",
+                    "status": reg.status,
+                }
+            )
 
         # Get hackathons where user is organizer
         result = await self.db.execute(
             select(Hackathon)
             .where(
-                (Hackathon.organizer_id == user_id) |
-                (Hackathon.id.in_(
-                    select(HackathonOrganizer.hackathon_id)
-                    .where(HackathonOrganizer.user_id == user_id)
-                ))
+                (Hackathon.organizer_id == user_id)
+                | (
+                    Hackathon.id.in_(
+                        select(HackathonOrganizer.hackathon_id).where(HackathonOrganizer.user_id == user_id)
+                    )
+                )
             )
             .where(Hackathon.end_date >= datetime.now() - timedelta(days=7))
         )
@@ -355,12 +357,14 @@ class ContextBuilder:
         for hack in org_hackathons:
             # Check not already added
             if not any(h["id"] == str(hack.id) for h in hackathons):
-                hackathons.append({
-                    "id": str(hack.id),
-                    "name": hack.name,
-                    "role": "organizer",
-                    "status": "active",
-                })
+                hackathons.append(
+                    {
+                        "id": str(hack.id),
+                        "name": hack.name,
+                        "role": "organizer",
+                        "status": "active",
+                    }
+                )
 
         return hackathons
 
