@@ -261,8 +261,8 @@ Full rebrand from "OpenHack" to "OpenHack" - The open-source hackathon framework
 4. Modified `.github/workflows/deploy.yml` - Stops nginx container before deploy to free port 80/443
 
 **Deployment:**
-- Frontend: https://openhack.vercel.app
-- Backend API: https://openhack.duckdns.org/api
+- Frontend: https://localhost:5173
+- Backend API: https://localhost/api
 
 ### QA Testing Results (2026-05-03)
 

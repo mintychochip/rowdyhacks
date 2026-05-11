@@ -165,7 +165,7 @@ export default function ApplyPage() {
           border: `1px solid ${BORDER}`,
         }}>
           <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-          Bakersfield · April 29–30, 2026
+          OpenHack · Apply Now
         </div>
         <h1 style={{ ...TYPO.h2, marginBottom: 6, letterSpacing: '-0.03em' }}>{hackathonName}</h1>
         <p style={{ color: TEXT_MUTED, fontSize: 14 }}>Submit your application to participate</p>

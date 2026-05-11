@@ -31,9 +31,9 @@ The current codebase is deeply branded for "OpenHack" / "OpenHack" — hardcoded
 | `openhack` | `openhack` | Domain slug |
 | `openhack-logo` | `openhack-logo` | Asset filenames |
 | `openhack-dark` | `openhack-dark` | Monaco editor theme name |
-| `openhack.io` | `openhack.dev` | Email domain placeholder |
-| `openhack.duckdns.org` | `localhost` | Default domain placeholder |
-| `openhack.vercel.app` | `localhost:5173` | Default dev URL placeholder |
+| `openhack.dev` | `openhack.dev` | Email domain placeholder |
+| `localhost` | `localhost` | Default domain placeholder |
+| `localhost:5173` | `localhost:5173` | Default dev URL placeholder |
 | `The open-source hackathon framework` | `The open-source hackathon framework` | Tagline placeholder |
 | `OH` | `OH` | Short name / abbreviation |
 | `The open-source hackathon framework` | `The open-source hackathon framework` | PWA description |
@@ -62,7 +62,7 @@ The current codebase is deeply branded for "OpenHack" / "OpenHack" — hardcoded
 
 | File | Required Change |
 |---|---|
-| `frontend/.env.production` | `VITE_API_URL=https://openhack.duckdns.org/api` → `VITE_API_URL=https://localhost/api` (placeholder domain, string replacement only) |
+| `frontend/.env.production` | `VITE_API_URL=https://localhost/api` → `VITE_API_URL=https://localhost/api` (placeholder domain, string replacement only) |
 
 > **Note:** The `email_from` deprecation and `VITE_API_URL` functional routing change are addressed in Phase 2 as logic changes. Between Phase 1 and Phase 2 completion, the production build uses a placeholder domain that is non-functional but passes string verification.
 

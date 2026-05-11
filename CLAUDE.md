@@ -5,8 +5,8 @@
 | | |
 |---|---|
 | **Repo** | mintychochip/openhack |
-| **Frontend URL** | https://openhack.vercel.app |
-| **Backend API** | https://openhack.duckdns.org/api |
+| **Frontend URL** | https://localhost:5173 |
+| **Backend API** | https://localhost/api |
 | **Status** | Production (Let's Encrypt SSL) |
 | **Branding** | "OpenHack" |
 
@@ -65,6 +65,6 @@ docker logs openhack-nginx-1 --tail 50
 
 ## Backend Health Check
 ```bash
-curl https://openhack.duckdns.org/api/monitoring/health
+curl https://localhost/api/monitoring/health
 # Should return: {"status":"healthy", ...}
 ```

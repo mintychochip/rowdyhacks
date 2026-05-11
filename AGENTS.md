@@ -16,7 +16,7 @@ OpenHack (OH) is a hackathon management platform for The open-source hackathon f
                                ▼
 ┌──────────────────────────────────────────────────────────┐
 │              DigitalOcean VPS (2GB RAM)                   │
-│              DuckDNS domain: openhack.duckdns.org      │
+│              DuckDNS domain: localhost      │
 │                                                          │
 │  ┌─────────────────────────────────────────────────────┐ │
 │  │              Nginx (ports 80/443)                    │ │
@@ -46,7 +46,7 @@ OpenHack (OH) is a hackathon management platform for The open-source hackathon f
 
 ### Backend Deployment (DigitalOcean VPS + DuckDNS)
 - Hosted on a **DigitalOcean droplet** (Ubuntu 22.04, 2GB RAM)
-- Domain: **openhack.duckdns.org** via DuckDNS dynamic DNS
+- Domain: **localhost** via DuckDNS dynamic DNS
 - Deployed via GitHub Actions (`deploy.yml`) — SSHes into the droplet, pulls latest code, rebuilds Docker containers
 - All services run in Docker Compose: PostgreSQL, Redis, FastAPI backend, nginx (SSL termination)
 - Backend: Python 3.11, FastAPI, SQLAlchemy 2.0 (async), asyncpg

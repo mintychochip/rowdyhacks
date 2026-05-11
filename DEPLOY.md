@@ -7,7 +7,7 @@ OpenHack uses a **split deployment**:
 | Component | Platform | URL |
 |---|---|---|
 | **Frontend** | Vercel (auto-deploy from `master`) | Your Vercel project URL |
-| **Backend + DB** | DigitalOcean VPS (Docker Compose) | `openhack.duckdns.org` |
+| **Backend + DB** | DigitalOcean VPS (Docker Compose) | `localhost` |
 
 The frontend on Vercel proxies `/api/*` requests to the backend VPS. The backend runs behind nginx with SSL termination on the droplet.
 
@@ -28,7 +28,7 @@ The frontend auto-deploys from `master` via Vercel's GitHub integration. No manu
 2. Set the **Root Directory** to `frontend`
 3. Set the **Install Command** to `npm install --legacy-peer-deps`
 4. Add environment variable: `VITE_API_URL=/api`
-5. Configure rewrites/proxy in `vercel.json` to forward `/api/*` to `https://openhack.duckdns.org/api/*`
+5. Configure rewrites/proxy in `vercel.json` to forward `/api/*` to `https://localhost/api/*`
 
 ### Manual frontend build (local)
 ```bash
@@ -41,7 +41,7 @@ npm run build      # output in frontend/dist/
 
 ## Backend Deployment (DigitalOcean VPS)
 
-Ubuntu 22.04 LTS, 2GB RAM minimum. Domain via DuckDNS: `openhack.duckdns.org`.
+Ubuntu 22.04 LTS, 2GB RAM minimum. Domain via DuckDNS: `localhost`.
 
 ### One-Time Setup
 
@@ -131,7 +131,7 @@ nano .env  # Fill in SECRET_KEY, POSTGRES_PASSWORD, BASE_URL, etc.
 #### 5. SSL (skip if using your own reverse proxy)
 
 ```bash
-./scripts/init-ssl.sh openhack.duckdns.org admin@your-email.com
+./scripts/init-ssl.sh localhost admin@your-email.com
 # Or for testing / IP-only (self-signed):
 ./scripts/init-ssl.sh
 ```
@@ -181,7 +181,7 @@ Required GitHub secrets (`Settings > Secrets and variables > Actions`):
 
 | Secret | Description |
 |---|---|
-| `DROPLET_HOST` | Droplet IP or `openhack.duckdns.org` |
+| `DROPLET_HOST` | Droplet IP or `localhost` |
 | `DROPLET_USER` | SSH user (e.g. `jlo`) |
 | `DROPLET_SSH_KEY` | Private SSH key for the deploy user |
 | `SUDO_PASSWORD` | Password for sudo commands (stopping host nginx) |
@@ -197,7 +197,7 @@ cat ~/.ssh/openhack-deploy       # put this in the DROPLET_SSH_KEY secret
 **Option B — Manual deploy script (from your local machine):**
 
 ```bash
-./scripts/deploy.sh jlo@openhack.duckdns.org
+./scripts/deploy.sh jlo@localhost
 ```
 
 ### Docker Compose Services
@@ -220,7 +220,7 @@ cat ~/.ssh/openhack-deploy       # put this in the DROPLET_SSH_KEY secret
 | `POSTGRES_PASSWORD` | Database password | Yes |
 | `POSTGRES_USER` | Database user (default: `hackverify`) | No |
 | `POSTGRES_DB` | Database name (default: `hackverify`) | No |
-| `BASE_URL` | Public URL, e.g. `https://openhack.duckdns.org` | Yes |
+| `BASE_URL` | Public URL, e.g. `https://localhost` | Yes |
 | `LLM_API_KEY` | Anthropic/Poolside API key | Optional |
 | `GITHUB_TOKEN` | GitHub PAT for API rate limits | Optional |
 | `DISCORD_BOT_TOKEN` | Discord bot token | Optional |

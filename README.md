@@ -1,6 +1,6 @@
 # OpenHack
 
-Bakersfield's hackathon platform — registration, check-in, judging, and everything in between. The open-source hackathon framework.
+The open-source hackathon framework — registration, check-in, judging, and everything in between. The open-source hackathon framework.
 
 ## Features
 

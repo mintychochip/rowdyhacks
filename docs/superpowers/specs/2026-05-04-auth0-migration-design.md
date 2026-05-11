@@ -94,7 +94,7 @@ export const auth0Config = {
   clientId: 'your-client-id',
   authorizationParams: {
     redirect_uri: window.location.origin + '/auth/callback',
-    audience: 'https://api.openhack.io',  // API identifier
+    audience: 'https://api.openhack.dev',  // API identifier
   },
 };
 ```
@@ -163,7 +163,7 @@ pip install pyjwt[crypto]  # For RS256 JWT validation
 AUTH0_DOMAIN=openhack.us.auth0.com
 AUTH0_CLIENT_ID=xxx
 AUTH0_CLIENT_SECRET=xxx
-AUTH0_API_AUDIENCE=https://api.openhack.io
+AUTH0_API_AUDIENCE=https://api.openhack.dev
 
 # Remove (old)
 # HACKVERIFY_SECRET_KEY=xxx  # No longer needed for auth
