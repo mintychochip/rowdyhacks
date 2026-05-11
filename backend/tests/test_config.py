@@ -78,3 +78,9 @@ def test_invalid_refresh_window_raises():
             secret_key="test-secret-key-min-32-chars!!!!",
             crawler_refresh_window_days=-1,
         )
+
+
+def test_smtp_use_tls_default():
+    from app.config import Settings
+    s = Settings(_env_file=None)
+    assert s.smtp_use_tls is True
