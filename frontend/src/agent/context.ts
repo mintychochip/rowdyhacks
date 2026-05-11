@@ -1,8 +1,11 @@
 // Context builder — system prompt + RAG from Qdrant + pruning.
 import type { AgentTool } from './types';
 import { ragSearch } from '../services/assistant';
+import { useBrandingStore } from '../stores/brandingStore';
 
-const SYSTEM_PROMPT_TEMPLATE = `You are an AI assistant for a hackathon platform.
+export function getSystemPrompt(): string {
+  const { branding } = useBrandingStore.getState();
+  return `You are an AI assistant for ${branding.hackathon_name}, ${branding.hackathon_tagline}.
 You help participants with hackathon questions AND with writing code in their project sandbox.
 
 ## Your Tools
@@ -21,6 +24,7 @@ You have access to tools for:
 
 ## Current Date
 {DATE}`;
+}
 
 export async function buildSystemPrompt(
   tools: AgentTool[],
@@ -40,7 +44,7 @@ export async function buildSystemPrompt(
     }
   }
 
-  return SYSTEM_PROMPT_TEMPLATE
+  return getSystemPrompt()
     .replace('{RAG_CONTEXT}', ragContext || '(No additional context available)')
     .replace('{DATE}', date);
 }

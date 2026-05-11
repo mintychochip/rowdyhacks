@@ -163,6 +163,10 @@ class Settings(BaseSettings):
             raise ValueError(f"Invalid cron expression: {e}") from e
         return v
 
+    # Branding
+    hackathon_name: str = Field(default="OpenHack", description="Hackathon name for branding")
+    hackathon_tagline: str = Field(default="The open-source hackathon framework", description="Hackathon tagline for branding")
+
     # Email configuration
     email_provider: str = Field(default="smtp", description='Email provider: "sendgrid" or "smtp"')
     sendgrid_api_key: str = Field(default="", description="SendGrid API key for email sending")

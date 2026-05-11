@@ -68,6 +68,8 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       HACKVERIFY_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-hackverify}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-hackverify}
       HACKVERIFY_SECRET_KEY: ${SECRET_KEY:-change-me-to-32-char-secret-key-here}
