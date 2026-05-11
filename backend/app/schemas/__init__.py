@@ -13,7 +13,8 @@ class UserResponse(BaseModel):
 
 
 class SubmitRequest(BaseModel):
-    devpost_url: str
+    url: str
+    hackathon_id: Optional[str] = None
     github_url: Optional[str] = None
 
 
