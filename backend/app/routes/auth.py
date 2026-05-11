@@ -1,9 +1,4 @@
-"""Auth routes for self-hosted hackathon platform.
-
-Provides local JWT-based authentication: register, login, refresh, logout,
-password reset, and current user info. Replaces Clerk-only auth with a
-self-hosted system that still supports Clerk tokens during transition.
-"""
+"""Self-hosted auth routes: local password login, registration, OAuth, token refresh, and password reset."""
 
 import logging
 from datetime import UTC, datetime, timedelta

@@ -5,8 +5,8 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_dashboard_requires_auth(client: AsyncClient):
-    """Dashboard should require auth (returns 401 or 403 without proper Clerk token)."""
-    # Without Clerk token override, this should fail auth
+    """Dashboard should require auth (returns 401 or 403 without proper token)."""
+    # Without token override, this should fail auth
     response = await client.get("/api/dashboard")
     # With dependency override in conftest, it should pass
     assert response.status_code in (200, 401, 403)

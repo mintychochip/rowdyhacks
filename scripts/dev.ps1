@@ -25,14 +25,14 @@ if (-not (Test-Path .env)) {
         Write-Host "Created .env from example. Please edit it with your API keys." -ForegroundColor Yellow
     } else {
         @"
-# Required for Clerk auth
-HACKVERIFY_CLERK_SECRET_KEY=your_clerk_secret_key_here
-VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key_here
+# Admin bootstrap (optional — creates first organizer on first run)
+HACKVERIFY_ADMIN_EMAIL=admin@example.com
+HACKVERIFY_ADMIN_PASSWORD=changeme
 
 # Optional - for AI features
 HACKVERIFY_LLM_API_KEY=your_poolside_or_openai_key_here
 "@ | Out-File -FilePath .env -Encoding UTF8
-        Write-Host "Created minimal .env file. Please add your Clerk keys." -ForegroundColor Yellow
+        Write-Host "Created minimal .env file. Please set admin credentials or OAuth providers." -ForegroundColor Yellow
     }
 }
 

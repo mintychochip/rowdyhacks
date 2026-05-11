@@ -21,9 +21,9 @@ echo "Docker is running ✓"
 if [ ! -f .env ]; then
     echo "WARNING: No .env file found. Creating minimal one..."
     cat > .env << 'EOF'
-# Required for Clerk auth
-HACKVERIFY_CLERK_SECRET_KEY=your_clerk_secret_key_here
-VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key_here
+# Admin bootstrap (optional — creates first organizer on first run)
+HACKVERIFY_ADMIN_EMAIL=admin@example.com
+HACKVERIFY_ADMIN_PASSWORD=changeme
 
 # Optional - for AI features
 HACKVERIFY_LLM_API_KEY=your_poolside_or_openai_key_here

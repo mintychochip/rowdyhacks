@@ -26,8 +26,8 @@ async def _create_hackathon(db, name, organizer):
 
 
 def _auth_headers(user):
-    # With Clerk dependency override in conftest, the actual token value is ignored
-    token = "test-clerk-token-placeholder"
+    # With auth dependency override in conftest, the actual token value is ignored
+    token = "test-token-placeholder"
     return {"Authorization": f"Bearer {token}"}
 
 

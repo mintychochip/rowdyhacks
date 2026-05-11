@@ -805,7 +805,7 @@ async def llm_chat_proxy(
     """Proxy LLM chat requests to Poolside.
 
     Strips client tool defs, injects server-authorized ones.
-    Validates Clerk JWT.
+    Validates JWT token.
     """
     # Inject server-authorized tools — strip whatever client sent.
     # get_tools_for_role() returns OpenAI format:
