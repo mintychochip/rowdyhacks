@@ -12,29 +12,14 @@ pub enum WizardStep {
 
 impl WizardStep {
     pub fn presets() -> &'static [&'static str] {
-        &["#2563eb", "#7c3aed", "#059669", "#dc2626", "#ea580c", "#0891b2"]
-    }
-
-    pub fn next(&self) -> Option<WizardStep> {
-        match self {
-            WizardStep::Name => Some(WizardStep::Domain),
-            WizardStep::Domain => Some(WizardStep::Email),
-            WizardStep::Email => Some(WizardStep::Color),
-            WizardStep::Color => Some(WizardStep::Logo),
-            WizardStep::Logo => Some(WizardStep::Review),
-            WizardStep::Review => None,
-        }
-    }
-
-    pub fn prev(&self) -> Option<WizardStep> {
-        match self {
-            WizardStep::Name => None,
-            WizardStep::Domain => Some(WizardStep::Name),
-            WizardStep::Email => Some(WizardStep::Domain),
-            WizardStep::Color => Some(WizardStep::Email),
-            WizardStep::Logo => Some(WizardStep::Color),
-            WizardStep::Review => Some(WizardStep::Logo),
-        }
+        &[
+            "#2563eb",
+            "#7c3aed",
+            "#059669",
+            "#dc2626",
+            "#ea580c",
+            "#0891b2",
+        ]
     }
 
     pub fn title(&self) -> &'static str {
@@ -50,7 +35,8 @@ impl WizardStep {
 }
 
 pub struct Wizard {
-    pub step: WizardStep,
+    pub visible_steps: Vec<WizardStep>,
+    pub current_step_index: usize,
     pub config: InstallConfig,
     pub input: String,
     pub error: Option<String>,
@@ -59,8 +45,20 @@ pub struct Wizard {
 
 impl Wizard {
     pub fn new() -> Self {
+        Self::new_full_setup()
+    }
+
+    pub fn new_full_setup() -> Self {
         Self {
-            step: WizardStep::Name,
+            visible_steps: vec![
+                WizardStep::Name,
+                WizardStep::Domain,
+                WizardStep::Email,
+                WizardStep::Color,
+                WizardStep::Logo,
+                WizardStep::Review,
+            ],
+            current_step_index: 0,
             config: InstallConfig::default(),
             input: String::new(),
             error: None,
@@ -68,9 +66,31 @@ impl Wizard {
         }
     }
 
+    #[allow(dead_code)]
+    pub fn new_quick_start() -> Self {
+        Self {
+            visible_steps: vec![
+                WizardStep::Name,
+                WizardStep::Domain,
+                WizardStep::Email,
+                WizardStep::Color,
+                WizardStep::Review,
+            ],
+            current_step_index: 0,
+            config: InstallConfig::default(),
+            input: String::new(),
+            error: None,
+            selected_preset: 0,
+        }
+    }
+
+    pub fn step(&self) -> WizardStep {
+        self.visible_steps[self.current_step_index]
+    }
+
     pub fn commit_step(&mut self) -> bool {
         self.error = None;
-        match self.step {
+        match self.step() {
             WizardStep::Name => {
                 if self.input.trim().is_empty() {
                     self.error = Some("Name cannot be empty".into());
@@ -115,14 +135,14 @@ impl Wizard {
     }
 
     pub fn advance(&mut self) {
-        if let Some(next) = self.step.next() {
-            self.step = next;
+        if self.current_step_index + 1 < self.visible_steps.len() {
+            self.current_step_index += 1;
         }
     }
 
     pub fn retreat(&mut self) {
-        if let Some(prev) = self.step.prev() {
-            self.step = prev;
+        if self.current_step_index > 0 {
+            self.current_step_index -= 1;
         }
     }
 }
@@ -134,19 +154,27 @@ mod tests {
     #[test]
     fn test_wizard_flow() {
         let mut w = Wizard::new();
-        assert_eq!(w.step, WizardStep::Name);
+        assert_eq!(w.step(), WizardStep::Name);
         w.input = "TestHack".into();
         assert!(w.commit_step());
         w.advance();
-        assert_eq!(w.step, WizardStep::Domain);
+        assert_eq!(w.step(), WizardStep::Domain);
     }
 
     #[test]
     fn test_email_validation_blocks() {
         let mut w = Wizard::new();
-        w.step = WizardStep::Email;
+        w.visible_steps = vec![WizardStep::Email];
+        w.current_step_index = 0;
         w.input = "bad".into();
         assert!(!w.commit_step());
         assert!(w.error.is_some());
+    }
+
+    #[test]
+    fn test_quick_start_skips_logo() {
+        let w = Wizard::new_quick_start();
+        let has_logo = w.visible_steps.iter().any(|s| *s == WizardStep::Logo);
+        assert!(!has_logo);
     }
 }

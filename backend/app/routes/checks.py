@@ -53,7 +53,21 @@ async def submit_for_check(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Submit a Devpost or GitHub URL for analysis."""
+    """Submit a Devpost or GitHub URL for automated integrity analysis.
+
+    Behavior:
+    1. Extract client IP and enforce rate limiting (10/min).
+    2. Validate the URL is a Devpost or GitHub link.
+    3. Auto-link to the existing hackathon if none specified.
+    4. Create a pending Submission with an anonymous access token.
+    5. Persist the submission to the database.
+    6. Trigger background analysis via analyze_submission.
+
+    Raises: HTTPException(429) if rate limited, HTTPException(400) if URL invalid.
+    Side Effects: Inserts Submission row; spawns background asyncio task.
+    Dependencies: app.analyzer.analyze_submission, app.auth.create_anonymous_token, app.scraper.is_devpost_url, app.scraper.is_github_url.
+    Consumers: POST /api/check, public submission form.
+    """
     # Rate limit
     client_ip = _extract_client_ip(request)
     if not _check_rate_limit(client_ip):
@@ -97,7 +111,18 @@ async def get_check_status(
     authorization: str | None = Header(None, alias="Authorization"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get submission status and check results."""
+    """Get submission status, metadata, and all check results.
+
+    Behavior:
+    1. Load the submission with eager-loaded check_results.
+    2. Return 404 if the submission does not exist.
+    3. Return the submission state including progress, risk score, verdict, and detailed check results.
+
+    Raises: HTTPException(404) if submission not found.
+    Side Effects: None (read-only).
+    Dependencies: app.models.Submission, sqlalchemy.orm.selectinload.
+    Consumers: GET /api/check/{submission_id}, status polling UI.
+    """
     result = await db.execute(
         select(Submission).where(Submission.id == submission_id).options(selectinload(Submission.check_results))
     )
@@ -147,13 +172,19 @@ async def get_check_report(
     authorization: str | None = Header(None, alias="Authorization"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get full report JSON for a submission.
+    """Get full analysis report JSON for a submission.
 
-    Access rules:
-    - If no access_token is set on submission: public
-    - If token query param matches: access granted
-    - If Authorization header has valid organizer JWT: access granted
-    - Otherwise: access denied
+    Behavior:
+    1. Load the submission with eager-loaded check_results.
+    2. Return 404 if the submission does not exist.
+    3. Determine if the requester is an organizer via Clerk JWT.
+    4. Enforce access control (organizer bypass, token match, or public if no token set).
+    5. Return submission metadata, check results, and scoring weights.
+
+    Raises: HTTPException(404) if submission not found, HTTPException(403) if access denied.
+    Side Effects: None (read-only).
+    Dependencies: app.clerk_auth.is_clerk_token, app.clerk_auth.decode_clerk_token, app.models.Submission, app.models.User, app.checks.WEIGHTS.
+    Consumers: GET /api/check/{submission_id}/report, report viewer.
     """
     result = await db.execute(
         select(Submission).where(Submission.id == submission_id).options(selectinload(Submission.check_results))
@@ -173,6 +204,7 @@ async def get_check_report(
                 user_id = extract_clerk_user_id(payload)
                 if user_id:
                     from app.models import User
+
                     result = await db.execute(select(User).where(User.id == user_id))
                     user = result.scalar_one_or_none()
                     if user and user.role.value == "organizer":
@@ -217,7 +249,20 @@ async def retry_check(
     submission_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Retry a failed submission."""
+    """Retry analysis for a failed or completed submission.
+
+    Behavior:
+    1. Load the submission by ID; 404 if not found.
+    2. Delete all existing CheckResult rows for the submission.
+    3. Reset submission status to pending and clear risk_score, verdict, completed_at, stage, and check_progress.
+    4. Commit the reset.
+    5. Trigger a new background analysis task.
+
+    Raises: HTTPException(404) if submission not found.
+    Side Effects: Deletes CheckResult rows; mutates Submission fields; spawns background asyncio task.
+    Dependencies: app.analyzer.analyze_submission, app.models.Submission, app.models.SubmissionStatus, app.models.CheckResultModel.
+    Consumers: POST /api/check/{submission_id}/retry, organizer dashboard.
+    """
     result = await db.execute(select(Submission).where(Submission.id == submission_id))
     sub = result.scalar_one_or_none()
     if not sub:

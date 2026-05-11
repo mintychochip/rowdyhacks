@@ -9,14 +9,14 @@ from datetime import UTC, datetime
 
 import httpx
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache import cache_delete_pattern, cached
 from app.checks.similarity import run_similarity
-from app.clerk_auth import require_clerk_user_with_db, require_organizer
+from app.clerk_auth import require_clerk_user_with_db
 from app.database import get_db
 from app.models import (
     Announcement,
@@ -47,7 +47,19 @@ HK_CACHE_PFX = "hackathons"
 
 
 async def _ensure_organizer(user: User, hackathon: Hackathon, db: AsyncSession):
-    """Verify user is the organizer or a co-organizer of the hackathon."""
+    """Verify the requesting user is the primary or co-organizer of a hackathon.
+
+    Behavior:
+    1. Return immediately if the user is the primary organizer.
+    2. Query HackathonOrganizer for a matching (hackathon_id, user_id) row.
+    3. Return if a co-organizer record exists.
+    4. Raise 403 if neither condition is met.
+
+    Raises: HTTPException(403) if user lacks organizer privileges.
+    Side Effects: None (read-only).
+    Dependencies: app.models.HackathonOrganizer, app.models.UserRole.
+    Consumers: Internal helper used by multiple hackathon route guards.
+    """
     # Primary organizer check
     if user.role == UserRole.organizer and hackathon.organizer_id == user.id:
         return
@@ -70,7 +82,22 @@ async def create_hackathon(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new hackathon."""
+    """Create a new hackathon (organizer-only, one per portal).
+
+    Behavior:
+    1. Verify the user is an organizer.
+    2. Reject if a hackathon already exists (portal limit).
+    3. Build and persist a Hackathon record from the request body.
+    4. Seed default tracks for the hackathon.
+    5. Index hackathon data for the assistant.
+    6. Bust the hackathon list cache.
+    7. Return the created hackathon summary.
+
+    Raises: HTTPException(403) if not organizer, HTTPException(400) if hackathon already exists.
+    Side Effects: Inserts Hackathon and Track rows; mutates cache; triggers assistant indexing.
+    Dependencies: app.models.Hackathon, app.models.UserRole, app.routes.tracks.seed_tracks, app.cache.cache_delete_pattern.
+    Consumers: POST /api/hackathons, organizer setup wizard.
+    """
     user = auth["user"]
     if user.role != UserRole.organizer:
         raise HTTPException(status_code=403, detail="Only organizers can create hackathons")
@@ -109,10 +136,12 @@ async def create_hackathon(
     # Index hackathon data for assistant
     try:
         from app.assistant.indexer import DocumentIndexer
+
         indexer = DocumentIndexer(db)
         await indexer.index_hackathon(hackathon)
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).error(f"Failed to index hackathon: {e}")
 
     await _bust_hackathon_list_cache()
@@ -131,7 +160,17 @@ async def create_hackathon(
 @router.get("")
 @cached(ttl_seconds=HK_CACHE_TTL, key_prefix=HK_CACHE_PFX)
 async def list_hackathons(db: AsyncSession = Depends(get_db)):
-    """List all hackathons."""
+    """List all hackathons with caching.
+
+    Behavior:
+    1. Query all Hackathon records ordered by created_at descending.
+    2. Return serialized summaries with participant counts and deadlines.
+
+    Raises: None
+    Side Effects: None (read-only, cached).
+    Dependencies: app.models.Hackathon, app.cache.cached.
+    Consumers: GET /api/hackathons, public hackathon listing.
+    """
     result = await db.execute(select(Hackathon).order_by(Hackathon.created_at.desc()))
     hackathons = result.scalars().all()
     return [
@@ -152,7 +191,18 @@ async def list_hackathons(db: AsyncSession = Depends(get_db)):
 @router.get("/{hackathon_id}")
 @cached(ttl_seconds=HK_CACHE_TTL, key_prefix=HK_CACHE_PFX)
 async def get_hackathon(hackathon_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Get a single hackathon by ID."""
+    """Get a single hackathon by ID with caching.
+
+    Behavior:
+    1. Query the Hackathon record by UUID.
+    2. Return 404 if not found.
+    3. Return full hackathon details including schedule, venue, and Discord info.
+
+    Raises: HTTPException(404) if hackathon not found.
+    Side Effects: None (read-only, cached).
+    Dependencies: app.models.Hackathon, app.cache.cached.
+    Consumers: GET /api/hackathons/{hackathon_id}, hackathon detail page.
+    """
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -182,7 +232,19 @@ async def get_hackathon(hackathon_id: uuid.UUID, db: AsyncSession = Depends(get_
 
 @router.get("/{hackathon_id}/stats")
 async def get_hackathon_stats(hackathon_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Get aggregate stats for a hackathon."""
+    """Get aggregate statistics for a hackathon.
+
+    Behavior:
+    1. Load all submissions for the hackathon and compute totals, completion rate, average risk, and verdict breakdown.
+    2. Load registration status counts from the database.
+    3. Compute check-in rate from accepted vs checked-in counts.
+    4. Return the aggregated stats object.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: app.models.Submission, app.models.Registration, app.models.Verdict, app.models.SubmissionStatus, sqlalchemy.func.count.
+    Consumers: GET /api/hackathons/{hackathon_id}/stats, organizer dashboard.
+    """
     result = await db.execute(select(Submission).where(Submission.hackathon_id == hackathon_id))
     subs = result.scalars().all()
 
@@ -227,7 +289,19 @@ async def get_swag_counts(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get meal and swag planning counts (organizer only)."""
+    """Get meal and swag planning counts for accepted participants (organizer only).
+
+    Behavior:
+    1. Verify the hackathon exists and the user is an organizer.
+    2. Query all accepted and checked-in registrations.
+    3. Aggregate counts for t-shirt sizes, dietary restrictions, and experience levels.
+    4. Return the aggregated planning data.
+
+    Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer.
+    Side Effects: None (read-only).
+    Dependencies: app.models.Hackathon, app.models.Registration, app.models.RegistrationStatus.
+    Consumers: GET /api/hackathons/{hackathon_id}/swag-counts, organizer logistics panel.
+    """
     user = auth["user"]
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
@@ -270,7 +344,17 @@ async def get_swag_counts(
 
 @router.get("/{hackathon_id}/submissions")
 async def get_hackathon_submissions(hackathon_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """List submissions for a hackathon."""
+    """List all submissions for a hackathon.
+
+    Behavior:
+    1. Query Submission rows for the hackathon.
+    2. Return serialized summaries with project titles, URLs, team info, risk scores, and verdicts.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: app.models.Submission.
+    Consumers: GET /api/hackathons/{hackathon_id}/submissions, submissions browser.
+    """
     result = await db.execute(select(Submission).where(Submission.hackathon_id == hackathon_id))
     subs = result.scalars().all()
     return [
@@ -294,7 +378,19 @@ async def update_hackathon(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update hackathon settings (schedule, wifi, discord, webhook, deadline, capacity)."""
+    """Update hackathon settings (organizer only).
+
+    Behavior:
+    1. Verify the hackathon exists and the user is an organizer.
+    2. Apply updates only to allowed fields from the request body.
+    3. Commit changes and bust relevant caches if any field was updated.
+    4. Return the updated field list.
+
+    Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer.
+    Side Effects: Mutates Hackathon fields; deletes cache keys.
+    Dependencies: app.models.Hackathon, app.cache.cache_delete_pattern.
+    Consumers: PUT /api/hackathons/{hackathon_id}, organizer settings form.
+    """
     user = auth["user"]
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
@@ -334,9 +430,15 @@ async def update_hackathon(
 async def run_hackathon_similarity(hackathon_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     """Run cross-team similarity checks for all completed submissions.
 
-    Detects duplicate GitHub URLs, same repo name patterns, and overlapping
-    commit hashes. Stores results in the database and updates risk scores /
-    verdicts on flagged submissions.
+    Behavior:
+    1. Verify the hackathon exists; return 404 if not found.
+    2. Delegate to run_similarity(hackathon_id) for batch analysis.
+    3. Return the similarity summary.
+
+    Raises: HTTPException(404) if hackathon not found.
+    Side Effects: run_similarity manages its own DB session for mutations.
+    Dependencies: app.checks.similarity.run_similarity, app.models.Hackathon.
+    Consumers: POST /api/hackathons/{hackathon_id}/similarity, organizer fraud panel.
     """
     # Verify the hackathon exists
     hk_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
@@ -359,7 +461,22 @@ async def bulk_accept_registrations(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """Bulk accept pending registrations."""
+    """Bulk accept pending registrations with capacity and waitlist handling (organizer only).
+
+    Behavior:
+    1. Verify the hackathon exists and the user is an organizer.
+    2. For each pending registration ID:
+       a. Skip if not pending or not in this hackathon.
+       b. If at capacity and waitlist enabled, move to waitlisted.
+       c. If at capacity and waitlist disabled, skip.
+       d. Otherwise accept, increment current_participants, and set accepted_at.
+    3. Commit and return accepted and waitlisted counts.
+
+    Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer.
+    Side Effects: Mutates Registration rows and Hackathon.current_participants.
+    Dependencies: app.models.Hackathon, app.models.Registration, app.models.RegistrationStatus.
+    Consumers: POST /api/hackathons/{hackathon_id}/registrations/bulk-accept, organizer registration panel.
+    """
     user = auth["user"]
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
@@ -403,7 +520,19 @@ async def bulk_reject_registrations(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """Bulk reject pending/waitlisted registrations."""
+    """Bulk reject pending or waitlisted registrations (organizer only).
+
+    Behavior:
+    1. Verify the hackathon exists and the user is an organizer.
+    2. For each registration ID, skip if not pending or waitlisted.
+    3. Set status to rejected for matching registrations.
+    4. Commit and return the rejected count.
+
+    Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer.
+    Side Effects: Mutates Registration.status.
+    Dependencies: app.models.Hackathon, app.models.Registration, app.models.RegistrationStatus.
+    Consumers: POST /api/hackathons/{hackathon_id}/registrations/bulk-reject, organizer registration panel.
+    """
     user = auth["user"]
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
@@ -436,7 +565,20 @@ async def bulk_waitlist_registrations(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """Bulk waitlist pending registrations."""
+    """Bulk waitlist pending registrations (organizer only).
+
+    Behavior:
+    1. Verify the hackathon exists and the user is an organizer.
+    2. Reject if waitlist is not enabled for the hackathon.
+    3. For each pending registration ID, skip if not pending.
+    4. Set status to waitlisted.
+    5. Commit and return the waitlisted count.
+
+    Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer, HTTPException(400) if waitlist disabled.
+    Side Effects: Mutates Registration.status.
+    Dependencies: app.models.Hackathon, app.models.Registration, app.models.RegistrationStatus.
+    Consumers: POST /api/hackathons/{hackathon_id}/registrations/bulk-waitlist, organizer registration panel.
+    """
     user = auth["user"]
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
@@ -471,7 +613,19 @@ async def export_registrations_csv(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """Export all registrations to CSV (organizer only)."""
+    """Export all hackathon registrations to CSV (organizer only).
+
+    Behavior:
+    1. Verify the hackathon exists and the user is an organizer.
+    2. Query all registrations joined with user info, ordered by registration date.
+    3. Write CSV rows with full registration and user fields.
+    4. Return the CSV as a StreamingResponse download.
+
+    Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer.
+    Side Effects: None (read-only, generates CSV in memory).
+    Dependencies: app.models.Hackathon, app.models.Registration, app.models.User, fastapi.responses.StreamingResponse.
+    Consumers: GET /api/hackathons/{hackathon_id}/registrations/export, organizer data export.
+    """
     user = auth["user"]
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
@@ -575,7 +729,18 @@ async def create_announcement(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create and send an announcement to all hackathon participants (organizer only)."""
+    """Create and broadcast an announcement to all hackathon participants (organizer only).
+
+    Behavior:
+    1. Verify the hackathon exists and the user is an organizer.
+    2. Create an Announcement record from the request body.
+    3. Persist and return the announcement.
+
+    Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer.
+    Side Effects: Inserts Announcement row.
+    Dependencies: app.models.Hackathon, app.models.Announcement, app.schemas.AnnouncementCreate, app.schemas.AnnouncementResponse.
+    Consumers: POST /api/hackathons/{hackathon_id}/announcements, organizer communication panel.
+    """
     user = auth["user"]
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
@@ -604,7 +769,19 @@ async def list_announcements(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """List announcements for a hackathon. Organizers see all, participants see accepted ones."""
+    """List announcements for a hackathon with role-based filtering.
+
+    Behavior:
+    1. Verify the user has access (organizer or registered participant).
+    2. Load all announcements for the hackathon.
+    3. Filter out draft announcements for non-organizers.
+    4. Order by sent_at descending and return.
+
+    Raises: HTTPException(403) if user lacks access.
+    Side Effects: None (read-only).
+    Dependencies: app.models.Hackathon, app.models.Registration, app.models.Announcement, app.schemas.AnnouncementResponse.
+    Consumers: GET /api/hackathons/{hackathon_id}/announcements, participant and organizer announcement feeds.
+    """
     user = auth["user"]
 
     # Check if user has access to this hackathon
@@ -647,7 +824,20 @@ async def declare_conflict_of_interest(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """Declare a conflict of interest for a submission (judge only)."""
+    """Declare a conflict of interest for a submission (judge only).
+
+    Behavior:
+    1. Verify the user is a judge.
+    2. Verify the hackathon and submission exist.
+    3. Reject if a conflict already exists for this judge and submission.
+    4. Create and persist the ConflictOfInterest record.
+    5. Return the created conflict.
+
+    Raises: HTTPException(403) if not a judge, HTTPException(404) if hackathon or submission not found, HTTPException(409) if conflict already declared.
+    Side Effects: Inserts ConflictOfInterest row.
+    Dependencies: app.models.Hackathon, app.models.Submission, app.models.ConflictOfInterest, app.models.UserRole, app.schemas.ConflictOfInterestCreate, app.schemas.ConflictOfInterestResponse.
+    Consumers: POST /api/hackathons/{hackathon_id}/conflicts-of-interest, judge dashboard.
+    """
     user = auth["user"]
 
     if user.role != UserRole.judge:
@@ -693,7 +883,18 @@ async def list_conflicts_of_interest(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all conflicts of interest for a hackathon (organizer only)."""
+    """List all conflicts of interest for a hackathon (organizer only).
+
+    Behavior:
+    1. Verify the hackathon exists and the user is an organizer.
+    2. Query all ConflictOfInterest rows for the hackathon.
+    3. Return serialized conflict records.
+
+    Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer.
+    Side Effects: None (read-only).
+    Dependencies: app.models.Hackathon, app.models.ConflictOfInterest, app.schemas.ConflictOfInterestResponse.
+    Consumers: GET /api/hackathons/{hackathon_id}/conflicts-of-interest, organizer judging panel.
+    """
     user = auth["user"]
 
     hack_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
@@ -716,7 +917,19 @@ async def remove_conflict_of_interest(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """Remove a conflict of interest declaration (organizer or the judge who created it)."""
+    """Remove a conflict of interest declaration.
+
+    Behavior:
+    1. Load the conflict record by ID and hackathon ID.
+    2. Verify the requesting user is either the hackathon organizer or the judge who created the conflict.
+    3. Delete the record and commit.
+    4. Return confirmation.
+
+    Raises: HTTPException(404) if conflict not found, HTTPException(403) if user unauthorized.
+    Side Effects: Deletes ConflictOfInterest row.
+    Dependencies: app.models.Hackathon, app.models.ConflictOfInterest, app.models.UserRole.
+    Consumers: DELETE /api/hackathons/{hackathon_id}/conflicts-of-interest/{coi_id}, organizer or judge dashboard.
+    """
     user = auth["user"]
 
     coi_result = await db.execute(
@@ -751,7 +964,19 @@ async def list_organizers(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all organizers for a hackathon (primary + co-organizers)."""
+    """List all organizers for a hackathon (primary + co-organizers).
+
+    Behavior:
+    1. Verify the hackathon exists and the user is an organizer.
+    2. Load the primary organizer user record.
+    3. Load all co-organizers joined with their user records.
+    4. Return a consolidated list with roles and metadata.
+
+    Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer.
+    Side Effects: None (read-only).
+    Dependencies: app.models.Hackathon, app.models.HackathonOrganizer, app.models.User.
+    Consumers: GET /api/hackathons/{hackathon_id}/organizers, organizer team management page.
+    """
     user = auth["user"]
 
     hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
@@ -804,7 +1029,21 @@ async def add_organizer(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """Add a co-organizer to the hackathon (primary organizer only)."""
+    """Add a co-organizer to the hackathon (primary organizer only).
+
+    Behavior:
+    1. Verify the hackathon exists and the requesting user is the primary organizer.
+    2. Require an email in the request body.
+    3. Lookup the target user by email.
+    4. Reject if target is the primary organizer or already a co-organizer.
+    5. Create a HackathonOrganizer record and commit.
+    6. Return the new co-organizer summary.
+
+    Raises: HTTPException(404) if hackathon or user not found, HTTPException(403) if not primary organizer, HTTPException(400) for self-add, HTTPException(409) if already co-organizer.
+    Side Effects: Inserts HackathonOrganizer row.
+    Dependencies: app.models.Hackathon, app.models.HackathonOrganizer, app.models.User.
+    Consumers: POST /api/hackathons/{hackathon_id}/organizers, organizer team management page.
+    """
     user = auth["user"]
 
     hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
@@ -867,7 +1106,19 @@ async def remove_organizer(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """Remove a co-organizer (primary organizer only)."""
+    """Remove a co-organizer from the hackathon (primary organizer only).
+
+    Behavior:
+    1. Verify the hackathon exists and the requesting user is the primary organizer.
+    2. Reject if attempting to remove the primary organizer.
+    3. Find and delete the HackathonOrganizer record for the target user.
+    4. Commit and return confirmation.
+
+    Raises: HTTPException(404) if hackathon or co-organizer not found, HTTPException(403) if not primary organizer, HTTPException(400) if attempting self-removal.
+    Side Effects: Deletes HackathonOrganizer row.
+    Dependencies: app.models.Hackathon, app.models.HackathonOrganizer.
+    Consumers: DELETE /api/hackathons/{hackathon_id}/organizers/{user_id}, organizer team management page.
+    """
     current_user = auth["user"]
 
     hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
@@ -910,7 +1161,22 @@ async def import_devpost_submissions(
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
-    """Scrape the Devpost hackathon gallery and import project URLs for analysis."""
+    """Scrape a Devpost hackathon gallery and import project URLs for analysis (organizer only).
+
+    Behavior:
+    1. Verify the user is an organizer and the hackathon exists with a configured Devpost URL.
+    2. Paginate through the Devpost project gallery up to 20 pages.
+    3. Extract all unique project URLs using regex and CSS selectors.
+    4. Skip URLs already imported for this hackathon.
+    5. Create pending Submission records with anonymous tokens.
+    6. Trigger background analysis for each new submission.
+    7. Return import counts (found, imported, skipped).
+
+    Raises: HTTPException(403) if not organizer, HTTPException(404) if hackathon not found or no Devpost URL, HTTPException(404) if no projects found, HTTPException(502) if gallery fetch fails.
+    Side Effects: Inserts Submission rows; spawns background asyncio tasks.
+    Dependencies: app.models.Hackathon, app.models.Submission, app.models.SubmissionStatus, app.analyzer.analyze_submission, app.auth.create_anonymous_token, httpx.AsyncClient, bs4.BeautifulSoup.
+    Consumers: POST /api/hackathons/{hackathon_id}/import-devpost, organizer submission import tool.
+    """
     user = auth["user"]
     if user.role != UserRole.organizer:
         raise HTTPException(status_code=403, detail="Only organizers can import")

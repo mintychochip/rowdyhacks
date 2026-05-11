@@ -18,7 +18,21 @@ async def scan_qr(
     token: str = Query(..., description="QR JWT token"),
     db: AsyncSession = Depends(get_db),
 ):
-    """Scan a QR code to check in. Token is validated from JWT signature."""
+    """Scan a QR code to check in a registered participant.
+
+    Behavior:
+    1. Decode and validate the QR JWT token.
+    2. Extract reg_id from the token payload.
+    3. Load the registration by ID.
+    4. Validate registration state (accepted, not already checked in, not rejected).
+    5. Update status to checked_in and set checked_in_at timestamp.
+    6. Commit and return registration details.
+
+    Raises: HTTPException(401) for invalid token, HTTPException(410) for missing or revoked registration, HTTPException(409) for already checked in or not active.
+    Side Effects: Mutates Registration.status and Registration.checked_in_at; commits to DB.
+    Dependencies: app.auth.decode_qr_token, app.models.Registration, app.models.RegistrationStatus.
+    Consumers: POST /api/checkin/scan, check-in scanner UI.
+    """
     # Step 1: Validate QR token
     try:
         payload = decode_qr_token(token)

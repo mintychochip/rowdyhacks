@@ -1,3 +1,5 @@
+import sqlite3
+import uuid
 from contextvars import ContextVar
 from typing import Optional
 
@@ -7,13 +9,16 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
 
+# Register UUID adapter for SQLite so uuid.UUID objects can be bound to String columns
+sqlite3.register_adapter(uuid.UUID, lambda u: str(u))
+
 
 class Base(DeclarativeBase):
     pass
 
 
 # Context variable to track current user ID for RLS
-_current_user_context: ContextVar[Optional[str]] = ContextVar('current_user_id', default=None)
+_current_user_context: ContextVar[Optional[str]] = ContextVar("current_user_id", default=None)
 
 
 engine = create_async_engine(settings.database_url, echo=False)
@@ -28,8 +33,6 @@ def set_current_user_id(user_id: Optional[str]) -> None:
 def get_current_user_id() -> Optional[str]:
     """Get the current user ID from RLS context."""
     return _current_user_context.get()
-
-
 
 
 async def get_db() -> AsyncSession:

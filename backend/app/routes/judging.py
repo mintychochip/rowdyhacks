@@ -4,7 +4,7 @@ import math
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -43,7 +43,19 @@ async def _get_judging_session(hackathon_id: uuid.UUID, db: AsyncSession) -> Jud
 
 
 def _enforce_time_window(session: JudgingSession):
-    """Raise if judging window is not active."""
+    """Enforce that the judging session is within its active time window.
+
+    Behavior:
+    1. Get current UTC time.
+    2. Normalize session start and end times to UTC.
+    3. Raise 403 if judging has not opened yet (pending and now < start).
+    4. Raise 403 if judging window has closed (status closed or now > end).
+
+    Raises: HTTPException(403) if outside the active judging window.
+    Side Effects: None (pure validation).
+    Dependencies: app.models.JudgingSession, app.models.JudgingSessionStatus.
+    Consumers: Internal helper used by assignment opening, scoring, and detail routes.
+    """
     now = datetime.now(UTC)
     start = session.start_time.replace(tzinfo=UTC) if session.start_time.tzinfo is None else session.start_time
     end = session.end_time.replace(tzinfo=UTC) if session.end_time.tzinfo is None else session.end_time
@@ -54,7 +66,19 @@ def _enforce_time_window(session: JudgingSession):
 
 
 def _compute_raw_score(scores: list[Score], criteria_map: dict) -> float:
-    """Weighted raw score 0-100 from a set of scores against rubric criteria."""
+    """Compute a weighted raw score (0-100) from Score rows against RubricCriterion weights.
+
+    Behavior:
+    1. Iterate over provided scores.
+    2. For each score, look up the matching criterion in the criteria_map.
+    3. Normalize the score by max_score and multiply by criterion weight.
+    4. Sum and return the total weighted score.
+
+    Raises: None
+    Side Effects: None (pure function).
+    Dependencies: app.models.Score, app.models.RubricCriterion.
+    Consumers: _elo_update pipeline, get_judging_results, get_judging_queue.
+    """
     total = 0.0
     for s in scores:
         c = criteria_map.get(s.criterion_id)
@@ -70,7 +94,21 @@ async def create_judging_session(
     db: AsyncSession = Depends(get_db),
     auth: dict = Depends(require_organizer),
 ):
-    """Create or replace a judging session with rubric criteria for a hackathon."""
+    """Create or replace a judging session with rubric criteria for a hackathon (organizer only).
+
+    Behavior:
+    1. Verify the hackathon exists.
+    2. Validate that criteria weights sum to exactly 100.
+    3. Delete any existing JudgingSession (cascade deletes rubric, criteria, assignments).
+    4. Create a new JudgingSession with timing and leaderboard settings.
+    5. Create a Rubric and linked RubricCriterion rows.
+    6. Commit and return the full session configuration.
+
+    Raises: HTTPException(404) if hackathon not found, HTTPException(422) if weights do not sum to 100.
+    Side Effects: Deletes old session cascade; inserts JudgingSession, Rubric, and RubricCriterion rows.
+    Dependencies: app.models.Hackathon, app.models.JudgingSession, app.models.Rubric, app.models.RubricCriterion, app.schemas.JudgingSessionCreate.
+    Consumers: POST /api/hackathons/{hackathon_id}/judging/session, organizer judging setup.
+    """
     # Verify hackathon exists
     hk = await db.get(Hackathon, hackathon_id)
     if not hk:
@@ -130,7 +168,17 @@ async def get_judging_session_route(
     hackathon_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get the judging session configuration for a hackathon."""
+    """Get the judging session configuration for a hackathon.
+
+    Behavior:
+    1. Load the JudgingSession for the hackathon via _get_judging_session.
+    2. Return the full session detail including rubric and criteria.
+
+    Raises: HTTPException(404) if no judging session exists.
+    Side Effects: None (read-only).
+    Dependencies: _get_judging_session, _session_detail.
+    Consumers: GET /api/hackathons/{hackathon_id}/judging/session, judging config UI.
+    """
     session = await _get_judging_session(hackathon_id, db)
     return _session_detail(session, session.rubric)
 
@@ -204,10 +252,21 @@ async def assign_judges(
     body: dict,
     db: AsyncSession = Depends(get_db),
 ):
-    """Assign judges to submissions. Body: {"judge_ids": [...], "submission_ids": [...]}.
+    """Assign judges to submissions for a hackathon judging session.
 
-    Creates assignments for every judge×submission pair.
-    Automatically creates JudgeRating records for new judges.
+    Behavior:
+    1. Load the JudgingSession for the hackathon; 404 if missing.
+    2. Parse judge_ids and submission_ids from the request body; 422 if either is empty.
+    3. Verify all submission IDs belong to this hackathon; 422 if any are invalid.
+    4. Mark existing assignments for this session as old (is_completed = -1).
+    5. Ensure each judge has a JudgeRating record, creating one if missing.
+    6. Create new JudgeAssignment rows for every judge×submission pair.
+    7. Commit and return the count of created assignments.
+
+    Raises: HTTPException(404, 422)
+    Side Effects: Updates existing JudgeAssignment rows; inserts JudgeRating and JudgeAssignment rows.
+    Dependencies: _get_judging_session, app.models.JudgeAssignment, app.models.JudgeRating, app.models.Submission.
+    Consumers: POST /hackathons/{hackathon_id}/judging/assign, organizer judging setup.
     """
     session = await _get_judging_session(hackathon_id, db)
 
@@ -269,7 +328,19 @@ async def list_judge_assignments(
     include_completed: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
-    """List assignments for a judging session. Filter by judge_id query param."""
+    """List judge assignments for a hackathon judging session.
+
+    Behavior:
+    1. Load the JudgingSession for the hackathon; 404 if missing.
+    2. Build a query filtering by session, optionally by judge_id, and optionally excluding completed assignments.
+    3. Load related Submission details for each assignment.
+    4. Return serialized assignment list with project metadata.
+
+    Raises: HTTPException(404) if no judging session exists.
+    Side Effects: None (read-only).
+    Dependencies: _get_judging_session, app.models.JudgeAssignment, app.models.Submission.
+    Consumers: GET /hackathons/{hackathon_id}/judging/assignments, judge and organizer dashboards.
+    """
     session = await _get_judging_session(hackathon_id, db)
 
     query = select(JudgeAssignment).where(
@@ -278,7 +349,7 @@ async def list_judge_assignments(
     if not include_completed:
         query = query.where(JudgeAssignment.is_completed == 0)
     if judge_id:
-        query = query.where(JudgeAssignment.judge_id == uuid.UUID(judge_id))
+        query = query.where(JudgeAssignment.judge_id == judge_id)
 
     result = await db.execute(query)
     assignments = result.scalars().all()
@@ -318,7 +389,22 @@ async def get_assignment_detail(
     assignment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get full assignment detail including submission info, rubric criteria, and existing scores."""
+    """Get full assignment detail including submission info, rubric criteria, and existing scores.
+
+    Behavior:
+    1. Load the JudgeAssignment by ID with eager-loaded session, rubric, and criteria.
+    2. Return 404 if assignment not found.
+    3. Enforce the judging time window.
+    4. Load the related Submission.
+    5. Load existing Score rows and map them by criterion_id.
+    6. Build the criteria list with current scores.
+    7. Return the complete assignment payload.
+
+    Raises: HTTPException(404) if assignment not found, HTTPException(403) if outside time window.
+    Side Effects: None (read-only).
+    Dependencies: app.models.JudgeAssignment, app.models.JudgingSession, app.models.Rubric, app.models.RubricCriterion, app.models.Score, app.models.Submission, _enforce_time_window.
+    Consumers: GET /judging/assignments/{assignment_id}, frontend judging form.
+    """
     result = await db.execute(
         select(JudgeAssignment)
         .where(JudgeAssignment.id == assignment_id)
@@ -381,7 +467,20 @@ async def open_assignment(
     assignment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Mark an assignment as opened by the judge (starts the timer)."""
+    """Mark a judge assignment as opened and initialize blank score records.
+
+    Behavior:
+    1. Load the JudgeAssignment by ID; 404 if not found.
+    2. Load the parent JudgingSession and enforce the time window.
+    3. Set opened_at to now if not already set.
+    4. Create blank Score rows for each rubric criterion if not already present.
+    5. Commit and return the opened state.
+
+    Raises: HTTPException(404) if assignment not found, HTTPException(403) if outside time window.
+    Side Effects: Mutates JudgeAssignment.opened_at; inserts Score rows.
+    Dependencies: app.models.JudgeAssignment, app.models.JudgingSession, app.models.Rubric, app.models.RubricCriterion, app.models.Score, _enforce_time_window.
+    Consumers: POST /judging/assignments/{assignment_id}/open, frontend judging flow.
+    """
     assignment = await db.get(JudgeAssignment, assignment_id)
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")
@@ -413,10 +512,22 @@ async def submit_scores(
     body: SubmitScoreRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Submit or update scores for an assignment. Can be called incrementally.
+    """Submit or update scores for a judge assignment.
 
-    Auto-submits (marks complete) when all criteria have non-null scores.
-    Also checks per_project_seconds soft deadline.
+    Behavior:
+    1. Load the JudgeAssignment by ID; 404 if not found.
+    2. Reject if the assignment is already completed (400).
+    3. Load the parent JudgingSession and enforce its time window.
+    4. Flag as late if elapsed time exceeds per_project_seconds.
+    5. Load the Rubric and validate each criterion ID and score range (0–max_score).
+    6. Upsert Score rows for each criterion.
+    7. If all criteria now have scores, mark the assignment completed and update submitted_at.
+    8. Commit and return the updated assignment state.
+
+    Raises: HTTPException(404, 400, 422)
+    Side Effects: Inserts or updates Score rows; may mutate JudgeAssignment.is_completed, submitted_at, and auto-submit null scores as 0 when late.
+    Dependencies: app.models.JudgeAssignment, app.models.JudgingSession, app.models.Rubric, app.models.RubricCriterion, app.models.Score, _enforce_time_window.
+    Consumers: POST /judging/assignments/{assignment_id}/score, frontend judging form.
     """
     assignment = await db.get(JudgeAssignment, assignment_id)
     if not assignment:
@@ -447,8 +558,8 @@ async def submit_scores(
     criteria = {c.id: c for c in criteria_result.scalars().all()}
 
     for item in body.scores:
-        cid = uuid.UUID(item["criterion_id"])
-        score_val = item["score"]
+        cid = str(item.criterion_id)
+        score_val = item.score
         if cid not in criteria:
             raise HTTPException(status_code=422, detail=f"Unknown criterion: {cid}")
         if score_val is not None and (score_val < 0 or score_val > criteria[cid].max_score):
@@ -518,8 +629,18 @@ def _expected_score(elo_a: float, elo_b: float) -> float:
 
 
 def _elo_update(elo_a: float, elo_b: float, outcome: float, k: float = K_FACTOR) -> tuple[float, float]:
-    """Return (new_elo_a, new_elo_b) after a pairwise comparison.
-    outcome: 1.0 = A wins, 0.5 = tie, 0.0 = B wins."""
+    """Return (new_elo_a, new_elo_b) after a pairwise ELO comparison.
+
+    Behavior:
+    1. Compute expected scores e_a and e_b from the current ratings.
+    2. Calculate rating deltas using the K-factor and actual outcome.
+    3. Return updated ratings as a tuple.
+
+    Raises: None
+    Side Effects: None (pure function).
+    Dependencies: _expected_score.
+    Consumers: _update_elo_pairwise, get_judging_results, get_judging_queue.
+    """
     e_a = _expected_score(elo_a, elo_b)
     e_b = 1.0 - e_a
     delta_a = k * (outcome - e_a)
@@ -532,15 +653,21 @@ async def get_judging_results(
     hackathon_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Compute and return ELO rankings for the hackathon.
+    """Compute and return ELO rankings for a hackathon.
 
-    Algorithm:
-      1. Load all completed assignments with scores.
-      2. Compute raw weighted score per (judge, submission).
-      3. Z-score normalize within each judge (judge severity correction).
-      4. Within-judge pairwise ELO updates.
-      5. Cross-judge bridging via submissions scored by multiple judges.
-      6. Return final ELO rankings.
+    Behavior:
+    1. Load the JudgingSession for the hackathon; 404 if missing.
+    2. Load all completed assignments with eager-loaded scores.
+    3. Compute raw weighted scores per (judge, submission) using rubric criteria weights.
+    4. Z-score normalize within each judge to correct for severity bias.
+    5. Run within-judge pairwise ELO updates.
+    6. Bridge across judges via submissions scored by multiple judges.
+    7. Return final ELO rankings sorted by score descending.
+
+    Raises: HTTPException(404) if no judging session exists.
+    Side Effects: None (read-only).
+    Dependencies: _get_judging_session, _expected_score, _elo_update, app.models.JudgeAssignment, app.models.Submission.
+    Consumers: GET /hackathons/{hackathon_id}/judging/results, leaderboard page.
     """
     session = await _get_judging_session(hackathon_id, db)
 
@@ -649,7 +776,7 @@ async def get_judging_results(
 
     # Build rankings
     # Load submission titles
-    sub_ids_list = [uuid.UUID(sid) for sid in elo]
+    sub_ids_list = list(elo.keys())
     subs_result = await db.execute(
         select(Submission.id, Submission.project_title).where(Submission.id.in_(sub_ids_list))
     )
@@ -679,7 +806,7 @@ async def get_judging_results(
         r["rank"] = i + 1
 
     # Load judge names for stats
-    judge_ids = [uuid.UUID(jid) for jid in judge_stats]
+    judge_ids = list(judge_stats.keys())
     users_result = await db.execute(select(User.id, User.name).where(User.id.in_(judge_ids)))
     user_names = {str(row[0]): row[1] for row in users_result.all()}
 
@@ -708,18 +835,22 @@ async def get_judging_queue(
 ):
     """Return a priority-ordered list of submissions that need more judging.
 
-    Query params:
-      - judge_id (required): only return projects this judge hasn't scored
-      - min_judges (default 3): minimum judge count before coverage is satisfied
+    Behavior:
+    1. Load the JudgingSession for the hackathon; 404 if missing.
+    2. Parse judge_id from query param.
+    3. Load all completed assignments with scores and build submission coverage maps.
+    4. Identify pending assignments for the requesting judge.
+    5. Compute uncertainty metrics (variance, proximity, coverage) per submission.
+    6. Sort by uncertainty total descending (higher = needs judging more urgently).
+    7. Return the queue, count already scored by this judge, and a message if empty.
 
-    Each item includes:
-      - submission info (id, title, url)
-      - current ELO
-      - uncertainty breakdown (variance, proximity, coverage)
-      - priority score (higher = needs judging more urgently)
+    Raises: HTTPException(404) if no judging session exists.
+    Side Effects: None (read-only).
+    Dependencies: _get_judging_session, app.models.JudgeAssignment, app.models.Submission, app.models.Score, _compute_raw_score, _elo_update.
+    Consumers: GET /hackathons/{hackathon_id}/judging/queue, frontend judge dashboard.
     """
     session = await _get_judging_session(hackathon_id, db)
-    judge_uuid = uuid.UUID(judge_id)
+    judge_uuid = judge_id
 
     # Build criteria map
     criteria_map = {}
@@ -957,9 +1088,19 @@ async def rerun_judging(
 ):
     """Create new assignments for projects flagged by the ELO uncertainty engine.
 
-    For each submission with fewer than min_judges scores, creates a new
-    JudgeAssignment for every judge who hasn't scored it yet.
-    Preserves existing scores (each round gets new assignment records).
+    Behavior:
+    1. Load the JudgingSession for the hackathon; 404 if missing.
+    2. Load all judge IDs with role=judge.
+    3. Load all completed submission IDs for the hackathon.
+    4. Load completed assignments and build a map of who scored what.
+    5. For each submission with fewer than min_judges scores, create new JudgeAssignments for judges who haven't scored it.
+    6. Also flag submissions with high score variance (>15% CV) among existing judges.
+    7. Commit and return the count of newly created assignments.
+
+    Raises: HTTPException(404) if no judging session exists.
+    Side Effects: Inserts new JudgeAssignment rows.
+    Dependencies: _get_judging_session, app.models.User, app.models.Submission, app.models.JudgeAssignment, app.models.JudgeRating.
+    Consumers: POST /hackathons/{hackathon_id}/judging/rerun, organizer judging panel.
     """
     session = await _get_judging_session(hackathon_id, db)
 
@@ -1068,7 +1209,21 @@ async def activate_judging(
     hackathon_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Activate judging and auto-assign all judges to all completed submissions."""
+    """Activate a judging session and auto-assign all judges to completed submissions.
+
+    Behavior:
+    1. Load the JudgingSession for the hackathon; 404 if missing.
+    2. Set session status to active.
+    3. Load all judge IDs and all completed submission IDs for the hackathon.
+    4. Ensure each judge has a JudgeRating record.
+    5. Create pending JudgeAssignment rows for every judge×submission pair not already assigned.
+    6. Commit and return activation summary.
+
+    Raises: HTTPException(404) if no judging session exists.
+    Side Effects: Mutates JudgingSession.status; inserts JudgeAssignment and JudgeRating rows.
+    Dependencies: _get_judging_session, app.models.User, app.models.Submission, app.models.JudgeAssignment, app.models.JudgeRating, app.models.JudgingSessionStatus.
+    Consumers: POST /hackathons/{hackathon_id}/judging/activate, organizer judging setup.
+    """
     session = await _get_judging_session(hackathon_id, db)
     session.status = JudgingSessionStatus.active
     await db.flush()
@@ -1132,7 +1287,18 @@ async def close_judging(
     hackathon_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Manually close judging to prevent further scoring."""
+    """Manually close a judging session to prevent further scoring.
+
+    Behavior:
+    1. Load the JudgingSession for the hackathon; 404 if missing.
+    2. Set session status to closed.
+    3. Commit and return the closed state.
+
+    Raises: HTTPException(404) if no judging session exists.
+    Side Effects: Mutates JudgingSession.status.
+    Dependencies: _get_judging_session, app.models.JudgingSession, app.models.JudgingSessionStatus.
+    Consumers: POST /hackathons/{hackathon_id}/judging/close, organizer judging setup.
+    """
     session = await _get_judging_session(hackathon_id, db)
     session.status = JudgingSessionStatus.closed
     await db.commit()

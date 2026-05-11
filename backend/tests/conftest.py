@@ -1,23 +1,13 @@
-import asyncio
 import uuid
 
-import pytest
 import pytest_asyncio
 from app.database import get_db
 from app.main import app
-from app.models import Base, User, UserRole
+from app.models import Base
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create a single event loop for the test session."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest_asyncio.fixture(scope="session")

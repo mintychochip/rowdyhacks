@@ -3,14 +3,14 @@
 import re
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache import cache_delete_pattern, cached
-from app.clerk_auth import require_clerk_user, require_organizer
+from app.clerk_auth import require_organizer
 from app.database import get_db
-from app.models import ContentPage, User, UserRole
+from app.models import ContentPage, User
 
 router = APIRouter(prefix="/api/content", tags=["content"])
 
@@ -52,7 +52,7 @@ async def list_pages(
     query = (
         select(ContentPage, User.name)
         .outerjoin(User, ContentPage.created_by == User.id)
-        .where(ContentPage.is_published == True)
+        .where(ContentPage.is_published.is_(True))
     )
     if tab_group:
         query = query.where(ContentPage.tab_group == tab_group)
@@ -73,7 +73,7 @@ async def get_page(slug: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(ContentPage, User.name)
         .outerjoin(User, ContentPage.created_by == User.id)
-        .where(ContentPage.slug == slug, ContentPage.is_published == True)
+        .where(ContentPage.slug == slug, ContentPage.is_published.is_(True))
     )
     row = result.one_or_none()
     if not row:

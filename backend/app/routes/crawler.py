@@ -4,15 +4,18 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clerk_auth import require_organizer
 from app.crawler.scheduler import is_crawling, run_crawl
+
+# Backward-compat alias for tests that import _require_organizer
+_require_organizer = require_organizer
 from app.database import get_db
-from app.models import CrawledHackathon, CrawledProject, UserRole
+from app.models import CrawledHackathon, CrawledProject
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -29,7 +32,17 @@ class CreateCrawledHackathonRequest(BaseModel):
 async def trigger_crawl(auth: dict = Depends(require_organizer)):
     """Manually trigger a full crawl cycle (organizer-only).
 
-    Returns 409 if a crawl is already running.
+    Behavior:
+    1. Check if a crawl is already in progress via is_crawling.
+    2. Return 409 if a crawl is already running.
+    3. Spawn run_crawl as an asyncio background task.
+    4. Attach a done callback that logs exceptions.
+    5. Return {"status": "started"}.
+
+    Raises: HTTPException(409) if crawl already in progress.
+    Side Effects: Spawns a background asyncio task.
+    Dependencies: app.crawler.scheduler.is_crawling, app.crawler.scheduler.run_crawl.
+    Consumers: POST /trigger, organizer dashboard.
     """
     if is_crawling():
         raise HTTPException(status_code=409, detail="Crawl already in progress")
@@ -47,7 +60,19 @@ async def create_crawled_hackathon(
     auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Manually add a crawled hackathon (admin/debug use)."""
+    """Manually add a crawled hackathon entry (admin/debug use).
+
+    Behavior:
+    1. Parse start_date and optional end_date from ISO strings.
+    2. Create a CrawledHackathon record with the provided URL, name, and dates.
+    3. Set last_crawled_at to now.
+    4. Persist and return the created record ID.
+
+    Raises: HTTPException(400) if date format is invalid.
+    Side Effects: Inserts CrawledHackathon row.
+    Dependencies: app.models.CrawledHackathon.
+    Consumers: POST /hackathons, admin/debug panel.
+    """
     try:
         start = datetime.fromisoformat(req.start_date.replace("Z", "+00:00"))
         end = datetime.fromisoformat(req.end_date.replace("Z", "+00:00")) if req.end_date else None
@@ -71,7 +96,19 @@ async def list_crawled_hackathons(
     auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all crawled hackathons with project counts."""
+    """List all crawled hackathons with associated project counts.
+
+    Behavior:
+    1. Query all CrawledHackathon records with an outer join to CrawledProject.
+    2. Aggregate project counts per hackathon.
+    3. Order results by last_crawled_at descending (nulls last).
+    4. Return serialized list with IDs, dates, URLs, and counts.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: app.models.CrawledHackathon, app.models.CrawledProject, sqlalchemy.func.count.
+    Consumers: GET /hackathons, organizer crawler dashboard.
+    """
     from sqlalchemy import func, select
 
     query = (
@@ -114,7 +151,20 @@ async def list_crawled_projects(
     auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
-    """List projects for a specific crawled hackathon."""
+    """List projects for a specific crawled hackathon with pagination.
+
+    Behavior:
+    1. Validate the hackathon_id as a UUID.
+    2. Verify the hackathon exists; 404 if not found.
+    3. Query CrawledProject rows for the hackathon ordered by created_at descending.
+    4. Apply offset/limit pagination.
+    5. Return the total count and paginated project list.
+
+    Raises: HTTPException(400) for invalid UUID, HTTPException(404) if hackathon not found.
+    Side Effects: None (read-only).
+    Dependencies: app.models.CrawledHackathon, app.models.CrawledProject.
+    Consumers: GET /hackathons/{hackathon_id}/projects, organizer project browser.
+    """
     from uuid import UUID
 
     try:
@@ -174,7 +224,19 @@ async def search_crawled_projects(
     auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Search crawled projects by title."""
+    """Search crawled projects by title with pagination.
+
+    Behavior:
+    1. Apply an optional case-insensitive title filter if q is provided.
+    2. Query CrawledProject rows ordered by created_at descending.
+    3. Apply offset/limit pagination.
+    4. Return matching projects with hackathon linkage.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: app.models.CrawledProject.
+    Consumers: GET /projects, organizer project search.
+    """
 
     query = select(CrawledProject)
     if q:

@@ -120,9 +120,7 @@ class DocumentIndexer:
 
     async def _index_tracks(self, hackathon: Hackathon) -> int:
         """Index all tracks for a hackathon."""
-        result = await self.db.execute(
-            select(Track).where(Track.hackathon_id == hackathon.id)
-        )
+        result = await self.db.execute(select(Track).where(Track.hackathon_id == hackathon.id))
         tracks = result.scalars().all()
 
         count = 0
@@ -233,28 +231,28 @@ class DocumentIndexer:
 
             # Create new
             doc = AssistantDocument(
-                    id=uuid4(),
-                    hackathon_id=hackathon.id,
-                    qdrant_id=qdrant_point_id,
-                    doc_type=DocumentType.FAQ,
-                    title=f"FAQ: {faq['question'][:50]}...",
-                    doc_metadata={"question": faq["question"], "answer": faq["answer"]},
-                )
-                self.db.add(doc)
+                id=uuid4(),
+                hackathon_id=hackathon.id,
+                qdrant_id=qdrant_point_id,
+                doc_type=DocumentType.FAQ,
+                title=f"FAQ: {faq['question'][:50]}...",
+                doc_metadata={"question": faq["question"], "answer": faq["answer"]},
+            )
+            self.db.add(doc)
 
-                # Index in vector store
-                await vector_store.index_document(
-                    doc_id=qdrant_point_id,
-                    embedding=embedding,
-                    content=content,
-                    hackathon_id=str(hackathon.id),
-                    doc_type=DocumentType.FAQ.value,
-                    title=faq["question"],
-                    metadata={"question": faq["question"]},
-                    role_access=["participant", "judge", "organizer"],
-                )
+            # Index in vector store
+            await vector_store.index_document(
+                doc_id=qdrant_point_id,
+                embedding=embedding,
+                content=content,
+                hackathon_id=str(hackathon.id),
+                doc_type=DocumentType.FAQ.value,
+                title=faq["question"],
+                metadata={"question": faq["question"]},
+                role_access=["participant", "judge", "organizer"],
+            )
 
-                count += 1
+            count += 1
 
         await self.db.commit()
         return count
@@ -301,10 +299,7 @@ class DocumentIndexer:
         count = await vector_store.delete_by_hackathon(hackathon_id)
 
         # Delete from database
-        result = await self.db.execute(
-            select(AssistantDocument)
-            .where(AssistantDocument.hackathon_id == hackathon_id)
-        )
+        result = await self.db.execute(select(AssistantDocument).where(AssistantDocument.hackathon_id == hackathon_id))
         docs = result.scalars().all()
 
         for doc in docs:

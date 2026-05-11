@@ -8,7 +8,9 @@ use std::io;
 
 mod app;
 mod config;
+mod containers;
 mod docker;
+mod env_editor;
 mod ui;
 mod wizard;
 

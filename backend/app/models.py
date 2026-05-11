@@ -49,8 +49,7 @@ class Guid(TypeDecorator):
             return value
         if dialect.name == "postgresql":
             return value  # Already a UUID
-        if isinstance(value, str):
-            return uuid.UUID(value)
+        # For SQLite, keep strings to avoid UUID binding errors with String columns
         return value
 
 
@@ -667,6 +666,35 @@ class Event(Base):
 
     def __repr__(self) -> str:
         return f"<Event {self.type}>"
+
+
+class WebhookSubscription(Base):
+    __tablename__ = "webhook_subscriptions"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    url = Column(String(500), nullable=False)
+    secret = Column(String(128), nullable=False)
+    events = Column(ArrayOfStrings, nullable=False)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<WebhookSubscription {self.url}>"
+
+
+class WebhookDeliveryLog(Base):
+    __tablename__ = "webhook_delivery_logs"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    subscription_id = Column(Guid, ForeignKey("webhook_subscriptions.id"), nullable=False)
+    event_id = Column(Guid, ForeignKey("events.id"), nullable=False)
+    status = Column(String(20), nullable=False)  # success, failed, retrying
+    http_status = Column(Integer, nullable=True)
+    response_body = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<WebhookDeliveryLog {self.status}>"
 
 
 # Import assistant models to ensure they are registered with SQLAlchemy
