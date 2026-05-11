@@ -59,10 +59,12 @@ async def oauth_callback(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(OAuthProvider).where(OAuthProvider.name == provider))
+    result = await db.execute(
+        select(OAuthProvider).where(OAuthProvider.name == provider, OAuthProvider.is_active.is_(True))
+    )
     p = result.scalar_one_or_none()
     if not p:
-        raise HTTPException(status_code=404, detail="Provider not found")
+        raise HTTPException(status_code=404, detail="Provider not found or inactive")
 
     client_secret = decrypt_secret(p.client_secret_encrypted)
     redirect_uri = f"{settings.base_url}/api/auth/oauth/{provider}/callback"
@@ -98,7 +100,10 @@ async def oauth_callback(
 
     userinfo = user_res.json()
     email = userinfo.get("email")
-    provider_user_id = str(userinfo.get("id") or userinfo.get("sub"))
+    provider_user_id_raw = userinfo.get("id") or userinfo.get("sub")
+    if not provider_user_id_raw:
+        raise HTTPException(status_code=400, detail="OAuth provider did not return user ID")
+    provider_user_id = str(provider_user_id_raw)
 
     if not email:
         raise HTTPException(status_code=400, detail="OAuth provider did not return email")
