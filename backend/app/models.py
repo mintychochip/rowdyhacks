@@ -231,6 +231,7 @@ class Hackathon(Base):
     co_organizers = relationship("HackathonOrganizer", back_populates="hackathon", cascade="all, delete-orphan")
     tracks = relationship("Track", back_populates="hackathon", cascade="all, delete-orphan")
     teams = relationship("Team", back_populates="hackathon", cascade="all, delete-orphan")
+    workshops = relationship("Workshop", back_populates="hackathon", cascade="all, delete-orphan")
     assistant_conversations = relationship("AssistantConversation", back_populates="hackathon")
     assistant_documents = relationship("AssistantDocument", back_populates="hackathon", cascade="all, delete-orphan")
 
@@ -418,6 +419,25 @@ class TeamMember(Base):
 
     def __repr__(self) -> str:
         return f"<TeamMember team={self.team_id} user={self.user_id}>"
+
+
+class Workshop(Base):
+    __tablename__ = "workshops"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id"), nullable=False)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    start_time = Column(DateTime(timezone=True), nullable=False)
+    end_time = Column(DateTime(timezone=True), nullable=False)
+    location = Column(String(200), nullable=True)
+    speaker_name = Column(String(200), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    hackathon = relationship("Hackathon", back_populates="workshops")
+
+    def __repr__(self) -> str:
+        return f"<Workshop {self.title}>"
 
 
 class Scan(Base):
