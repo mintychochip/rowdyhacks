@@ -4,7 +4,7 @@
 
 **Architecture:** Built-in JWT auth with bcrypt password hashing, pluggable OAuth2 providers stored in the database, and a first-run bootstrap via environment variables. All Clerk dependencies are removed.
 
-**Tech Stack:** FastAPI, SQLAlchemy, bcrypt, PyJWT, python-jose (for JWT verification), Fernet (for OAuth secret encryption), httpx (for OAuth token exchange).
+**Tech Stack:** FastAPI, SQLAlchemy, bcrypt, python-jose (JWT), Fernet (OAuth secret encryption), httpx (OAuth token exchange).
 
 ---
 
@@ -13,9 +13,10 @@
 ### 1.1 Password Auth
 
 - **Registration**: Email + password + name. Password hashed with bcrypt (cost factor 12). Auto-assign `participant` role.
+- **First-run protection**: Public registration is **blocked** until at least one `organizer` user exists. This prevents a race condition where a random visitor creates the first account before the admin sets up the platform.
 - **Login**: Email + password → issue JWT access token (15 min expiry) + refresh token (7 day expiry, stored in httpOnly cookie).
-- **Token refresh**: `/api/auth/refresh` endpoint reads refresh token cookie, validates, issues new access token.
-- **Logout**: Clear refresh token cookie + invalidate token in DB (or just let it expire for MVP).
+- **Token refresh**: `/api/auth/refresh` endpoint reads refresh token cookie, validates against DB `refresh_tokens` table, issues new access token.
+- **Logout**: Clear refresh token cookie **and** mark the token as revoked in DB (`revoked_at` timestamp). Do not rely on expiry alone.
 - **Password reset**: Generate reset token (1 hour expiry), send email with reset link via the existing Mailpit/SendGrid email service.
 - **Change password**: Authenticated endpoint requiring current password + new password.
 
@@ -23,21 +24,22 @@
 
 - **Generic OAuth provider model**: `OAuthProvider` table with `name`, `client_id`, `client_secret_encrypted`, `authorize_url`, `token_url`, `userinfo_url`, `scope`, `is_active`.
 - **OAuth login flow**: `/api/auth/oauth/{provider}/login` → redirect to provider authorize URL → `/api/auth/oauth/{provider}/callback` → exchange code for token → fetch userinfo → find or create local user → issue JWT.
-- **OAuth account linking**: `OAuthAccount` table maps `(provider_name, provider_user_id)` → `user_id`. If a user with matching email already exists, link the OAuth account instead of creating a duplicate.
-- **Encrypted secrets**: OAuth client secrets encrypted at rest using Fernet with `HACKVERIFY_SECRET_KEY` as the key.
+- **OAuth account linking**: `OAuthAccount` table (already exists) maps `(provider, provider_user_id)` → `user_id`. If a user with matching email already exists **and the OAuth provider returns `email_verified=true`**, link the OAuth account. Otherwise require password login first, then manual linking.
+- **Encrypted secrets**: OAuth client secrets encrypted at rest using Fernet. The Fernet key is derived from `HACKVERIFY_SECRET_KEY` via HKDF-SHA256 to produce a 32-byte key, then base64-encoded for Fernet.
 
 ### 1.3 First-Run Bootstrap
 
 - On app startup, if the `users` table is empty, check for `HACKVERIFY_ADMIN_EMAIL` and `HACKVERIFY_ADMIN_PASSWORD` in environment variables.
 - If both are present, create a user with that email, hashed password, name = "Admin", and role = `organizer`.
-- If env vars are missing and DB is empty, log a warning: "No users found and HACKVERIFY_ADMIN_EMAIL not set. Create the first user via the API or set env vars."
-- This eliminates the need for a setup wizard while still allowing fully automated deployments.
+- If env vars are missing and DB is empty, log a warning: "No users found and HACKVERIFY_ADMIN_EMAIL not set. Set HACKVERIFY_ADMIN_EMAIL and HACKVERIFY_ADMIN_PASSWORD to create the first organizer, then restart the app."
+- The admin should remove `HACKVERIFY_ADMIN_PASSWORD` from `.env` after first run.
 
 ### 1.4 Role-Based Access Control
 
-- Keep the existing three roles: `organizer`, `participant`, `judge`.
+- Keep the existing three global roles: `organizer`, `participant`, `judge`.
 - JWT payload contains: `sub` (user id), `email`, `role`, `exp`, `iat`.
-- Keep existing `require_user`, `require_organizer`, `require_participant`, `require_judge` dependency injection patterns — just swap the Clerk-based JWT validation for local JWT validation.
+- Keep existing `require_user`, `require_organizer`, `require_participant`, `require_judge` dependency injection patterns — swap Clerk-based JWT validation for local JWT validation using `python-jose`.
+- **Judge role note**: A user with global role `judge` can judge any hackathon they are assigned to. Judge invites (Section 4.2) create accounts with `judge` role directly. There is no per-hackathon judge role; the global role suffices.
 
 ---
 
@@ -45,61 +47,61 @@
 
 ### 2.1 Database Schema
 
-```sql
-CREATE TABLE oauth_providers (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) UNIQUE NOT NULL,  -- 'github', 'google', 'custom_1'
-    display_name VARCHAR(100) NOT NULL,
-    client_id VARCHAR(255) NOT NULL,
-    client_secret_encrypted TEXT NOT NULL,
-    authorize_url TEXT NOT NULL,
-    token_url TEXT NOT NULL,
-    userinfo_url TEXT NOT NULL,
-    scope TEXT NOT NULL,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT NOW()
-);
+Use existing `Guid` and `String(64)` key patterns from `app/models.py`:
 
-CREATE TABLE oauth_accounts (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    provider_name VARCHAR(50) NOT NULL,
-    provider_user_id VARCHAR(255) NOT NULL,
-    access_token_encrypted TEXT,
-    refresh_token_encrypted TEXT,
-    expires_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(provider_name, provider_user_id)
-);
+```python
+class OAuthProvider(Base):
+    __tablename__ = "oauth_providers"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    name = Column(String(50), unique=True, nullable=False)  # 'github', 'google'
+    display_name = Column(String(100), nullable=False)
+    client_id = Column(String(255), nullable=False)
+    client_secret_encrypted = Column(Text, nullable=False)
+    authorize_url = Column(Text, nullable=False)
+    token_url = Column(Text, nullable=False)
+    userinfo_url = Column(Text, nullable=False)
+    scope = Column(Text, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+```
+
+The existing `OAuthAccount` table is augmented:
+
+```python
+# Add to existing OAuthAccount in models.py:
+access_token_encrypted = Column(Text, nullable=True)
+refresh_token_encrypted = Column(Text, nullable=True)
+expires_at = Column(DateTime(timezone=True), nullable=True)
+```
+
+New table for refresh tokens:
+
+```python
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token_hash = Column(String(255), nullable=False)  # SHA-256 hash of the token
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 ```
 
 ### 2.2 Admin Panel API
 
 - `GET /api/admin/oauth/providers` — List all providers (with `client_secret` masked as `***`). Organizer only.
-- `POST /api/admin/oauth/providers` — Add/connect a provider. Body: `name`, `client_id`, `client_secret`, `authorize_url`, `token_url`, `userinfo_url`, `scope`.
-- `DELETE /api/admin/oauth/providers/{name}` — Disconnect a provider. Does NOT delete OAuth-linked users.
-- `POST /api/admin/oauth/providers/{name}/connect` — Initiates the "admin connect" OAuth flow. This is a separate flow from user login — the admin grants permission so the app can act on behalf of users. The callback stores the app's client credentials (same as manual config, but via OAuth instead of copy-paste).
+- `POST /api/admin/oauth/providers` — Add a provider. Body: `name`, `client_id`, `client_secret`, `authorize_url`, `token_url`, `userinfo_url`, `scope`, `display_name`. Built-in presets (GitHub/Google) pre-fill endpoint URLs.
+- `DELETE /api/admin/oauth/providers/{name}` — Disconnect a provider. Does NOT delete OAuth-linked users. Organizer only.
 
-### 2.3 One-Click Connect Flow (MVP v2)
+### 2.3 Built-in Provider Presets
 
-For the initial implementation, the manual config form is sufficient. The one-click connect flow is documented here as a future enhancement:
+When adding a provider via the admin panel, the admin selects a preset which pre-fills endpoint URLs:
 
-1. Admin clicks "Connect GitHub" in admin panel.
-2. Backend generates state param and redirects to `https://github.com/login/oauth/authorize?client_id=GITHUB_APP_CLIENT_ID&scope=...`.
-3. Admin grants permission on GitHub.
-4. GitHub redirects to `/api/admin/oauth/github/callback`.
-5. Backend exchanges code for token, then uses that token to fetch the OAuth app's credentials (if GitHub API supports this — some providers don't expose client_secret via API, so manual entry may always be needed for some).
-6. Stores `client_id` and `client_secret` in DB.
-
-**Revised MVP approach**: Admin enters `client_id` and `client_secret` manually via a form. This is what every self-hosted app does (GitLab, Mattermost, etc.) and is reliable across all OAuth providers. One-click connect can be added later as a convenience layer.
-
-### 2.4 Built-in Provider Presets
-
-When adding a provider, the admin can select from presets:
-
-- **GitHub**: Pre-fills `authorize_url=https://github.com/login/oauth/authorize`, `token_url=https://github.com/login/oauth/access_token`, `userinfo_url=https://api.github.com/user`, `scope=read:user user:email`.
-- **Google**: Pre-fills Google OAuth2 endpoints and `scope=openid email profile`.
-- **Custom**: Admin fills all fields manually. Supports any OAuth2 provider.
+- **GitHub**: `authorize_url=https://github.com/login/oauth/authorize`, `token_url=https://github.com/login/oauth/access_token`, `userinfo_url=https://api.github.com/user`, `scope=read:user user:email`.
+- **Google**: `authorize_url=https://accounts.google.com/o/oauth2/v2/auth`, `token_url=https://oauth2.googleapis.com/token`, `userinfo_url=https://openidconnect.googleapis.com/v1/userinfo`, `scope=openid email profile`.
+- **Custom**: Admin fills all fields manually. Supports any standard OAuth2 provider.
 
 ---
 
@@ -108,84 +110,117 @@ When adding a provider, the admin can select from presets:
 ### 3.1 Pages
 
 - `/login` — Email + password form. Social login buttons appear dynamically based on active OAuth providers (fetched from `/api/auth/providers`).
-- `/register` — Email + password + name form. Checkbox for "I agree to the code of conduct" (links to content page). If hackathon is invite-only, additional field for invite code.
+- `/register` — Email + password + name form. If platform has no organizer yet, registration is blocked with a message: "Platform setup required. The first account must be created by the server administrator."
 - `/forgot-password` — Email input. Sends reset link.
 - `/reset-password` — Token from email + new password form.
 - `/admin/oauth` — OAuth provider management (organizer only).
 
 ### 3.2 Frontend Auth State
 
-- Replace `useAuth()` Clerk hook with a custom hook that:
-  - Stores JWT access token in memory (never localStorage for security).
-  - Reads user info from `/api/auth/me` on page load.
-  - Automatically refreshes token via `/api/auth/refresh` when access token expires.
-  - Exposes `login(email, password)`, `logout()`, `register(email, password, name)`, `user`, `isLoading`, `isAuthenticated`.
-- Use Axios interceptors to attach `Authorization: Bearer <token>` header to all API requests and handle 401 by attempting refresh.
+Replace `useAuth()` Clerk hook with a custom hook:
+
+- **Token storage**: JWT access token stored in a module-level variable (memory only, never `localStorage`). Refresh token stored in httpOnly cookie by the backend.
+- **Initialization sequence on page load**:
+  1. Call `POST /api/auth/refresh` with credentials (sends httpOnly cookie). If valid, receive new access token.
+  2. Call `GET /api/auth/me` with the access token to get user info.
+  3. If refresh fails (expired/revoked), redirect to `/login`.
+- **API wrapper**: Adapt the existing `frontend/src/services/api.ts` fetch wrapper to attach `Authorization: Bearer <token>` to all requests. On 401, attempt refresh once, then retry. If refresh fails, redirect to `/login`.
+- **Exposed API**: `login(email, password)`, `logout()`, `register(email, password, name)`, `user`, `isLoading`, `isAuthenticated`.
 
 ### 3.3 Backend Changes
 
 - Delete `backend/app/clerk_auth.py` entirely.
-- Modify `backend/app/auth.py` to implement local JWT validation:
-  - `create_access_token(data: dict)` — Issue JWT.
-  - `create_refresh_token(user_id: int)` — Issue refresh token, store hash in DB `refresh_tokens` table.
-  - `verify_token(token: str)` — Decode and validate JWT.
-  - `get_current_user(token: str = Depends(oauth2_scheme))` — FastAPI dependency.
-- Keep existing `require_organizer`, `require_participant`, `require_judge` but base them on `get_current_user` instead of Clerk.
+- Rewrite `backend/app/auth.py` to implement local JWT validation:
+  - `create_access_token(data: dict, expires_delta: timedelta)` — Issue JWT with `python-jose`.
+  - `create_refresh_token(user_id: str)` — Issue random token (32 bytes, urlsafe base64), store SHA-256 hash in `RefreshToken` table.
+  - `verify_access_token(token: str)` — Decode and validate JWT with `python-jose`.
+  - `verify_refresh_token(token: str)` — Look up hash in `RefreshToken` table, check not revoked and not expired.
+  - `get_current_user(token: str = Depends(oauth2_scheme))` — FastAPI dependency for HTTP routes.
+  - `get_current_user_ws(token: str)` — For WebSocket routes (called from `backend/app/routes/websocket.py`).
+- Update `require_organizer`, `require_participant`, `require_judge` to use `get_current_user`.
 
 ---
 
 ## 4. Invite-Only Registration
 
-### 4.1 Per-Hackathon Toggle
+### 4.1 Two-Layer Model
 
-- Add `registration_mode` enum column to `hackathons` table: `"open"` (default) or `"invite_only"`.
+- **Platform-level**: Anyone can create a global account once an organizer exists. No invite needed for signup.
+- **Hackathon-level**: Each hackathon has `registration_mode`: `"open"` (default) or `"invite_only"`. When `"invite_only"`, registering for that specific hackathon requires an invite code.
+
+This distinction is critical: users need accounts to browse the platform, but only invited users can register for a restricted hackathon.
+
+### 4.2 Per-Hackathon Toggle
+
+- Add `registration_mode` enum column to `hackathons` table: `"open"` or `"invite_only"`, default `"open"`.
 - Organizer sets this in Hackathon Settings.
 - When `invite_only`:
-  - Public registration endpoint requires `invite_code` field.
-  - `POST /api/auth/register` checks code against `HackathonInvite` table.
-  - `POST /api/registrations` also validates invite code (for existing users registering for a specific hackathon).
+  - `POST /api/hackathons/{id}/register` (or existing registration endpoint) requires `invite_code` field.
+  - Endpoint validates code against `HackathonInvite` table.
 
-### 4.2 Invite Codes
+### 4.3 Invite Codes
 
-```sql
-CREATE TABLE hackathon_invites (
-    id SERIAL PRIMARY KEY,
-    hackathon_id INTEGER REFERENCES hackathons(id) ON DELETE CASCADE,
-    code VARCHAR(32) UNIQUE NOT NULL,
-    role VARCHAR(20) NOT NULL DEFAULT 'participant',  -- 'participant' or 'judge'
-    uses_remaining INTEGER NOT NULL DEFAULT 1,
-    expires_at TIMESTAMP,
-    created_by INTEGER REFERENCES users(id),
-    created_at TIMESTAMP DEFAULT NOW()
-);
+```python
+class HackathonInvite(Base):
+    __tablename__ = "hackathon_invites"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id", ondelete="CASCADE"), nullable=False)
+    code = Column(String(32), unique=True, nullable=False)
+    role = Column(SAEnum(UserRole), nullable=False, default=UserRole.participant)
+    uses_remaining = Column(Integer, nullable=False, default=1)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    created_by = Column(String(64), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 ```
 
 - Organizer generates codes in bulk: `POST /api/hackathons/{id}/invites` with `count`, `role`, `expires_days`.
-- Codes are random alphanumeric (16 chars), e.g., `OPENHACK-2026-ABC123`.
+- Codes are random alphanumeric (16 chars), prefixed with hackathon slug, e.g., `OPENHACK-ABC123DEF`.
 - Frontend displays codes in a table with copy button, uses remaining, expiry.
+- When a code is used: decrement `uses_remaining`. If reaches 0, code is effectively expired.
 
 ---
 
 ## 5. Data Migration Strategy
 
-### 5.1 For Existing Deployments (if any)
+### 5.1 Clerk Removal
 
 - `backend/app/clerk_auth.py` is deleted.
-- `users.clerk_id` column is deprecated but kept initially for reference. Log warning on startup if any users have `clerk_id` set: "Clerk auth is no longer supported. These users must set a password via forgot-password flow."
-- `OAuthAccount` table schema changes: rename `provider` to `provider_name`, add `provider_user_id`, remove `clerk_id` foreign key. Write Alembic migration.
-- Frontend: Replace all `useAuth()` Clerk calls with custom hook. Remove `@clerk/clerk-react` dependency from `package.json`.
+- `backend/app/routes/auth.py` currently imports from `clerk_auth` and must be rewritten entirely.
+- `backend/app/routes/websocket.py` uses `get_current_user_ws` from `auth.py` — update to use local JWT.
+- Frontend: Remove `@clerk/clerk-react` from `package.json`. Replace all `useAuth()` Clerk calls with custom hook.
+- Remove `VITE_CLERK_PUBLISHABLE_KEY` from all env files and docker-compose.
 
-### 5.2 New Fields on Users Table
+### 5.2 Existing Schema Augmentations
 
-```sql
-ALTER TABLE users ADD COLUMN password_hash VARCHAR(255);
-ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT false;
-ALTER TABLE users ADD COLUMN password_reset_token VARCHAR(255);
-ALTER TABLE users ADD COLUMN password_reset_expires TIMESTAMP;
+The `User` model already has `password_hash` (`String(128)`, nullable). Add new fields:
+
+```python
+# Add to User model:
+email_verified = Column(Boolean, default=False)
+password_reset_token_hash = Column(String(255), nullable=True)  # SHA-256 hash of the plaintext token
+password_reset_expires = Column(DateTime(timezone=True), nullable=True)
 ```
 
-- `password_hash` is nullable (OAuth-only users don't have one initially).
-- On first password login attempt, if `password_hash` is null, return "Please set a password via forgot-password flow."
+- The plaintext reset token (32 bytes, urlsafe base64) is sent in the email only. Its SHA-256 hash is stored in `password_reset_token_hash`. When the user submits the reset form, hash the submitted token and compare against the stored hash.
+
+The `OAuthAccount` model already exists with `provider`, `provider_user_id`, `provider_email`, `user_id`. Augment it:
+
+```python
+# Add to OAuthAccount model:
+access_token_encrypted = Column(Text, nullable=True)
+refresh_token_encrypted = Column(Text, nullable=True)
+expires_at = Column(DateTime(timezone=True), nullable=True)
+```
+
+New model: `RefreshToken` (see Section 2.1).
+New model: `OAuthProvider` (see Section 2.1).
+New model: `HackathonInvite` (see Section 4.3).
+New column on `Hackathon`: `registration_mode`.
+
+### 5.3 Email Verification (MVP Deferred)
+
+For the initial implementation, `email_verified` is set to `True` on registration. This is acceptable for a self-hosted hackathon where the organizer controls the participant list. A full email verification flow can be added later.
 
 ---
 
@@ -195,10 +230,10 @@ ALTER TABLE users ADD COLUMN password_reset_expires TIMESTAMP;
 
 | Method | Path | Description | Auth |
 |---|---|---|---|
-| POST | `/api/auth/register` | Register new account | Public |
+| POST | `/api/auth/register` | Register new account (blocked until organizer exists) | Public |
 | POST | `/api/auth/login` | Login with password | Public |
 | POST | `/api/auth/refresh` | Refresh access token | Refresh cookie |
-| POST | `/api/auth/logout` | Logout | Refresh cookie |
+| POST | `/api/auth/logout` | Logout (revokes refresh token) | Refresh cookie |
 | POST | `/api/auth/forgot-password` | Request reset link | Public |
 | POST | `/api/auth/reset-password` | Reset password with token | Public |
 | GET | `/api/auth/me` | Current user info | Bearer JWT |
@@ -210,7 +245,7 @@ ALTER TABLE users ADD COLUMN password_reset_expires TIMESTAMP;
 
 | Method | Path | Description | Auth |
 |---|---|---|---|
-| GET | `/api/admin/oauth/providers` | List provider configs | Organizer |
+| GET | `/api/admin/oauth/providers` | List provider configs (secrets masked) | Organizer |
 | POST | `/api/admin/oauth/providers` | Add provider config | Organizer |
 | DELETE | `/api/admin/oauth/providers/{name}` | Remove provider | Organizer |
 
@@ -228,37 +263,38 @@ ALTER TABLE users ADD COLUMN password_reset_expires TIMESTAMP;
 
 ### 7.1 New Components
 
-- `LoginForm.tsx` — Email/password + social buttons
-- `RegisterForm.tsx` — Email/password/name + invite code (conditional)
+- `LoginForm.tsx` — Email/password + social buttons (dynamically rendered from `/api/auth/providers`)
+- `RegisterForm.tsx` — Email/password/name
 - `ForgotPasswordForm.tsx`
 - `ResetPasswordForm.tsx`
-- `OAuthButton.tsx` — Dynamic social button based on provider
-- `OAuthAdminPanel.tsx` — Provider management table + add form
-- `InviteCodeManager.tsx` — Generate/list/revoke invites
+- `OAuthAdminPanel.tsx` — Provider management table + add form with preset selector
+- `InviteCodeManager.tsx` — Generate/list/revoke invites for a hackathon
 
 ### 7.2 Modified Pages
 
-- `AuthPage.tsx` — Replace Clerk with custom forms
-- `HackathonSettings.tsx` — Add `registration_mode` toggle + invite code manager
-- `Dashboard.tsx` — No functional change, just auth hook swap
+- `AuthPage.tsx` — Replace Clerk components with custom forms
+- `HackathonSettings.tsx` — Add `registration_mode` toggle (`"open"` / `"invite_only"`) + invite code manager
+- `Dashboard.tsx`, `HackerDashboard.tsx`, `JudgePortal.tsx`, `OrganizerRegistrationsPage.tsx` — Swap `useAuth()` for custom hook (no functional change)
+- `frontend/src/services/api.ts` — Add token attachment and 401 refresh logic
 
-### 7.3 Deleted
+### 7.3 Deleted Dependencies
 
-- All Clerk imports (`@clerk/clerk-react`, `clerkAuth`)
+- `@clerk/clerk-react`
+- `@clerk/types`
 - `backend/app/clerk_auth.py`
-- `VITE_CLERK_PUBLISHABLE_KEY` env var
 
 ---
 
 ## 8. Security Considerations
 
 - **Password policy**: Minimum 8 chars, at least one uppercase, one lowercase, one number. Enforced at registration and password change.
-- **Rate limiting**: Login attempts limited to 5 per minute per IP. Uses existing `fastapi-limiter` with Redis.
+- **Rate limiting**: Login attempts limited to 5 per minute per IP using existing `fastapi-limiter` + Redis.
 - **Token security**: Access tokens in `Authorization` header. Refresh tokens in httpOnly, SameSite=strict, Secure (in production) cookies.
-- **OAuth state param**: Random state stored in short-lived Redis key (5 min TTL) to prevent CSRF.
-- **Secret encryption**: OAuth client secrets encrypted with Fernet using `HACKVERIFY_SECRET_KEY`.
-- **SQL injection prevention**: All queries via SQLAlchemy ORM (parameterized).
-- **XSS prevention**: No user input rendered as raw HTML without sanitization.
+- **OAuth state param**: Random state stored in Redis with 5-minute TTL to prevent CSRF.
+- **Secret encryption**: OAuth client secrets encrypted with Fernet using a key derived from `HACKVERIFY_SECRET_KEY` via HKDF-SHA256.
+- **Refresh token invalidation**: Logout marks token as revoked (`revoked_at`). Do not rely solely on expiry.
+- **SQL injection prevention**: All queries via SQLAlchemy ORM.
+- **First-run protection**: Registration blocked until an organizer exists prevents unauthorized first-account creation.
 
 ---
 
@@ -266,8 +302,10 @@ ALTER TABLE users ADD COLUMN password_reset_expires TIMESTAMP;
 
 ### 9.1 Unit Tests
 
-- Password hashing (bcrypt verify)
+- Password hashing (bcrypt verify round-trip)
 - JWT creation and verification (expired, invalid signature, valid)
+- Refresh token creation, hash storage, verification, revocation
+- Fernet secret encryption/decryption round-trip
 - OAuth state generation and validation
 - Invite code generation (format, uniqueness)
 - Rate limiting enforcement
@@ -276,28 +314,23 @@ ALTER TABLE users ADD COLUMN password_reset_expires TIMESTAMP;
 
 - Full register → login → access protected endpoint → logout flow
 - Password reset flow (token generation, expiry, usage)
-- OAuth login simulation (mock GitHub/Google token exchange)
-- Invite-only registration (valid code, invalid code, expired code, exhausted uses)
+- OAuth login simulation (mock GitHub/Google token exchange with `respx`)
+- Invite-only hackathon registration (valid code, invalid code, expired code, exhausted uses)
 - Admin OAuth provider CRUD
+- First-run bootstrap (env vars create organizer, missing env vars block registration)
+- Token refresh flow (valid refresh, expired refresh, revoked refresh)
 
 ### 9.3 E2E Tests
 
-- Playwright test: register account, login, view dashboard, logout
-- Playwright test: login via GitHub OAuth (using a test OAuth app)
-- Playwright test: organizer generates invite code, participant uses it to register
+- Playwright: register account, login, view dashboard, logout
+- Playwright: login via GitHub OAuth (using a test OAuth app)
+- Playwright: organizer generates invite code, participant uses it to register for hackathon
 
 ---
 
 ## 10. Rollout & Backwards Compatibility
 
 - This is a **breaking change** for any existing Clerk-based deployment.
-- Recommended approach: create a feature branch, complete all work, then merge with a major version bump and migration guide.
+- Create a feature branch, complete all work, then merge with a major version bump and migration guide.
 - For new self-hosted users: this is the default and only auth system.
-
----
-
-## Open Questions
-
-1. Should we keep the Clerk code behind a feature flag for a transition period, or delete it entirely?
-2. Should the first-run bootstrap also create a default hackathon, or should that remain a separate manual step?
-3. Do we need to support "magic link" (passwordless email login) as an alternative to passwords?
+- Existing `OAuthAccount` data remains valid but augmented with new columns.
