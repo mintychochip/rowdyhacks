@@ -107,7 +107,9 @@ services:
       - "127.0.0.1:8000:8000"
 
   frontend:
-    image: ghcr.io/YOUR_ORG/hackathon-platform/frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       VITE_API_URL: /api

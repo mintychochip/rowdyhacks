@@ -45,10 +45,19 @@ class ThemeScreen(Screen):
                 for key, val in vals.items():
                     await config_service.set(key, val, db)
             # Write remaining env vars
-            from cli.tui.docker_orchestrator import write_env, generate_secret_key, env_exists
+            from cli.tui.docker_orchestrator import write_env, generate_secret_key, env_exists, read_env
 
+            updates = {}
             if not env_exists():
-                write_env({"HACKVERIFY_SECRET_KEY": generate_secret_key()})
+                updates["HACKVERIFY_SECRET_KEY"] = generate_secret_key()
+            # Ensure base URLs are set for docker-compose defaults
+            existing = read_env()
+            if "BASE_URL" not in existing:
+                updates["BASE_URL"] = "http://localhost"
+            if "FRONTEND_URL" not in existing:
+                updates["FRONTEND_URL"] = "http://localhost:3000"
+            if updates:
+                write_env(updates)
             self.query_one("#preview", Static).update("[green]Theme saved! Proceeding to launch...[/green]")
             self.app.push_screen("finish")
         except Exception as exc:
