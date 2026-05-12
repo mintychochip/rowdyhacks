@@ -4,7 +4,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import * as api from '../services/api';
 import { useBrandingStore } from '../stores/brandingStore';
-import CommandPalette, { useCommandPalette } from './CommandPalette';
 
 const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   organizer: { label: 'Organizer', color: '#3b82f6', bg: 'rgba(37, 99, 235, 0.12)' },
@@ -161,7 +160,9 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isMobile } = useMediaQuery();
-  const { isOpen, open, close } = useCommandPalette();
+  const [isOpen, setIsOpen] = useState(false);
+  const open = () => setIsOpen(true);
+  const close = () => setIsOpen(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hackathonId, setHackathonId] = useState<string | null>(null);
   const [expandedNav, setExpandedNav] = useState<Set<string>>(new Set(['Resources']));
@@ -223,7 +224,7 @@ export default function Layout() {
     { to: '/judge', label: 'Judge Portal', roles: ['judge'] },
   ];
 
-  const NAV_ITEMS = rawNav.filter((item): item is { to: string; label: string; roles?: string[] } => item.to !== null);
+  const NAV_ITEMS = rawNav.filter((item): item is { to: string; label: string; roles?: string[]; children?: { to: string; label: string }[] } => item.to !== null);
   const visibleNav = NAV_ITEMS.filter(item => !item.roles || (role && item.roles.includes(role)));
 
   const handleLogout = () => {
@@ -234,8 +235,6 @@ export default function Layout() {
   return (
     <HackathonContext.Provider value={hackathonId}>
       <div style={{ minHeight: '100vh', height: '100vh', display: 'flex', background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
-        <CommandPalette isOpen={isOpen} onClose={close} />
-
         {/* Mobile backdrop */}
         {isMobile && sidebarOpen && (
           <div

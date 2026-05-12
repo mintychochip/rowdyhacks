@@ -7,14 +7,27 @@ interface User {
   role: string;
 }
 
-let accessToken: string | null = null;
+const TOKEN_KEY = 'openhack_access_token';
+
+function _loadToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
 
 function setAccessToken(token: string | null) {
-  accessToken = token;
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // ignore
+  }
 }
 
 export function getAccessToken(): string | null {
-  return accessToken;
+  return _loadToken();
 }
 
 export function useAuth() {
@@ -46,6 +59,7 @@ export function useAuth() {
     try {
       const res = await fetch("/api/auth/me", {
         headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
       });
       if (res.ok) {
         const data = await res.json();
@@ -55,6 +69,7 @@ export function useAuth() {
         if (refreshed) {
           const retryRes = await fetch("/api/auth/me", {
             headers: { Authorization: `Bearer ${getAccessToken()}` },
+            credentials: "include",
           });
           if (retryRes.ok) {
             const data = await retryRes.json();

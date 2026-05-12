@@ -27,7 +27,7 @@ You have access to tools for:
 }
 
 export async function buildSystemPrompt(
-  tools: AgentTool[],
+  tools: Array<{ name: string; description: string; parameters?: any }>,
   userQuery?: string
 ): Promise<string> {
   const date = new Date().toISOString().split('T')[0];

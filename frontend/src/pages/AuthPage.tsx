@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../contexts/AuthContext";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import LoginForm from "../components/LoginForm";
 import RegisterForm from "../components/RegisterForm";

@@ -38,10 +38,10 @@ async def analytics_client(engine):
         async with async_session_maker(engine, class_=AsyncSession, expire_on_commit=False)() as session:
             yield session
 
-    from app.clerk_auth import require_clerk_user_with_db
+    from app.auth import get_current_user
 
-    async def _override_require_clerk_user_with_db():
-        fake_user = type(
+    async def _override_get_current_user():
+        return type(
             "FakeUser",
             (),
             {
@@ -49,17 +49,13 @@ async def analytics_client(engine):
                 "id": "test-organizer-id",
                 "email": "organizer@test.com",
                 "name": "Test Organizer",
+                "password_hash": "hash",
+                "email_verified": True,
             },
         )()
-        return {
-            "user": fake_user,
-            "sub": "test-organizer-id",
-            "email": "organizer@test.com",
-            "payload": {},
-        }
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[require_clerk_user_with_db] = _override_require_clerk_user_with_db
+    app.dependency_overrides[get_current_user] = _override_get_current_user
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
@@ -333,10 +329,10 @@ async def test_analytics_forbidden_for_participant(engine):
         async with async_session_maker(engine, class_=AsyncSession, expire_on_commit=False)() as session:
             yield session
 
-    from app.clerk_auth import require_clerk_user_with_db
+    from app.auth import get_current_user
 
     async def _override_participant():
-        fake_user = type(
+        return type(
             "FakeUser",
             (),
             {
@@ -344,17 +340,13 @@ async def test_analytics_forbidden_for_participant(engine):
                 "id": "test-participant-id",
                 "email": "part@test.com",
                 "name": "Part",
+                "password_hash": "hash",
+                "email_verified": True,
             },
         )()
-        return {
-            "user": fake_user,
-            "sub": "test-participant-id",
-            "email": "part@test.com",
-            "payload": {},
-        }
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[require_clerk_user_with_db] = _override_participant
+    app.dependency_overrides[get_current_user] = _override_participant
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         from datetime import UTC, datetime

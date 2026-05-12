@@ -11,8 +11,8 @@ export default defineConfig({
         image: 'public/logo.png',
       },
       manifest: {
-        name: 'Hackathon Platform',
-        short_name: 'Hackathon',
+        name: 'OpenHack',
+        short_name: 'OH',
         description: "The open-source hackathon framework",
         theme_color: '#0f172a',
         background_color: '#0f172a',
@@ -33,7 +33,7 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: "http://localhost:8000",
+        target: process.env.BACKEND_HOST || "http://localhost:8000",
         changeOrigin: true,
       },
     },

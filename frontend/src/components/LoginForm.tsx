@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../contexts/AuthContext";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import {
   CARD_BG,

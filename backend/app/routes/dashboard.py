@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_organizer
 from app.database import get_db
-from app.models import Submission
+from app.models import Submission, User
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 

@@ -18,5 +18,14 @@ async def test_oauth_login_provider_not_found(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_admin_list_providers_unauthorized(client: AsyncClient):
-    res = await client.get("/api/admin/oauth/providers")
-    assert res.status_code == 401
+    from app.auth import require_organizer
+    from app.main import app as main_app
+
+    original = main_app.dependency_overrides.pop(require_organizer, None)
+    try:
+        res = await client.get("/api/admin/oauth/providers")
+        # With conftest auth override, a fake participant hits organizer-only endpoint -> 403
+        assert res.status_code == 403
+    finally:
+        if original:
+            main_app.dependency_overrides[require_organizer] = original

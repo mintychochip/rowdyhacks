@@ -140,7 +140,14 @@ export default function AssistantPage() {
     try {
       setIsLoading(true);
       const data = await getConversation(id);
-      setMessages(data.messages);
+      setMessages(data.messages.map(m => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        toolCalls: m.tool_calls,
+        tool_results: m.tool_results,
+        createdAt: m.created_at,
+      })));
       setError(null);
     } catch (err: any) {
       setError('Failed to load conversation');

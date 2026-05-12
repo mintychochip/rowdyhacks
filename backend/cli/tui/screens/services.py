@@ -7,11 +7,11 @@ from cli.tui.docker_orchestrator import write_env
 class ServicesScreen(Screen):
     def compose(self):
         yield Static("Services Configuration", id="title")
-        yield Static("[yellow]Clerk OAuth keys are required for login to work.[/yellow]")
-        yield Static("Clerk Publishable Key (frontend) *:")
-        yield Input(placeholder="pk_test_...", id="clerk-pk")
-        yield Static("Clerk Secret Key (backend) *:")
-        yield Input(placeholder="sk_test_...", id="clerk-sk", password=True)
+        yield Static("[yellow]Admin password is required for first-time setup.[/yellow]")
+        yield Static("Admin Password (min 8 chars) *:")
+        yield Input(placeholder="••••••••", id="admin-pwd", password=True)
+        yield Static("Confirm Admin Password *:")
+        yield Input(placeholder="••••••••", id="admin-pwd2", password=True)
         yield Static("REDIS_URL (optional):")
         yield Input(placeholder="redis://localhost:6379", id="redis-url")
         yield Static("Email Provider:")
@@ -29,10 +29,13 @@ class ServicesScreen(Screen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "next":
-            pk = self.query_one("#clerk-pk", Input).value.strip()
-            sk = self.query_one("#clerk-sk", Input).value.strip()
-            if not pk or not sk:
-                self.query_one("#error", Static).update("[red]Both Clerk keys are required.[/red]")
+            pwd = self.query_one("#admin-pwd", Input).value.strip()
+            pwd2 = self.query_one("#admin-pwd2", Input).value.strip()
+            if not pwd or len(pwd) < 8:
+                self.query_one("#error", Static).update("[red]Admin password must be at least 8 characters.[/red]")
+                return
+            if pwd != pwd2:
+                self.query_one("#error", Static).update("[red]Passwords do not match.[/red]")
                 return
             self._save_env()
             self.app.push_screen("admin")
@@ -40,16 +43,13 @@ class ServicesScreen(Screen):
             self.app.pop_screen()
 
     def _save_env(self):
-        pk = self.query_one("#clerk-pk", Input).value.strip()
-        sk = self.query_one("#clerk-sk", Input).value.strip()
+        pwd = self.query_one("#admin-pwd", Input).value.strip()
         redis = self.query_one("#redis-url", Input).value
         email = self.query_one("#email-provider", Select).value
         key = self.query_one("#sendgrid-key", Input).value
         updates = {}
-        if pk:
-            updates["VITE_CLERK_PUBLISHABLE_KEY"] = pk
-        if sk:
-            updates["HACKVERIFY_CLERK_SECRET_KEY"] = sk
+        if pwd:
+            updates["HACKVERIFY_ADMIN_PASSWORD"] = pwd
         if redis:
             updates["HACKVERIFY_REDIS_URL"] = redis
         if email and email != "none":

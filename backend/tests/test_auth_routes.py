@@ -258,9 +258,17 @@ async def test_get_me_with_valid_token(client, clean_db, organizer_user):
 
 @pytest.mark.asyncio
 async def test_get_me_no_token_401(client, clean_db):
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        res = await ac.get("/api/auth/me")
-    assert res.status_code == 401
+    from app.auth import get_current_user
+    from app.main import app as main_app
+
+    # Temporarily remove the auth override to test real 401 behavior
+    original = main_app.dependency_overrides.pop(get_current_user, None)
+    try:
+        res = await client.get("/api/auth/me")
+        assert res.status_code == 401
+    finally:
+        if original:
+            main_app.dependency_overrides[get_current_user] = original
 
 
 @pytest.mark.asyncio

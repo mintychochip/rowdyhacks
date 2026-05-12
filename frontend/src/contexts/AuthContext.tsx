@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from "react";
-import { useAuth as useSelfHostedAuth } from "../hooks/useAuth";
+import { useAuth as useSelfHostedAuth, getAccessToken } from "../hooks/useAuth";
 
 interface User {
   id: string;
@@ -13,21 +13,23 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: () => void;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (email: string, password: string, name: string) => Promise<boolean>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { user, isLoading, isAuthenticated, logout } = useSelfHostedAuth();
+  const { user, isLoading, isAuthenticated, login, register, logout } = useSelfHostedAuth();
 
   const value: AuthContextType = {
     user,
-    token: null,
+    token: getAccessToken(),
     isLoading,
     isAuthenticated,
-    login: () => {},
+    login,
+    register,
     logout,
   };
 

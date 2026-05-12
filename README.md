@@ -1,6 +1,25 @@
 # OpenHack
 
-The open-source hackathon framework — registration, check-in, judging, and everything in between.
+<p align="center">
+  <b>The open-source hackathon framework</b> — registration, check-in, judging, and everything in between.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="backend/tests"><img src="https://img.shields.io/badge/tests-129%2B-brightgreen.svg" alt="Tests"></a>
+  <a href="https://www.codefactor.io/repository/github/mintychochip/openhack"><img src="https://www.codefactor.io/repository/github/mintychochip/openhack/badge" alt="CodeFactor"></a>
+  <img src="https://img.shields.io/badge/code%20style-ruff-261230.svg" alt="Code style: Ruff">
+  <img src="https://img.shields.io/badge/frontend-React%2019%20%2B%20Vite%208-61DAFB?logo=react" alt="Frontend">
+  <img src="https://img.shields.io/badge/backend-FastAPI%20%2B%20Python%203.11-009688?logo=fastapi" alt="Backend">
+</p>
+
+---
+
+## Overview
+
+OpenHack is a **self-hosted, fully-featured hackathon management platform** built for organizers who want complete control over their event. From registration and real-time check-in to AI-powered submission integrity checking and ELO-based judging, OpenHack handles the full lifecycle of a hackathon — no external SaaS lock-in required.
+
+Deploy it on your own infrastructure with Docker Compose, brand it for your event, and own your data.
 
 ## Features
 
@@ -83,6 +102,7 @@ cd frontend
 npm install
 npm run dev        # Vite dev server on port 5173
 npm run build      # production build
+npm run lint       # ESLint
 ```
 
 **Backend:**
@@ -97,6 +117,20 @@ uvicorn app.main:app --reload --port 8001
 cd backend
 pytest              # 129+ tests
 ```
+
+**Code Quality & Linting:**
+```bash
+# Backend (Python) — lint, format, and check
+npm run lint:backend       # ruff check
+npm run lint:backend:fix   # ruff check --fix
+npm run format:backend     # ruff format
+
+# Frontend (TypeScript/React) — lint
+cd frontend
+npm run lint
+```
+
+> Pre-commit hooks via **Husky** + **lint-staged** run `ruff` and `eslint` automatically on every commit.
 
 ## Environment Variables
 
@@ -137,6 +171,17 @@ openhack/
 ├── docker-compose.yml        # All services
 └── .env.example              # Environment template
 ```
+
+## Code Quality
+
+We maintain high code quality standards across the entire stack:
+
+- **Python**: [Ruff](https://docs.astral.sh/ruff/) for ultra-fast linting and formatting
+- **TypeScript/React**: ESLint with React Hooks and Refresh plugins
+- **Tests**: 129+ pytest backend tests with coverage
+- **Pre-commit**: Husky + lint-staged ensures clean commits
+- **CI/CD**: GitHub Actions run lint and test gates on every PR
+- **CodeFactor**: Automated code review and grade tracking
 
 ## License
 

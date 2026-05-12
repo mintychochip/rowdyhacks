@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from "react";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../contexts/AuthContext";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import {
   CARD_BG,

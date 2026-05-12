@@ -147,6 +147,7 @@ class RegistrationCreate(BaseModel):
     skills: list[str] | None = None
     emergency_contact_name: str | None = None
     emergency_contact_phone: str | None = None
+    invite_code: str | None = None
     answers: Optional[List[Any]] = None
 
 

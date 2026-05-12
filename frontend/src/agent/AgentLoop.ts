@@ -52,7 +52,7 @@ export class AgentLoop {
           break;
         }
 
-        const toolResults = [];
+        const toolResults: Array<{ toolCallId: string; name: string; result: string }> = [];
         for (const tc of response.toolCalls) {
           this.emit({ type: 'tool_call', tool: tc });
 
@@ -136,10 +136,10 @@ export class AgentLoop {
     content: string;
     toolCalls?: Array<{ id: string; name: string; parameters: Record<string, unknown> }>;
   }> {
-    const llmMessages = [
+    const llmMessages: Array<{ role: string; content: string; tool_calls?: any[]; tool_call_id?: string }> = [
       { role: 'system', content: this.config.systemPrompt },
       ...this.messages.map(m => {
-        const entry: Record<string, unknown> = { role: m.role, content: m.content };
+        const entry: { role: string; content: string; tool_calls?: any[]; tool_call_id?: string } = { role: m.role, content: m.content };
         if (m.toolCalls?.length) entry.tool_calls = m.toolCalls;
         if (m.tool_call_id) entry.tool_call_id = m.tool_call_id;
         return entry;
@@ -149,7 +149,8 @@ export class AgentLoop {
     const response = await llmChat(llmMessages, this.config.model, this.abortController?.signal);
 
     // Poolside returns OpenAI format: choices[0].message.{content, tool_calls}
-    const msg = response.choices?.[0]?.message ?? response;
+    const msg = response.choices?.[0]?.message;
+    if (!msg) return { content: '' };
     const toolCalls = msg.tool_calls?.map((tc: any) => ({
       id: tc.id,
       name: tc.function?.name ?? tc.name,

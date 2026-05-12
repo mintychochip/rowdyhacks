@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     )
     admin_email: str = Field(default="", description="First-run admin email (bootstrap)")
     admin_password: str = Field(default="", description="First-run admin password (bootstrap)")
+    # Clerk (deprecated — kept for backward compatibility with existing routes/tests)
+    clerk_secret_key: str = Field(default="", description="Clerk secret key (legacy, no longer required)")
     # OAuth provider credentials (all free)
     google_client_id: str = Field(default="", description="Google OAuth client ID")
     google_client_secret: str = Field(default="", description="Google OAuth client secret")

@@ -264,6 +264,10 @@ export interface ExecuteToolRequest {
   parameters?: Record<string, unknown>;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
 /** Request schema for project generation. */
 export interface GenerateProjectRequest {
   /** The project plan to generate code for */
@@ -317,6 +321,12 @@ export interface HealthStatus {
   checks: Record<string, unknown>;
 }
 
+export interface InviteGenerateRequest {
+  count?: number;
+  role?: UserRole;
+  expires_days?: number | null;
+}
+
 /** Request body for joining an existing team by its join code. */
 export interface JoinTeamRequest {
   join_code: string;
@@ -352,6 +362,11 @@ export interface JudgingSessionCreate {
 export interface LLMChatRequest {
   messages: Record<string, unknown>[];
   model?: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
 }
 
 /** Severity level of an in-app notification. */
@@ -422,6 +437,12 @@ export interface RegisterPluginRequest {
   config?: Record<string, unknown> | null;
 }
 
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  name: string;
+}
+
 /** Pydantic schema for creating a new hackathon registration. */
 /**  */
 /** Behavior: */
@@ -451,6 +472,7 @@ export interface RegistrationCreate {
   skills?: string[] | null;
   emergency_contact_name?: string | null;
   emergency_contact_phone?: string | null;
+  invite_code?: string | null;
   answers?: unknown[] | null;
 }
 
@@ -482,6 +504,11 @@ export interface RegistrationReviewNoteCreate {
 export interface RegistrationReviewNoteUpdate {
   note_text?: string | null;
   rating?: number | null;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
 }
 
 /** Request body for restoring a hackathon from exported data. */
@@ -670,6 +697,10 @@ export interface UserResponse {
   created_at?: unknown | null;
 }
 
+/** Roles available to users in the platform: organizer, participant, judge, or volunteer. */
+export interface UserRole {
+}
+
 export interface ValidationError {
   loc: string | number[];
   msg: string;
@@ -685,6 +716,67 @@ export class OpenHackClient {
    */
   constructor(baseUrl: string = 'https://localhost/api') {
     this.baseUrl = baseUrl.replace(/\/$/, '');
+  }
+
+  /**
+   * GET /api/admin/oauth/providers — List Providers
+   * Tags: admin-oauth
+   */
+  async listProvidersApiAdminOauthProvidersGet(): Promise<unknown> {
+    const url = `${this.baseUrl}/api/admin/oauth/providers`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/admin/oauth/providers — Add Provider
+   * Tags: admin-oauth
+   */
+  async addProviderApiAdminOauthProvidersPost(name: string, client_id: string, client_secret: string, preset?: string | null, authorize_url?: string | null, token_url?: string | null, userinfo_url?: string | null, scope?: string | null, display_name?: string | null): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (name != null) params.append('name', String(name));
+    if (client_id != null) params.append('client_id', String(client_id));
+    if (client_secret != null) params.append('client_secret', String(client_secret));
+    if (preset != null) params.append('preset', String(preset));
+    if (authorize_url != null) params.append('authorize_url', String(authorize_url));
+    if (token_url != null) params.append('token_url', String(token_url));
+    if (userinfo_url != null) params.append('userinfo_url', String(userinfo_url));
+    if (scope != null) params.append('scope', String(scope));
+    if (display_name != null) params.append('display_name', String(display_name));
+    const url = `${this.baseUrl}/api/admin/oauth/providers` + (params.toString() ? `?${params.toString()}` : '');
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * DELETE /api/admin/oauth/providers/{name} — Remove Provider
+   * Tags: admin-oauth
+   */
+  async removeProviderApiAdminOauthProvidersNameDelete(name: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/admin/oauth/providers/${name}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
   }
 
   /**
@@ -1193,21 +1285,64 @@ export class OpenHackClient {
   }
 
   /**
+   * POST /api/auth/forgot-password — Forgot Password
+   * Request a password reset link. Always returns 200 to prevent enumeration.
+   * Tags: auth
+   */
+  async forgotPasswordApiAuthForgotPasswordPost(body: { email: string }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/auth/forgot-password`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/auth/login — Login
+   * Authenticate with email and password.
+   * Tags: auth
+   */
+  async loginApiAuthLoginPost(body: { email: string; password: string }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/auth/login`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/auth/logout — Logout
+   * Revoke refresh token and clear cookie.
+   * Tags: auth
+   */
+  async logoutApiAuthLogoutPost(): Promise<unknown> {
+    const url = `${this.baseUrl}/api/auth/logout`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * GET /api/auth/me — Get Me
-   * Return the current authenticated user. Clerk-only with auto-create fallback.
-   * 
-   * Behavior:
-   * 1. Validate the Authorization header contains a Bearer token.
-   * 2. Verify the token is a Clerk JWT and decode it.
-   * 3. Extract the user ID and email from the Clerk payload.
-   * 4. Query the local database for the user by ID.
-   * 5. Auto-create the user from Clerk profile data if not found.
-   * 6. Return the user as a UserResponse.
-   * 
-   * Raises: HTTPException(401) if the token is missing, invalid, or the user cannot be resolved.
-   * Side Effects: May insert a User row (auto-create fallback).
-   * Dependencies: app.clerk_auth.decode_clerk_token, app.clerk_auth.is_clerk_token, app.clerk_auth.extract_clerk_user_id, app.models.User.
-   * Consumers: GET /me, frontend auth context.
+   * Return the current authenticated user.
    * Tags: auth
    */
   async getMeApiAuthMeGet(): Promise<{ id: string; email: string; name?: string | null; role?: string | null; created_at?: unknown | null }> {
@@ -1218,6 +1353,116 @@ export class OpenHackClient {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/auth/oauth/{provider}/callback — Oauth Callback
+   * Tags: oauth
+   */
+  async oauthCallbackApiAuthOauthProviderCallbackGet(provider: string, code: string): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (code != null) params.append('code', String(code));
+    const url = `${this.baseUrl}/api/auth/oauth/{provider}/callback` + (params.toString() ? `?${params.toString()}` : '');
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/auth/oauth/{provider}/login — Oauth Login
+   * Tags: oauth
+   */
+  async oauthLoginApiAuthOauthProviderLoginGet(provider: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/auth/oauth/${provider}/login`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/auth/providers — List Providers
+   * List active OAuth providers.
+   * Tags: auth
+   */
+  async listProvidersApiAuthProvidersGet(): Promise<unknown> {
+    const url = `${this.baseUrl}/api/auth/providers`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/auth/refresh — Refresh
+   * Rotate refresh token and issue a new access token.
+   * Tags: auth
+   */
+  async refreshApiAuthRefreshPost(): Promise<unknown> {
+    const url = `${this.baseUrl}/api/auth/refresh`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/auth/register — Register
+   * Register a new participant account.
+   * Tags: auth
+   */
+  async registerApiAuthRegisterPost(body: { email: string; password: string; name: string }): Promise<{ id: string; email: string; name?: string | null; role?: string | null; created_at?: unknown | null }> {
+    const url = `${this.baseUrl}/api/auth/register`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/auth/reset-password — Reset Password
+   * Reset password using a valid reset token.
+   * Tags: auth
+   */
+  async resetPasswordApiAuthResetPasswordPost(body: { token: string; new_password: string }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/auth/reset-password`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     return res.json();
@@ -1382,7 +1627,7 @@ export class OpenHackClient {
    * 
    * Raises: HTTPException(404) if submission not found, HTTPException(403) if access denied.
    * Side Effects: None (read-only).
-   * Dependencies: app.clerk_auth.is_clerk_token, app.clerk_auth.decode_clerk_token, app.models.Submission, app.models.User, app.services.submission_service.SubmissionService.
+   * Dependencies: app.auth.verify_access_token, app.models.Submission, app.models.User, app.services.submission_service.SubmissionService.
    * Consumers: GET /api/check/{submission_id}/report, report viewer.
    * Tags: checks
    */
@@ -2010,7 +2255,7 @@ export class OpenHackClient {
    * 
    * Raises: None
    * Side Effects: None (read-only).
-   * Dependencies: app.models.Submission, app.clerk_auth.require_organizer.
+   * Dependencies: app.models.Submission, app.auth.require_organizer.
    * Consumers: GET /api/dashboard, organizer submissions review.
    * Tags: dashboard
    */
@@ -2141,6 +2386,23 @@ export class OpenHackClient {
         'Accept': 'application/json',
       },
       body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * DELETE /api/hackathons/invites/{code} — Revoke Invite
+   * Tags: invites
+   */
+  async revokeInviteApiHackathonsInvitesCodeDelete(code: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/invites/${code}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     return res.json();
@@ -2597,6 +2859,41 @@ export class OpenHackClient {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/hackathons/{hackathon_id}/invites — List Invites
+   * Tags: invites
+   */
+  async listInvitesApiHackathonsHackathonIdInvitesGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/invites`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/hackathons/{hackathon_id}/invites — Generate Invites
+   * Tags: invites
+   */
+  async generateInvitesApiHackathonsHackathonIdInvitesPost(hackathon_id: string, body: { count?: number; role?: string; expires_days?: number | null }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/invites`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     return res.json();
@@ -3132,7 +3429,7 @@ export class OpenHackClient {
    * Consumers: POST /api/hackathons/{hackathon_id}/register, participant registration form.
    * Tags: registrations
    */
-  async registerForHackathonApiHackathonsHackathonIdRegisterPost(hackathon_id: string, body: { team_name?: string | null; team_members?: string[] | null; linkedin_url?: string | null; github_url?: string | null; resume_url?: string | null; experience_level?: string | null; t_shirt_size?: string | null; phone?: string | null; dietary_restrictions?: string | null; what_build?: string | null; why_participate?: string | null; age?: number | null; school?: string | null; major?: string | null; pronouns?: string | null; skills?: string[] | null; emergency_contact_name?: string | null; emergency_contact_phone?: string | null; answers?: unknown[] | null }): Promise<unknown> {
+  async registerForHackathonApiHackathonsHackathonIdRegisterPost(hackathon_id: string, body: { team_name?: string | null; team_members?: string[] | null; linkedin_url?: string | null; github_url?: string | null; resume_url?: string | null; experience_level?: string | null; t_shirt_size?: string | null; phone?: string | null; dietary_restrictions?: string | null; what_build?: string | null; why_participate?: string | null; age?: number | null; school?: string | null; major?: string | null; pronouns?: string | null; skills?: string[] | null; emergency_contact_name?: string | null; emergency_contact_phone?: string | null; invite_code?: string | null; answers?: unknown[] | null }): Promise<unknown> {
     const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/register`;
     const res = await fetch(url, {
       method: 'POST',
@@ -3233,7 +3530,7 @@ export class OpenHackClient {
    * 
    * Raises: HTTPException(404) if hackathon not found or not owned.
    * Side Effects: None (read-only).
-   * Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_organizer.
+   * Dependencies: app.models.Registration, app.models.User, app.auth.require_organizer.
    * Consumers: GET /api/hackathons/{hackathon_id}/registrations, organizer dashboard.
    * Tags: organizer-registrations
    */
@@ -3357,7 +3654,7 @@ export class OpenHackClient {
    * 
    * Raises: HTTPException(404) if hackathon not found or not owned.
    * Side Effects: None (read-only).
-   * Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_organizer.
+   * Dependencies: app.models.Registration, app.models.User, app.auth.require_organizer.
    * Consumers: GET /api/hackathons/{hackathon_id}/registrations/dietary-report, organizer dashboard.
    * Tags: organizer-registrations
    */
@@ -3385,7 +3682,7 @@ export class OpenHackClient {
    * 
    * Raises: HTTPException(404) if hackathon not found or not owned.
    * Side Effects: None (read-only).
-   * Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_organizer.
+   * Dependencies: app.models.Registration, app.models.User, app.auth.require_organizer.
    * Consumers: GET /api/hackathons/{hackathon_id}/registrations/emergency-contacts, organizer dashboard.
    * Tags: organizer-registrations
    */
@@ -4059,7 +4356,7 @@ export class OpenHackClient {
    * 
    * Raises: HTTPException(404) if hackathon not found or not owned.
    * Side Effects: None (read-only).
-   * Dependencies: app.services.registration_service.RegistrationService, app.clerk_auth.require_organizer.
+   * Dependencies: app.services.registration_service.RegistrationService, app.auth.require_organizer.
    * Consumers: GET /api/hackathons/{hackathon_id}/waitlist, organizer dashboard.
    * Tags: organizer-registrations
    */
@@ -4360,7 +4657,7 @@ export class OpenHackClient {
    * Proxy LLM chat requests to Poolside.
    * 
    * Strips client tool definitions and injects server-authorized ones based
-   * on the user's role. Validates Clerk JWT.
+   * on the user's role. Validates JWT token.
    * 
    * Behavior:
    * 1. Get server-authorized tools for the user's role.
@@ -5170,7 +5467,7 @@ export class OpenHackClient {
    * 
    * Raises: HTTPException(401) if user not found.
    * Side Effects: None (read-only).
-   * Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_clerk_user.
+   * Dependencies: app.models.Registration, app.models.User, app.auth.get_current_user.
    * Consumers: GET /api/registrations, participant profile.
    * Tags: registrations
    */
@@ -5202,7 +5499,7 @@ export class OpenHackClient {
    * 
    * Raises: HTTPException(401) if user not found. HTTPException(404) if registration not found or does not belong to user.
    * Side Effects: None (read-only).
-   * Dependencies: app.services.registration_service.RegistrationService, app.clerk_auth.require_clerk_user.
+   * Dependencies: app.services.registration_service.RegistrationService, app.auth.get_current_user.
    * Consumers: GET /api/registrations/{registration_id}, participant profile.
    * Tags: registrations
    */
@@ -5224,7 +5521,7 @@ export class OpenHackClient {
    * Update a pending registration and its answers.
    * Tags: registrations
    */
-  async updateRegistrationApiRegistrationsRegistrationIdPut(registration_id: string, body: { team_name?: string | null; team_members?: string[] | null; linkedin_url?: string | null; github_url?: string | null; resume_url?: string | null; experience_level?: string | null; t_shirt_size?: string | null; phone?: string | null; dietary_restrictions?: string | null; what_build?: string | null; why_participate?: string | null; age?: number | null; school?: string | null; major?: string | null; pronouns?: string | null; skills?: string[] | null; emergency_contact_name?: string | null; emergency_contact_phone?: string | null; answers?: unknown[] | null }): Promise<unknown> {
+  async updateRegistrationApiRegistrationsRegistrationIdPut(registration_id: string, body: { team_name?: string | null; team_members?: string[] | null; linkedin_url?: string | null; github_url?: string | null; resume_url?: string | null; experience_level?: string | null; t_shirt_size?: string | null; phone?: string | null; dietary_restrictions?: string | null; what_build?: string | null; why_participate?: string | null; age?: number | null; school?: string | null; major?: string | null; pronouns?: string | null; skills?: string[] | null; emergency_contact_name?: string | null; emergency_contact_phone?: string | null; invite_code?: string | null; answers?: unknown[] | null }): Promise<unknown> {
     const url = `${this.baseUrl}/api/registrations/${registration_id}`;
     const res = await fetch(url, {
       method: 'PUT',
@@ -5589,7 +5886,7 @@ export class OpenHackClient {
    * 3. Refresh and return the created subscription.
    * 
    * Side Effects: Inserts WebhookSubscription row.
-   * Dependencies: app.models.WebhookSubscription, app.clerk_auth.require_organizer.
+   * Dependencies: app.models.WebhookSubscription, app.auth.require_organizer.
    * Consumers: POST /api/webhooks/subscribe, organizer dashboard.
    * Tags: webhooks
    */
@@ -5617,7 +5914,7 @@ export class OpenHackClient {
    * 3. Return the full list.
    * 
    * Side Effects: None (read-only).
-   * Dependencies: app.models.WebhookSubscription, app.clerk_auth.require_organizer.
+   * Dependencies: app.models.WebhookSubscription, app.auth.require_organizer.
    * Consumers: GET /api/webhooks/subscriptions, organizer dashboard.
    * Tags: webhooks
    */
@@ -5645,7 +5942,7 @@ export class OpenHackClient {
    * 
    * Raises: HTTPException(404) if subscription not found.
    * Side Effects: Deletes WebhookSubscription row.
-   * Dependencies: app.models.WebhookSubscription, app.clerk_auth.require_organizer.
+   * Dependencies: app.models.WebhookSubscription, app.auth.require_organizer.
    * Consumers: DELETE /api/webhooks/subscriptions/{subscription_id}, organizer dashboard.
    * Tags: webhooks
    */

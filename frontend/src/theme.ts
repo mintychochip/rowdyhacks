@@ -308,6 +308,8 @@ export const SHADOW = {
   sm: '0 1px 2px rgba(0, 0, 0, 0.3)',
   md: '0 4px 12px rgba(0, 0, 0, 0.4)',
   lg: '0 8px 24px rgba(0, 0, 0, 0.5)',
+  card: '0 2px 8px rgba(0, 0, 0, 0.4)',
+  elevated: '0 6px 16px rgba(0, 0, 0, 0.45)',
   glow: '0 0 20px rgba(37, 99, 235, 0.35)',
   orangeGlow: '0 0 20px rgba(249, 115, 22, 0.4)',
   goldGlow: '0 0 20px rgba(251, 191, 36, 0.3)',

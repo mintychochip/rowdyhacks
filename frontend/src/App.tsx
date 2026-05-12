@@ -29,7 +29,6 @@ import PublicLeaderboard from './pages/PublicLeaderboard';
 import TracksPage from './pages/TracksPage';
 import CrawledDataPage from './pages/CrawledDataPage';
 import ResourcesPage from './pages/ResourcesPage';
-import ResourceDetailPage from './pages/ResourceDetailPage';
 import ContentEditorPage from './pages/ContentEditorPage';
 
 function BrandingLoader({ children }: { children: React.ReactNode }) {
@@ -78,7 +77,6 @@ export default function App() {
                 <Route path="/hackathons/:id/tracks/edit" element={<TracksEditorPage />} />
                 <Route path="/tracks" element={<TracksPage />} />
                 <Route path="/resources" element={<ResourcesPage />} />
-                <Route path="/resources/:slug" element={<ResourceDetailPage />} />
                 <Route path="/admin/content" element={<ContentEditorPage />} />
                 <Route path="/crawled-data" element={<CrawledDataPage />} />
                 <Route path="/hackathons/:id/hacker-dashboard" element={<HackerDashboard />} />

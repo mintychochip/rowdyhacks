@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import require_organizer
 from app.database import get_db
+from app.models import User
 from app.schemas import JudgingSessionCreate, SubmitScoreRequest
 from app.services.judging_service import JudgingService
 
