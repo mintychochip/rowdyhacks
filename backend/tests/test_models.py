@@ -16,11 +16,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 
+import uuid
+
+
 @pytest.mark.asyncio
 async def test_create_user(db_session):
     """Create a user and verify it persists."""
+    unique_email = f"model_test_{uuid.uuid4().hex[:8]}@example.com"
     user = User(
-        email="test@example.com",
+        email=unique_email,
         name="Test User",
         role=UserRole.organizer,
         password_hash="$2b$12$abcdefghijklmnopqrstuv",
@@ -28,10 +32,10 @@ async def test_create_user(db_session):
     db_session.add(user)
     await db_session.commit()
 
-    result = await db_session.execute(select(User).where(User.email == "test@example.com"))
+    result = await db_session.execute(select(User).where(User.email == unique_email))
     fetched = result.scalar_one()
     assert fetched.id is not None
-    assert fetched.email == "test@example.com"
+    assert fetched.email == unique_email
     assert fetched.name == "Test User"
     assert fetched.role == UserRole.organizer
     assert fetched.password_hash == "$2b$12$abcdefghijklmnopqrstuv"

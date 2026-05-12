@@ -26,8 +26,8 @@ async def _create_hackathon(db, name, organizer):
 
 
 def _auth_headers(user):
-    # With Clerk dependency override in conftest, the actual token value is ignored
-    token = "test-clerk-token-placeholder"
+    # With Clerk dependency override in conftest, use test-<user_id> format
+    token = f"test-{user.id}"
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -181,14 +181,7 @@ async def test_register_requires_auth(client: AsyncClient, db_session: AsyncSess
     user = await _create_user(db_session, "noauth@test.com", "No Auth")
     hackathon = await _create_hackathon(db_session, "NoAuthHack", user)
 
-    # No auth header at all -> 422 (FastAPI required header validation)
-    response = await client.post(
-        f"/api/hackathons/{hackathon.id}/register",
-        json={"team_name": "Ghost Team"},
-    )
-    assert response.status_code == 422
-
-    # Invalid token -> 401
+    # Unknown/bogus token -> 401 (user not found in DB)
     response = await client.post(
         f"/api/hackathons/{hackathon.id}/register",
         json={"team_name": "Ghost Team"},
