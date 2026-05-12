@@ -55,6 +55,14 @@ class Settings(BaseSettings):
         default="",
         description="Generic LLM API key (Anthropic/Poolside). Used as fallback for poolside_api_key if not set.",
     )
+    llm_base_url: str = Field(
+        default="",
+        description="Generic LLM API base URL (OpenAI-compatible). Falls back to poolside_api_url if not set.",
+    )
+    llm_model: str = Field(
+        default="",
+        description="Generic LLM model name. Falls back to assistant_model if not set.",
+    )
     poolside_api_url: str = Field(
         default="https://inference.poolside.ai/v1",
         description="Poolside inference endpoint",
@@ -200,6 +208,20 @@ class Settings(BaseSettings):
         Consumers: app.assistant.llm.LLMClient initialization.
         """
         return self.poolside_api_key or self.llm_api_key
+
+    def get_llm_key(self) -> str:
+        """Return the generic LLM API key, falling back to Poolside key.
+
+        Behavior:
+        1. Return llm_api_key if it is truthy.
+        2. Otherwise, return poolside_api_key as the fallback.
+
+        Raises: None
+        Side Effects: None (read-only).
+        Dependencies: None.
+        Consumers: get_llm_client factory.
+        """
+        return self.llm_api_key or self.poolside_api_key
 
 
 settings = Settings()

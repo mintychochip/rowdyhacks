@@ -369,6 +369,131 @@ class DocumentIndexer:
         await self.db.commit()
         return doc_id
 
+    def _chunk_text(self, text: str, chunk_size: int = 1000, overlap: int = 200) -> list[str]:
+        """Split text into overlapping chunks for embedding.
+
+        Behavior:
+        1. Slide a window of size ``chunk_size`` over the text.
+        2. Move the window forward by ``chunk_size - overlap`` on each step.
+        3. Return a list of chunk strings.
+
+        Raises: None
+        Side Effects: None (read-only).
+        Dependencies: None.
+        Consumers: DocumentIndexer.index_uploaded_document.
+        """
+        chunks = []
+        step = chunk_size - overlap
+        for i in range(0, len(text), step):
+            chunk = text[i : i + chunk_size]
+            if chunk.strip():
+                chunks.append(chunk.strip())
+            if i + chunk_size >= len(text):
+                break
+        return chunks
+
+    async def index_uploaded_document(
+        self,
+        hackathon: Hackathon,
+        filename: str,
+        content: str,
+        s3_url: str | None = None,
+        s3_key: str | None = None,
+    ) -> dict:
+        """Index an uploaded document by chunking, embedding, and storing in Qdrant.
+
+        Behavior:
+        1. Chunk the document text into overlapping segments.
+        2. Embed each chunk using the embedder.
+        3. Create an AssistantDocument row to track the upload.
+        4. Index each chunk as a separate Qdrant point with shared metadata.
+        5. Commit and return chunk count and IDs.
+
+        Raises: None
+        Side Effects: Inserts AssistantDocument row; writes multiple points to Qdrant.
+        Dependencies: embedder, vector_store.
+        Consumers: Document upload endpoints.
+        """
+        chunks = self._chunk_text(content)
+        if not chunks:
+            chunks = [content.strip() or filename]
+
+        embeddings = embedder.embed_chunks(chunks)
+
+        # Create a single DB record to track this uploaded file
+        doc_id = str(uuid4())
+        chunk_ids = [str(uuid4()) for _ in chunks]
+
+        doc = AssistantDocument(
+            id=uuid4(),
+            hackathon_id=hackathon.id,
+            qdrant_id=doc_id,
+            doc_type=DocumentType.RESOURCES,
+            title=filename,
+            doc_metadata={
+                "filename": filename,
+                "s3_url": s3_url,
+                "s3_key": s3_key,
+                "chunk_count": len(chunks),
+                "chunk_qdrant_ids": chunk_ids,
+            },
+        )
+        self.db.add(doc)
+
+        for i, (chunk, embedding) in enumerate(zip(chunks, embeddings, strict=False)):
+            await vector_store.index_document(
+                doc_id=chunk_ids[i],
+                embedding=embedding,
+                content=chunk,
+                hackathon_id=str(hackathon.id),
+                doc_type=DocumentType.RESOURCES.value,
+                title=f"{filename} (chunk {i + 1}/{len(chunks)})",
+                metadata={
+                    "filename": filename,
+                    "chunk_index": i,
+                    "chunk_count": len(chunks),
+                    "document_id": str(doc.id),
+                },
+                role_access=["participant", "judge", "organizer"],
+            )
+
+        await self.db.commit()
+        return {
+            "document_id": str(doc.id),
+            "chunk_count": len(chunks),
+            "chunk_ids": chunk_ids,
+        }
+
+    async def delete_uploaded_document(self, doc_id: str) -> bool:
+        """Delete an uploaded document and its chunks from Qdrant and the database.
+
+        Behavior:
+        1. Load the AssistantDocument row by its UUID string.
+        2. Extract chunk_qdrant_ids from metadata.
+        3. Delete all chunk points from Qdrant.
+        4. Delete the DB row.
+        5. Commit and return True if found, False otherwise.
+
+        Raises: None
+        Side Effects: Deletes rows from PostgreSQL and points from Qdrant.
+        Dependencies: vector_store.delete_documents.
+        Consumers: Document deletion endpoints.
+        """
+        from uuid import UUID
+
+        result = await self.db.execute(select(AssistantDocument).where(AssistantDocument.id == UUID(doc_id)))
+        doc = result.scalar_one_or_none()
+        if not doc:
+            return False
+
+        chunk_ids = doc.doc_metadata.get("chunk_qdrant_ids", [])
+        if chunk_ids:
+            await vector_store.delete_documents(chunk_ids)
+
+        await self.db.delete(doc)
+        await self.db.commit()
+        return True
+
     async def delete_hackathon_documents(self, hackathon_id: str) -> int:
         """Delete all indexed documents associated with a hackathon.
 
