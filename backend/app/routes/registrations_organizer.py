@@ -1,23 +1,37 @@
 """Organizer registration management routes."""
 
 import uuid
-from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import create_qr_token
 from app.clerk_auth import require_organizer
 from app.database import get_db
 from app.models import Hackathon, HackathonOrganizer, Registration, RegistrationStatus, User
-from app.waitlist import promote_from_waitlist
+from app.services.registration_service import RegistrationService
+from app.services.scan_service import ScanError, ScanService
 
 router = APIRouter(prefix="/api/hackathons", tags=["organizer-registrations"])
 
+scan_service = ScanService()
+
 
 async def _verify_organizer_owns_hackathon(user: User, hackathon_id: uuid.UUID, db: AsyncSession) -> Hackathon:
-    """Verify the organizer owns the hackathon or is a co-organizer."""
+    """Verify the organizer owns the hackathon or is a co-organizer.
+
+    Behavior:
+    1. Query the hackathon by id and organizer_id.
+    2. Return the hackathon if the user is the primary organizer.
+    3. Check HackathonOrganizer for co-organizer status.
+    4. Return the hackathon if the user is a co-organizer.
+    5. Raise 404 if neither condition is met.
+
+    Raises: HTTPException(404) if hackathon not found or user lacks access.
+    Side Effects: None (read-only).
+    Dependencies: app.models.Hackathon, app.models.HackathonOrganizer.
+    Consumers: Internal helper used by organizer registration routes.
+    """
     # Primary organizer check
     query = select(Hackathon).where(and_(Hackathon.id == hackathon_id, Hackathon.organizer_id == user.id))
     result = await db.execute(query)
@@ -39,7 +53,7 @@ async def _verify_organizer_owns_hackathon(user: User, hackathon_id: uuid.UUID, 
     raise HTTPException(status_code=404, detail="Hackathon not found")
 
 
-@router.get("/{hackathon_id}/registrations")
+@router.get("/{hackathon_id}/registrations", operation_id="organizer_list_hackathon_registrations")
 async def list_hackathon_registrations(
     hackathon_id: uuid.UUID,
     auth: dict = Depends(require_organizer),
@@ -48,84 +62,67 @@ async def list_hackathon_registrations(
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """List registrations for a hackathon. Organizer only, RLS: own hackathons only."""
+    """List registrations for a hackathon. Organizer only, RLS: own hackathons only.
+
+    Behavior:
+    1. Verify the organizer owns the hackathon.
+    2. Build filtered count and list queries by hackathon_id and optional status.
+    3. Fetch registrations with pagination.
+    4. Load associated users for name/email enrichment.
+    5. Return the registration list with pagination metadata.
+
+    Raises: HTTPException(404) if hackathon not found or not owned.
+    Side Effects: None (read-only).
+    Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_organizer.
+    Consumers: GET /api/hackathons/{hackathon_id}/registrations, organizer dashboard.
+    """
     user = auth["user"]
-    hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
+    await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
-    count_query = select(func.count(Registration.id)).where(Registration.hackathon_id == hackathon_id)
-    query = select(Registration).where(Registration.hackathon_id == hackathon_id)
+    service = RegistrationService()
+    result = await service.list_registrations_for_hackathon(db, hackathon_id, status=status, offset=offset, limit=limit)
 
-    if status:
-        query = query.where(Registration.status == status)
-        count_query = count_query.where(Registration.status == status)
+    # Add review note aggregates
+    from app.services.registration_note_service import RegistrationNoteService
 
-    total = (await db.execute(count_query)).scalar()
-    query = query.order_by(Registration.registered_at.desc()).offset(offset).limit(limit)
-    result = await db.execute(query)
-    registrations = result.scalars().all()
+    note_service = RegistrationNoteService(db)
+    for reg in result["registrations"]:
+        rid = reg["id"]
+        aggregates = await note_service.get_aggregates_for_registration(uuid.UUID(rid))
+        reg["review_notes_count"] = aggregates["review_notes_count"]
+        reg["average_rating"] = aggregates["average_rating"]
 
-    # Fetch users for name/email
-    user_ids = [r.user_id for r in registrations]
-    users_result = await db.execute(select(User).where(User.id.in_(user_ids)))
-    users = {str(u.id): u for u in users_result.scalars().all()}
-
-    return {
-        "registrations": [
-            {
-                "id": str(r.id),
-                "hackathon_id": str(r.hackathon_id),
-                "user_id": str(r.user_id),
-                "status": r.status.value,
-                "team_name": r.team_name,
-                "team_members": r.team_members,
-                "registered_at": r.registered_at.isoformat(),
-                "accepted_at": r.accepted_at.isoformat() if r.accepted_at else None,
-                "checked_in_at": r.checked_in_at.isoformat() if r.checked_in_at else None,
-                "user_name": users[str(r.user_id)].name if str(r.user_id) in users else None,
-                "user_email": users[str(r.user_id)].email if str(r.user_id) in users else None,
-                "user_role": users[str(r.user_id)].role.value if str(r.user_id) in users else None,
-            }
-            for r in registrations
-        ],
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-    }
+    return result
 
 
-@router.post("/{hackathon_id}/registrations/{registration_id}/accept")
+@router.post("/{hackathon_id}/registrations/{registration_id}/accept", operation_id="organizer_accept_registration")
 async def accept_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
     auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Approve a registration and generate QR token. Organizer only."""
+    """Approve a registration and generate QR token. Organizer only.
+
+    Behavior:
+    1. Verify the organizer owns the hackathon.
+    2. Load the registration by id and hackathon_id.
+    3. Raise 404 if the registration is not found.
+    4. Raise 409 if the registration is not pending.
+    5. Generate a QR token and update status to accepted.
+    6. Commit and publish a registration.accepted event.
+    7. Return the updated registration details.
+
+    Raises: HTTPException(404) if hackathon or registration not found. HTTPException(409) if registration not pending.
+    Side Effects: Mutates Registration status, qr_token, accepted_at; publishes event.
+    Dependencies: app.auth.create_qr_token, app.models.Registration, app.services.event_service.publish_event.
+    Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/accept, organizer dashboard.
+    """
     user = auth["user"]
     hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
-    query = select(Registration).where(
-        and_(Registration.id == registration_id, Registration.hackathon_id == hackathon_id)
-    )
-    result = await db.execute(query)
-    reg = result.scalar_one_or_none()
-    if not reg:
-        raise HTTPException(status_code=404, detail="Registration not found")
-    if reg.status != RegistrationStatus.pending:
-        raise HTTPException(status_code=409, detail=f"Cannot accept a {reg.status.value} registration")
-
-    # Generate QR token
-    qr_token = create_qr_token(
-        registration_id=str(reg.id),
-        user_id=str(reg.user_id),
-        hackathon_id=str(hackathon.id),
-        hackathon_end=hackathon.end_date,
-    )
-    reg.qr_token = qr_token
-    reg.status = RegistrationStatus.accepted
-    reg.accepted_at = datetime.now(UTC)
-
-    await db.commit()
+    service = RegistrationService()
+    reg = await service.accept_registration(db, hackathon_id, registration_id, hackathon=hackathon, generate_qr=True)
 
     from app.services.event_service import publish_event
 
@@ -138,80 +135,83 @@ async def accept_registration(
     return {
         "id": str(reg.id),
         "status": reg.status.value,
-        "qr_token": qr_token,
+        "qr_token": reg.qr_token,
         "accepted_at": reg.accepted_at.isoformat(),
     }
 
 
-@router.post("/{hackathon_id}/registrations/{registration_id}/reject")
+@router.post("/{hackathon_id}/registrations/{registration_id}/reject", operation_id="organizer_reject_registration")
 async def reject_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
     auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Reject a registration. Organizer only."""
+    """Reject a registration. Organizer only.
+
+    Behavior:
+    1. Verify the organizer owns the hackathon.
+    2. Load the registration by id and hackathon_id.
+    3. Raise 404 if the registration is not found.
+    4. Raise 409 if the registration is not pending or accepted.
+    5. Update status to rejected and invalidate the QR token.
+    6. If the registration was accepted, promote from waitlist.
+    7. Commit and return the updated registration details.
+
+    Raises: HTTPException(404) if hackathon or registration not found. HTTPException(409) if registration not rejectable.
+    Side Effects: Mutates Registration status and qr_token; may trigger waitlist promotion.
+    Dependencies: app.models.Registration, app.waitlist.promote_from_waitlist.
+    Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/reject, organizer dashboard.
+    """
     user = auth["user"]
-    hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
+    await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
-    query = select(Registration).where(
-        and_(Registration.id == registration_id, Registration.hackathon_id == hackathon_id)
-    )
-    result = await db.execute(query)
-    reg = result.scalar_one_or_none()
-    if not reg:
-        raise HTTPException(status_code=404, detail="Registration not found")
-    if reg.status not in (RegistrationStatus.pending, RegistrationStatus.accepted):
-        raise HTTPException(status_code=409, detail=f"Cannot reject a {reg.status.value} registration")
-
-    was_accepted = reg.status == RegistrationStatus.accepted
-    reg.status = RegistrationStatus.rejected
-    reg.qr_token = None  # invalidate QR
-
-    # If rejecting an accepted registration, promote from waitlist
-    if was_accepted:
-        await db.flush()
-        await promote_from_waitlist(hackathon_id, db)
-
-    await db.commit()
+    service = RegistrationService()
+    reg = await service.reject_registration(db, hackathon_id, registration_id, promote_waitlist=True)
 
     return {"id": str(reg.id), "status": reg.status.value}
 
 
-@router.post("/{hackathon_id}/registrations/{registration_id}/checkin")
+@router.post("/{hackathon_id}/registrations/{registration_id}/checkin", operation_id="organizer_checkin_registration")
 async def checkin_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
     auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Check in a registration. Organizer only."""
+    """Check in a registration. Organizer only.
+
+    Behavior:
+    1. Verify the organizer owns the hackathon.
+    2. Load the registration by id and hackathon_id.
+    3. Raise 404 if the registration is not found.
+    4. Raise 409 if the registration is not accepted.
+    5. Update status to checked_in and set checked_in_at.
+    6. Commit and publish a registration.checked_in event.
+    7. Return the updated registration details.
+
+    Raises: HTTPException(404) if hackathon or registration not found. HTTPException(409) if registration not accepted.
+    Side Effects: Mutates Registration status and checked_in_at; publishes event.
+    Dependencies: app.services.scan_service.ScanService, app.services.event_service.publish_event.
+    Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/checkin, organizer dashboard.
+    """
     user = auth["user"]
-    hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
+    await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
-    query = select(Registration).where(
-        and_(Registration.id == registration_id, Registration.hackathon_id == hackathon_id)
-    )
-    result = await db.execute(query)
-    reg = result.scalar_one_or_none()
-    if not reg:
-        raise HTTPException(status_code=404, detail="Registration not found")
-    if reg.status != RegistrationStatus.accepted:
-        raise HTTPException(status_code=409, detail=f"Cannot check in a {reg.status.value} registration")
-
-    reg.status = RegistrationStatus.checked_in
-    reg.checked_in_at = datetime.now(UTC)
-    await db.commit()
+    try:
+        result = await scan_service.checkin_registration(db, hackathon_id, registration_id)
+    except ScanError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message) from e
 
     from app.services.event_service import publish_event
 
     await publish_event(
         db,
         "registration.checked_in",
-        {"registration_id": str(reg.id), "hackathon_id": str(hackathon_id), "user_id": str(reg.user_id)},
+        {"registration_id": result["id"], "hackathon_id": str(hackathon_id), "user_id": result["user_id"]},
     )
 
-    return {"id": str(reg.id), "status": reg.status.value, "checked_in_at": reg.checked_in_at.isoformat()}
+    return result
 
 
 @router.post("/{hackathon_id}/registrations/{registration_id}/waitlist")
@@ -221,22 +221,26 @@ async def move_to_waitlist(
     auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Move a pending registration to waitlist. Organizer only."""
+    """Move a pending registration to waitlist. Organizer only.
+
+    Behavior:
+    1. Verify the organizer owns the hackathon.
+    2. Load the registration by id and hackathon_id.
+    3. Raise 404 if the registration is not found.
+    4. Raise 409 if the registration is not pending.
+    5. Update status to waitlisted.
+    6. Commit and return the updated registration details.
+
+    Raises: HTTPException(404) if hackathon or registration not found. HTTPException(409) if registration not pending.
+    Side Effects: Mutates Registration status.
+    Dependencies: app.models.Registration.
+    Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/waitlist, organizer dashboard.
+    """
     user = auth["user"]
-    hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
+    await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
-    query = select(Registration).where(
-        and_(Registration.id == registration_id, Registration.hackathon_id == hackathon_id)
-    )
-    result = await db.execute(query)
-    reg = result.scalar_one_or_none()
-    if not reg:
-        raise HTTPException(status_code=404, detail="Registration not found")
-    if reg.status != RegistrationStatus.pending:
-        raise HTTPException(status_code=409, detail=f"Cannot waitlist a {reg.status.value} registration")
-
-    reg.status = RegistrationStatus.waitlisted
-    await db.commit()
+    service = RegistrationService()
+    reg = await service.waitlist_registration(db, hackathon_id, registration_id)
 
     return {"id": str(reg.id), "status": reg.status.value}
 
@@ -248,23 +252,23 @@ async def remove_from_waitlist(
     auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Move a waitlisted registration back to pending. Organizer only."""
+    """Move a waitlisted registration back to pending. Organizer only.
+
+    Behavior:
+    1. Verify the organizer owns the hackathon.
+    2. Delegate to RegistrationService.unwaitlist_registration.
+    3. Return the updated registration details.
+
+    Raises: HTTPException(404) if hackathon or registration not found. HTTPException(409) if registration not waitlisted.
+    Side Effects: Mutates Registration status and declined_count.
+    Dependencies: app.services.registration_service.RegistrationService.
+    Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/unwaitlist, organizer dashboard.
+    """
     user = auth["user"]
-    hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
+    await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
-    query = select(Registration).where(
-        and_(Registration.id == registration_id, Registration.hackathon_id == hackathon_id)
-    )
-    result = await db.execute(query)
-    reg = result.scalar_one_or_none()
-    if not reg:
-        raise HTTPException(status_code=404, detail="Registration not found")
-    if reg.status != RegistrationStatus.waitlisted:
-        raise HTTPException(status_code=409, detail=f"Cannot unwaitlist a {reg.status.value} registration")
-
-    reg.status = RegistrationStatus.pending
-    reg.declined_count = 0
-    await db.commit()
+    service = RegistrationService()
+    reg = await service.unwaitlist_registration(db, hackathon_id, registration_id)
 
     return {"id": str(reg.id), "status": reg.status.value}
 
@@ -275,18 +279,127 @@ async def manual_promote_waitlist(
     auth: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Manually promote top waitlisted person to offered. Organizer only."""
-    user = auth["user"]
-    hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
+    """Manually promote top waitlisted person to offered. Organizer only.
 
-    promoted = await promote_from_waitlist(hackathon_id, db)
-    if not promoted:
-        raise HTTPException(status_code=409, detail="No one to promote or hackathon at capacity")
+    Behavior:
+    1. Verify the organizer owns the hackathon.
+    2. Delegate to RegistrationService.manual_promote_waitlist.
+    3. Return the promoted registration details.
+
+    Raises: HTTPException(404) if hackathon not found. HTTPException(409) if no one to promote or at capacity.
+    Side Effects: Mutates Registration status and offer_expires_at via waitlist promotion.
+    Dependencies: app.services.registration_service.RegistrationService.
+    Consumers: POST /api/hackathons/{hackathon_id}/waitlist/promote, organizer dashboard.
+    """
+    user = auth["user"]
+    await _verify_organizer_owns_hackathon(user, hackathon_id, db)
+
+    service = RegistrationService()
+    promoted = await service.manual_promote_waitlist(db, hackathon_id)
 
     return {
         "id": str(promoted.id),
         "status": promoted.status.value,
         "offer_expires_at": promoted.offer_expires_at.isoformat(),
+    }
+
+
+@router.get("/{hackathon_id}/registrations/dietary-report")
+async def get_dietary_report(
+    hackathon_id: uuid.UUID,
+    auth: dict = Depends(require_organizer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return aggregated dietary restrictions for accepted registrations. Organizer only.
+
+    Behavior:
+    1. Verify the organizer owns the hackathon.
+    2. Query accepted registrations with their users.
+    3. Aggregate counts by dietary restriction value.
+    4. Return both summary and individual entries.
+
+    Raises: HTTPException(404) if hackathon not found or not owned.
+    Side Effects: None (read-only).
+    Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_organizer.
+    Consumers: GET /api/hackathons/{hackathon_id}/registrations/dietary-report, organizer dashboard.
+    """
+    user = auth["user"]
+    await _verify_organizer_owns_hackathon(user, hackathon_id, db)
+
+    result = await db.execute(
+        select(Registration, User)
+        .join(User, Registration.user_id == User.id)
+        .where(Registration.hackathon_id == hackathon_id)
+        .where(Registration.status == RegistrationStatus.accepted)
+    )
+    rows = result.all()
+
+    summary: dict[str, int] = {}
+    participants = []
+    for reg, user_obj in rows:
+        restriction = reg.dietary_restrictions or "None"
+        summary[restriction] = summary.get(restriction, 0) + 1
+        participants.append(
+            {
+                "user_id": user_obj.id,
+                "name": user_obj.name,
+                "email": user_obj.email,
+                "dietary_restrictions": restriction,
+            }
+        )
+
+    return {
+        "total": len(rows),
+        "summary": summary,
+        "participants": participants,
+    }
+
+
+@router.get("/{hackathon_id}/registrations/emergency-contacts")
+async def get_emergency_contacts(
+    hackathon_id: uuid.UUID,
+    auth: dict = Depends(require_organizer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return emergency contact info for all accepted participants. Organizer only.
+
+    Behavior:
+    1. Verify the organizer owns the hackathon.
+    2. Query accepted registrations with their users.
+    3. Return name, phone, emergency contact name and phone for each.
+
+    Raises: HTTPException(404) if hackathon not found or not owned.
+    Side Effects: None (read-only).
+    Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_organizer.
+    Consumers: GET /api/hackathons/{hackathon_id}/registrations/emergency-contacts, organizer dashboard.
+    """
+    user = auth["user"]
+    await _verify_organizer_owns_hackathon(user, hackathon_id, db)
+
+    result = await db.execute(
+        select(Registration, User)
+        .join(User, Registration.user_id == User.id)
+        .where(Registration.hackathon_id == hackathon_id)
+        .where(Registration.status == RegistrationStatus.accepted)
+    )
+    rows = result.all()
+
+    contacts = []
+    for reg, user_obj in rows:
+        contacts.append(
+            {
+                "user_id": user_obj.id,
+                "name": user_obj.name,
+                "email": user_obj.email,
+                "phone": reg.phone,
+                "emergency_contact_name": reg.emergency_contact_name,
+                "emergency_contact_phone": reg.emergency_contact_phone,
+            }
+        )
+
+    return {
+        "total": len(contacts),
+        "contacts": contacts,
     }
 
 
@@ -298,43 +411,20 @@ async def list_waitlist(
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """List waitlisted registrations with position. Organizer only."""
+    """List waitlisted registrations with position. Organizer only.
+
+    Behavior:
+    1. Verify the organizer owns the hackathon.
+    2. Delegate to RegistrationService.list_waitlist.
+    3. Return the waitlist with pagination metadata.
+
+    Raises: HTTPException(404) if hackathon not found or not owned.
+    Side Effects: None (read-only).
+    Dependencies: app.services.registration_service.RegistrationService, app.clerk_auth.require_organizer.
+    Consumers: GET /api/hackathons/{hackathon_id}/waitlist, organizer dashboard.
+    """
     user = auth["user"]
-    hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
+    await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
-    # Get waitlist ordered by priority
-    result = await db.execute(
-        select(Registration)
-        .where(Registration.hackathon_id == hackathon_id)
-        .where(Registration.status == RegistrationStatus.waitlisted)
-        .order_by(Registration.declined_count.asc(), Registration.registered_at.asc())
-        .offset(offset)
-        .limit(limit)
-    )
-    registrations = result.scalars().all()
-
-    # Get users
-    user_ids = [r.user_id for r in registrations]
-    users_result = await db.execute(select(User).where(User.id.in_(user_ids)))
-    users = {str(u.id): u for u in users_result.scalars().all()}
-
-    # Calculate positions (1-indexed)
-    base_position = offset + 1
-    return {
-        "waitlist": [
-            {
-                "id": str(r.id),
-                "position": base_position + idx,
-                "user_name": users.get(str(r.user_id)).name if str(r.user_id) in users else None,
-                "user_email": users.get(str(r.user_id)).email if str(r.user_id) in users else None,
-                "registered_at": r.registered_at.isoformat(),
-                "declined_count": r.declined_count or 0,
-                "dietary_restrictions": r.dietary_restrictions,
-                "t_shirt_size": r.t_shirt_size,
-            }
-            for idx, r in enumerate(registrations)
-        ],
-        "total": len(registrations),
-        "offset": offset,
-        "limit": limit,
-    }
+    service = RegistrationService()
+    return await service.list_waitlist(db, hackathon_id, offset=offset, limit=limit)

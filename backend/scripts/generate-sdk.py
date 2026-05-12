@@ -16,9 +16,9 @@ from pathlib import Path
 from typing import Any
 
 
-def _resolve_ref(spec: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
+def _resolve_ref(spec: dict[str, Any], schema: Any) -> Any:
     """Resolve a $ref to the actual schema object."""
-    if "$ref" not in schema:
+    if not isinstance(schema, dict) or "$ref" not in schema:
         return schema
     ref = schema["$ref"]
     if not ref.startswith("#/components/schemas/"):
@@ -33,6 +33,9 @@ def _openapi_type_to_ts(spec: dict[str, Any], schema: dict[str, Any]) -> str:
         return "unknown"
 
     schema = _resolve_ref(spec, schema)
+
+    if not isinstance(schema, dict):
+        return "unknown"
 
     if "$ref" in schema:
         ref = schema["$ref"]
