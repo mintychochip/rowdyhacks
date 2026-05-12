@@ -8,6 +8,7 @@ RUN npm ci --legacy-peer-deps
 
 # Copy source and build
 COPY . .
+ARG VITE_CLERK_PUBLISHABLE_KEY
 RUN npm run build
 
 # Production stage with nginx
