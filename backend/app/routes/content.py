@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache import cache_delete_pattern, cached
-from app.clerk_auth import require_organizer
+from app.auth import require_organizer
 from app.database import get_db
 from app.models import ContentPage, User
 
@@ -121,7 +121,7 @@ async def get_page(slug: str, db: AsyncSession = Depends(get_db)):
 async def create_page(
     request: Request,
     body: dict,
-    user_payload: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new content page (organizer only).
@@ -139,7 +139,7 @@ async def create_page(
     Dependencies: app.models.ContentPage, app.cache.cache_delete_pattern.
     Consumers: POST /api/content/pages, organizer dashboard.
     """
-    user = user_payload["user"]
+    user = current_user["user"]
 
     # Validate slug or generate from title
     title = body.get("title", "").strip()
@@ -180,7 +180,7 @@ async def update_page(
     request: Request,
     slug: str,
     body: dict,
-    user_payload: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Update a content page (organizer only).
@@ -228,7 +228,7 @@ async def update_page(
 async def delete_page(
     request: Request,
     slug: str,
-    user_payload: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a content page (organizer only).

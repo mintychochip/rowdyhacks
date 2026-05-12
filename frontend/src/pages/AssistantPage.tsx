@@ -80,14 +80,14 @@ export default function AssistantPage() {
   async function initAgent() {
     try {
       const { tools } = await getAvailableTools();
-      const systemPrompt = await buildSystemPrompt(tools as any);
+      const systemPrompt = await buildSystemPrompt(tools);
 
       const agent = new AgentLoop({
         model: selectedModel,
         systemPrompt,
         tools: tools.map(t => ({
           ...unwrapTool(t),
-          execute: async (params: Record<string, unknown>) => {
+          execute: async (params) => {
             const name = (t as any).function?.name ?? (t as any).name;
             const token = localStorage.getItem('auth_token') || '';
             const res = await fetch(`/api/assistant/execute-tool`, {
@@ -102,7 +102,7 @@ export default function AssistantPage() {
             const data = await res.json();
             return JSON.stringify(data.result);
           },
-        })) as any,
+        })),
         maxIterations: 5,
         onEvent: () => {}, // set per-send in handleSendMessage
       });
@@ -140,14 +140,7 @@ export default function AssistantPage() {
     try {
       setIsLoading(true);
       const data = await getConversation(id);
-      setMessages(data.messages.map((m: any) => ({
-        id: m.id,
-        role: m.role,
-        content: m.content,
-        createdAt: m.created_at,
-        toolCalls: m.tool_calls,
-        tool_results: m.tool_results,
-      })));
+      setMessages(data.messages);
       setError(null);
     } catch (err: any) {
       setError('Failed to load conversation');
@@ -212,7 +205,7 @@ export default function AssistantPage() {
 
       // Get tools and build fresh system prompt for this query
       const { tools } = await getAvailableTools();
-      const systemPrompt = await buildSystemPrompt(tools as any, content);
+      const systemPrompt = await buildSystemPrompt(tools, content);
 
       // Create agent with updated system prompt (has RAG context for this query)
       const agent = new AgentLoop({
@@ -220,7 +213,7 @@ export default function AssistantPage() {
         systemPrompt,
         tools: tools.map(t => ({
           ...unwrapTool(t),
-          execute: async (params: Record<string, unknown>) => {
+          execute: async (params) => {
             const name = (t as any).function?.name ?? (t as any).name;
             const token = localStorage.getItem('auth_token') || '';
             const res = await fetch(`/api/assistant/execute-tool`, {
@@ -235,7 +228,7 @@ export default function AssistantPage() {
             const data = await res.json();
             return JSON.stringify(data.result);
           },
-        })) as any,
+        })),
         maxIterations: 5,
         onEvent: (event) => {
           switch (event.type) {

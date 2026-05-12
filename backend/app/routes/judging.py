@@ -9,7 +9,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clerk_auth import require_organizer
+from app.auth import require_organizer
 from app.database import get_db
 from app.schemas import JudgingSessionCreate, SubmitScoreRequest
 from app.services.judging_service import JudgingService
@@ -47,7 +47,7 @@ async def create_judging_session(
     hackathon_id: uuid.UUID,
     body: JudgingSessionCreate,
     db: AsyncSession = Depends(get_db),
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
 ):
     """Create or replace a judging session with rubric criteria (organizer only)."""
     try:

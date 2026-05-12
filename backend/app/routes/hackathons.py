@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache import cache_delete_pattern, cached
 from app.checks.similarity import run_similarity
-from app.clerk_auth import require_clerk_user_with_db
+from app.auth import get_current_user
 from app.database import get_db
 from app.models import (
     ConflictOfInterest,
@@ -82,7 +82,7 @@ async def _ensure_organizer(user: User, hackathon: Hackathon, db: AsyncSession):
 @router.post("", status_code=201)
 async def create_hackathon(
     body: HackathonCreate,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new hackathon (organizer-only, one per portal).
@@ -101,7 +101,7 @@ async def create_hackathon(
     Dependencies: app.models.Hackathon, app.models.UserRole, app.routes.tracks.seed_tracks, app.cache.cache_delete_pattern.
     Consumers: POST /api/hackathons, organizer setup wizard.
     """
-    user = auth["user"]
+    user = current_user
     if user.role != UserRole.organizer:
         raise HTTPException(status_code=403, detail="Only organizers can create hackathons")
 
@@ -289,7 +289,7 @@ async def get_hackathon_stats(hackathon_id: uuid.UUID, db: AsyncSession = Depend
 @router.get("/{hackathon_id}/swag-counts")
 async def get_swag_counts(
     hackathon_id: uuid.UUID,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get meal and swag planning counts for accepted participants (organizer only).
@@ -305,7 +305,7 @@ async def get_swag_counts(
     Dependencies: app.models.Hackathon, app.models.Registration, app.models.RegistrationStatus.
     Consumers: GET /api/hackathons/{hackathon_id}/swag-counts, organizer logistics panel.
     """
-    user = auth["user"]
+    user = current_user
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -378,7 +378,7 @@ async def get_hackathon_submissions(hackathon_id: uuid.UUID, db: AsyncSession = 
 async def update_hackathon(
     hackathon_id: uuid.UUID,
     body: dict,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Update hackathon settings (organizer only).
@@ -394,7 +394,7 @@ async def update_hackathon(
     Dependencies: app.models.Hackathon, app.cache.cache_delete_pattern.
     Consumers: PUT /api/hackathons/{hackathon_id}, organizer settings form.
     """
-    user = auth["user"]
+    user = current_user
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -461,7 +461,7 @@ async def run_hackathon_similarity(hackathon_id: uuid.UUID, db: AsyncSession = D
 async def bulk_accept_registrations(
     hackathon_id: uuid.UUID,
     registration_ids: list[uuid.UUID],
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Bulk accept pending registrations with capacity and waitlist handling (organizer only).
@@ -480,7 +480,7 @@ async def bulk_accept_registrations(
     Dependencies: app.models.Hackathon, app.models.Registration, app.models.RegistrationStatus.
     Consumers: POST /api/hackathons/{hackathon_id}/registrations/bulk-accept, organizer registration panel.
     """
-    user = auth["user"]
+    user = current_user
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -496,7 +496,7 @@ async def bulk_accept_registrations(
 async def bulk_reject_registrations(
     hackathon_id: uuid.UUID,
     registration_ids: list[uuid.UUID],
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Bulk reject pending or waitlisted registrations (organizer only).
@@ -511,7 +511,7 @@ async def bulk_reject_registrations(
     Dependencies: app.services.registration_service.RegistrationService.
     Consumers: POST /api/hackathons/{hackathon_id}/registrations/bulk-reject, organizer registration panel.
     """
-    user = auth["user"]
+    user = current_user
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -527,7 +527,7 @@ async def bulk_reject_registrations(
 async def bulk_waitlist_registrations(
     hackathon_id: uuid.UUID,
     registration_ids: list[uuid.UUID],
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Bulk waitlist pending registrations (organizer only).
@@ -542,7 +542,7 @@ async def bulk_waitlist_registrations(
     Dependencies: app.services.registration_service.RegistrationService.
     Consumers: POST /api/hackathons/{hackathon_id}/registrations/bulk-waitlist, organizer registration panel.
     """
-    user = auth["user"]
+    user = current_user
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -557,7 +557,7 @@ async def bulk_waitlist_registrations(
 @router.get("/{hackathon_id}/registrations/export")
 async def export_registrations_csv(
     hackathon_id: uuid.UUID,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Export all hackathon registrations to CSV (organizer only).
@@ -572,7 +572,7 @@ async def export_registrations_csv(
     Dependencies: app.services.registration_service.RegistrationService, fastapi.responses.StreamingResponse.
     Consumers: GET /api/hackathons/{hackathon_id}/registrations/export, organizer data export.
     """
-    user = auth["user"]
+    user = current_user
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -597,7 +597,7 @@ async def export_registrations_csv(
 async def create_announcement(
     hackathon_id: uuid.UUID,
     body: AnnouncementCreate,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Create and broadcast an announcement to all hackathon participants (organizer only).
@@ -612,7 +612,7 @@ async def create_announcement(
     Dependencies: app.models.Hackathon, app.models.Announcement, app.schemas.AnnouncementCreate, app.schemas.AnnouncementResponse.
     Consumers: POST /api/hackathons/{hackathon_id}/announcements, organizer communication panel.
     """
-    user = auth["user"]
+    user = current_user
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -629,7 +629,7 @@ async def create_announcement(
 @router.get("/{hackathon_id}/announcements")
 async def list_announcements(
     hackathon_id: uuid.UUID,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """List announcements for a hackathon with role-based filtering.
@@ -645,7 +645,7 @@ async def list_announcements(
     Dependencies: app.models.Hackathon, app.models.Registration, app.models.Announcement, app.schemas.AnnouncementResponse.
     Consumers: GET /api/hackathons/{hackathon_id}/announcements, participant and organizer announcement feeds.
     """
-    user = auth["user"]
+    user = current_user
 
     # Check if user has access to this hackathon
     reg_result = await db.execute(
@@ -675,7 +675,7 @@ async def list_announcements(
 async def declare_conflict_of_interest(
     hackathon_id: uuid.UUID,
     body: ConflictOfInterestCreate,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Declare a conflict of interest for a submission (judge only).
@@ -692,7 +692,7 @@ async def declare_conflict_of_interest(
     Dependencies: app.models.Hackathon, app.models.Submission, app.models.ConflictOfInterest, app.models.UserRole, app.schemas.ConflictOfInterestCreate, app.schemas.ConflictOfInterestResponse.
     Consumers: POST /api/hackathons/{hackathon_id}/conflicts-of-interest, judge dashboard.
     """
-    user = auth["user"]
+    user = current_user
 
     if user.role != UserRole.judge:
         raise HTTPException(status_code=403, detail="Only judges can declare conflicts of interest")
@@ -734,7 +734,7 @@ async def declare_conflict_of_interest(
 @router.get("/{hackathon_id}/conflicts-of-interest")
 async def list_conflicts_of_interest(
     hackathon_id: uuid.UUID,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """List all conflicts of interest for a hackathon (organizer only).
@@ -749,7 +749,7 @@ async def list_conflicts_of_interest(
     Dependencies: app.models.Hackathon, app.models.ConflictOfInterest, app.schemas.ConflictOfInterestResponse.
     Consumers: GET /api/hackathons/{hackathon_id}/conflicts-of-interest, organizer judging panel.
     """
-    user = auth["user"]
+    user = current_user
 
     hack_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hack_result.scalar_one_or_none()
@@ -768,7 +768,7 @@ async def list_conflicts_of_interest(
 async def remove_conflict_of_interest(
     hackathon_id: uuid.UUID,
     coi_id: uuid.UUID,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Remove a conflict of interest declaration.
@@ -784,7 +784,7 @@ async def remove_conflict_of_interest(
     Dependencies: app.models.Hackathon, app.models.ConflictOfInterest, app.models.UserRole.
     Consumers: DELETE /api/hackathons/{hackathon_id}/conflicts-of-interest/{coi_id}, organizer or judge dashboard.
     """
-    user = auth["user"]
+    user = current_user
 
     coi_result = await db.execute(
         select(ConflictOfInterest).where(
@@ -815,7 +815,7 @@ async def remove_conflict_of_interest(
 @router.get("/{hackathon_id}/organizers")
 async def list_organizers(
     hackathon_id: uuid.UUID,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """List all organizers for a hackathon (primary + co-organizers).
@@ -831,7 +831,7 @@ async def list_organizers(
     Dependencies: app.models.Hackathon, app.models.HackathonOrganizer, app.models.User.
     Consumers: GET /api/hackathons/{hackathon_id}/organizers, organizer team management page.
     """
-    user = auth["user"]
+    user = current_user
 
     hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hackathon_result.scalar_one_or_none()
@@ -880,7 +880,7 @@ async def list_organizers(
 async def add_organizer(
     hackathon_id: uuid.UUID,
     body: dict,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Add a co-organizer to the hackathon (primary organizer only).
@@ -898,7 +898,7 @@ async def add_organizer(
     Dependencies: app.models.Hackathon, app.models.HackathonOrganizer, app.models.User.
     Consumers: POST /api/hackathons/{hackathon_id}/organizers, organizer team management page.
     """
-    user = auth["user"]
+    user = current_user
 
     hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hackathon_result.scalar_one_or_none()
@@ -957,7 +957,7 @@ async def add_organizer(
 async def remove_organizer(
     hackathon_id: uuid.UUID,
     user_id: str,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Remove a co-organizer from the hackathon (primary organizer only).
@@ -973,7 +973,6 @@ async def remove_organizer(
     Dependencies: app.models.Hackathon, app.models.HackathonOrganizer.
     Consumers: DELETE /api/hackathons/{hackathon_id}/organizers/{user_id}, organizer team management page.
     """
-    current_user = auth["user"]
 
     hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = hackathon_result.scalar_one_or_none()
@@ -1012,7 +1011,7 @@ DEVPOST_PROJECT_RE = re.compile(r"/software/([^/?#]+)")
 @router.post("/{hackathon_id}/import-devpost")
 async def import_devpost_submissions(
     hackathon_id: uuid.UUID,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Scrape a Devpost hackathon gallery and import project URLs for analysis (organizer only).
@@ -1031,7 +1030,7 @@ async def import_devpost_submissions(
     Dependencies: app.models.Hackathon, app.models.Submission, app.models.SubmissionStatus, app.analyzer.analyze_submission, app.auth.create_anonymous_token, httpx.AsyncClient, bs4.BeautifulSoup.
     Consumers: POST /api/hackathons/{hackathon_id}/import-devpost, organizer submission import tool.
     """
-    user = auth["user"]
+    user = current_user
     if user.role != UserRole.organizer:
         raise HTTPException(status_code=403, detail="Only organizers can import")
 
@@ -1200,7 +1199,7 @@ class EmailBlastRequest(BaseModel):
 async def email_blast(
     hackathon_id: str,
     body: EmailBlastRequest,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Send a bulk email to a registrant cohort (organizer only).
@@ -1215,7 +1214,7 @@ async def email_blast(
     Dependencies: app.services.email_blast_service.EmailBlastService.
     Consumers: POST /api/hackathons/{id}/email-blast, organizer communications panel.
     """
-    user = auth["user"]
+    user = current_user
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
     hackathon = result.scalar_one_or_none()
     if not hackathon:
@@ -1246,7 +1245,7 @@ async def email_blast(
 @router.get("/{hackathon_id}/analytics")
 async def get_hackathon_analytics(
     hackathon_id: uuid.UUID,
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get analytics metrics for a hackathon (organizer only).
@@ -1259,7 +1258,7 @@ async def get_hackathon_analytics(
 
     Raises: HTTPException(403) if not organizer, HTTPException(404) if hackathon not found.
     """
-    user = auth["user"]
+    user = current_user
     if user.role != UserRole.organizer:
         raise HTTPException(status_code=403, detail="Organizer access required")
 
@@ -1278,7 +1277,7 @@ async def get_hackathon_audit_log(
     hackathon_id: uuid.UUID,
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    auth: dict = Depends(require_clerk_user_with_db),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get audit log entries for a hackathon (organizer only).
@@ -1290,7 +1289,7 @@ async def get_hackathon_audit_log(
 
     Raises: HTTPException(403) if not organizer.
     """
-    user = auth["user"]
+    user = current_user
     if user.role != UserRole.organizer:
         raise HTTPException(status_code=403, detail="Organizer access required")
 

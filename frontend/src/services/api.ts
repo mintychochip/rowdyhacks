@@ -1,22 +1,14 @@
+import { getAccessToken } from "../hooks/useAuth";
+
 const BASE = import.meta.env.VITE_API_URL || '/api';
 
-// Token getter function - set by AuthContext to get fresh Clerk tokens
-let getTokenFunc: (() => Promise<string | null>) | null = null;
-
-export function setTokenGetter(fn: () => Promise<string | null>) {
-  getTokenFunc = fn;
+// Deprecated: kept for backward compatibility with AuthContext during migration
+export function setTokenGetter(_fn: () => Promise<string | null>) {
+  // no-op — token now comes from getAccessToken in useAuth
 }
 
 async function getAuthToken(): Promise<string | null> {
-  if (getTokenFunc) {
-    try {
-      const token = await getTokenFunc();
-      if (token) return token;
-    } catch (e) {
-      console.error('Failed to get fresh token:', e);
-    }
-  }
-  return null;
+  return getAccessToken();
 }
 
 export async function request(path: string, options: RequestInit = {}) {
@@ -37,6 +29,28 @@ export async function request(path: string, options: RequestInit = {}) {
       signal: controller.signal
     });
     clearTimeout(timeoutId);
+
+    if (res.status === 401 && token) {
+      // Try refresh once
+      const refreshRes = await fetch("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (refreshRes.ok) {
+        const data = await refreshRes.json();
+        const newToken = data.access_token;
+        const retryHeaders = { ...headers, Authorization: `Bearer ${newToken}` };
+        const retryRes = await fetch(`${BASE}${path}`, {
+          ...options,
+          headers: retryHeaders,
+        });
+        if (!retryRes.ok) {
+          const err = await retryRes.json().catch(() => ({ detail: retryRes.statusText }));
+          throw new Error(err.detail || "Request failed");
+        }
+        return retryRes.json();
+      }
+    }
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));

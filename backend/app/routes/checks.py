@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clerk_auth import is_clerk_token, decode_clerk_token, extract_clerk_user_id
+from app.auth import verify_access_token
 from app.database import get_db
 from app.models import Hackathon
 from app.schemas import SubmitRequest
@@ -203,7 +203,7 @@ async def get_check_report(
 
     Raises: HTTPException(404) if submission not found, HTTPException(403) if access denied.
     Side Effects: None (read-only).
-    Dependencies: app.clerk_auth.is_clerk_token, app.clerk_auth.decode_clerk_token, app.models.Submission, app.models.User, app.services.submission_service.SubmissionService.
+    Dependencies: app.auth.verify_access_token, app.models.Submission, app.models.User, app.services.submission_service.SubmissionService.
     Consumers: GET /api/check/{submission_id}/report, report viewer.
     """
     report = await submission_service.get_submission_report(db, submission_id)
@@ -216,19 +216,18 @@ async def get_check_report(
     is_organizer = False
     if authorization and authorization.startswith("Bearer "):
         jwt_token = authorization.removeprefix("Bearer ")
-        if is_clerk_token(jwt_token):
-            try:
-                payload = await decode_clerk_token(jwt_token)
-                user_id = extract_clerk_user_id(payload)
-                if user_id:
-                    from app.models import User
+        try:
+            payload = verify_access_token(jwt_token)
+            user_id = payload.get("sub")
+            if user_id:
+                from app.models import User
 
-                    result = await db.execute(select(User).where(User.id == user_id))
-                    user = result.scalar_one_or_none()
-                    if user and user.role.value == "organizer":
-                        is_organizer = True
-            except Exception:
-                pass
+                result = await db.execute(select(User).where(User.id == user_id))
+                user = result.scalar_one_or_none()
+                if user and user.role.value == "organizer":
+                    is_organizer = True
+        except Exception:
+            pass
 
     # Token check (skip if organizer)
     if not is_organizer and sub.access_token and sub.access_token != token:

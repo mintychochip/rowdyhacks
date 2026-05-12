@@ -5,9 +5,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clerk_auth import require_organizer
+from app.auth import require_organizer
 from app.database import get_db
-from app.models import WebhookSubscription
+from app.models import User, WebhookSubscription
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
@@ -52,7 +52,7 @@ class SubscriptionResponse(BaseModel):
 async def subscribe(
     body: SubscribeRequest,
     db: AsyncSession = Depends(get_db),
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
 ):
     """Create a new webhook subscription (organizer only).
 
@@ -62,7 +62,7 @@ async def subscribe(
     3. Refresh and return the created subscription.
 
     Side Effects: Inserts WebhookSubscription row.
-    Dependencies: app.models.WebhookSubscription, app.clerk_auth.require_organizer.
+    Dependencies: app.models.WebhookSubscription, app.auth.require_organizer.
     Consumers: POST /api/webhooks/subscribe, organizer dashboard.
     """
     sub = WebhookSubscription(
@@ -86,7 +86,7 @@ async def subscribe(
 @router.get("/subscriptions", response_model=list[SubscriptionResponse])
 async def list_subscriptions(
     db: AsyncSession = Depends(get_db),
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
 ):
     """List all webhook subscriptions (organizer only).
 
@@ -96,7 +96,7 @@ async def list_subscriptions(
     3. Return the full list.
 
     Side Effects: None (read-only).
-    Dependencies: app.models.WebhookSubscription, app.clerk_auth.require_organizer.
+    Dependencies: app.models.WebhookSubscription, app.auth.require_organizer.
     Consumers: GET /api/webhooks/subscriptions, organizer dashboard.
     """
     result = await db.execute(select(WebhookSubscription))
@@ -117,7 +117,7 @@ async def list_subscriptions(
 async def delete_subscription(
     subscription_id: str,
     db: AsyncSession = Depends(get_db),
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
 ):
     """Delete a webhook subscription (organizer only).
 
@@ -128,7 +128,7 @@ async def delete_subscription(
 
     Raises: HTTPException(404) if subscription not found.
     Side Effects: Deletes WebhookSubscription row.
-    Dependencies: app.models.WebhookSubscription, app.clerk_auth.require_organizer.
+    Dependencies: app.models.WebhookSubscription, app.auth.require_organizer.
     Consumers: DELETE /api/webhooks/subscriptions/{subscription_id}, organizer dashboard.
     """
     from uuid import UUID

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clerk_auth import require_organizer
+from app.auth import require_organizer
 from app.database import get_db
 from app.models import Submission
 
@@ -19,7 +19,7 @@ async def get_dashboard(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
 ):
     """Get paginated submissions list. Organizer only.
 
@@ -32,7 +32,7 @@ async def get_dashboard(
 
     Raises: None
     Side Effects: None (read-only).
-    Dependencies: app.models.Submission, app.clerk_auth.require_organizer.
+    Dependencies: app.models.Submission, app.auth.require_organizer.
     Consumers: GET /api/dashboard, organizer submissions review.
     """
     query = select(Submission)

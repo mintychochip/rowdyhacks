@@ -5,8 +5,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.clerk_auth import require_organizer
+from app.auth import require_organizer
 from app.database import get_db
 from app.models import Hackathon, HackathonOrganizer, Registration, RegistrationStatus, User
 from app.services.registration_service import RegistrationService
@@ -56,7 +55,7 @@ async def _verify_organizer_owns_hackathon(user: User, hackathon_id: uuid.UUID, 
 @router.get("/{hackathon_id}/registrations", operation_id="organizer_list_hackathon_registrations")
 async def list_hackathon_registrations(
     hackathon_id: uuid.UUID,
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
     status: str | None = Query(None),
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -73,10 +72,10 @@ async def list_hackathon_registrations(
 
     Raises: HTTPException(404) if hackathon not found or not owned.
     Side Effects: None (read-only).
-    Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_organizer.
+    Dependencies: app.models.Registration, app.models.User, app.auth.require_organizer.
     Consumers: GET /api/hackathons/{hackathon_id}/registrations, organizer dashboard.
     """
-    user = auth["user"]
+    user = current_user
     await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     service = RegistrationService()
@@ -99,7 +98,7 @@ async def list_hackathon_registrations(
 async def accept_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Approve a registration and generate QR token. Organizer only.
@@ -118,7 +117,7 @@ async def accept_registration(
     Dependencies: app.auth.create_qr_token, app.models.Registration, app.services.event_service.publish_event.
     Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/accept, organizer dashboard.
     """
-    user = auth["user"]
+    user = current_user
     hackathon = await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     service = RegistrationService()
@@ -144,7 +143,7 @@ async def accept_registration(
 async def reject_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Reject a registration. Organizer only.
@@ -163,7 +162,7 @@ async def reject_registration(
     Dependencies: app.models.Registration, app.waitlist.promote_from_waitlist.
     Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/reject, organizer dashboard.
     """
-    user = auth["user"]
+    user = current_user
     await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     service = RegistrationService()
@@ -176,7 +175,7 @@ async def reject_registration(
 async def checkin_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Check in a registration. Organizer only.
@@ -195,7 +194,7 @@ async def checkin_registration(
     Dependencies: app.services.scan_service.ScanService, app.services.event_service.publish_event.
     Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/checkin, organizer dashboard.
     """
-    user = auth["user"]
+    user = current_user
     await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     try:
@@ -218,7 +217,7 @@ async def checkin_registration(
 async def move_to_waitlist(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Move a pending registration to waitlist. Organizer only.
@@ -236,7 +235,7 @@ async def move_to_waitlist(
     Dependencies: app.models.Registration.
     Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/waitlist, organizer dashboard.
     """
-    user = auth["user"]
+    user = current_user
     await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     service = RegistrationService()
@@ -249,7 +248,7 @@ async def move_to_waitlist(
 async def remove_from_waitlist(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Move a waitlisted registration back to pending. Organizer only.
@@ -264,7 +263,7 @@ async def remove_from_waitlist(
     Dependencies: app.services.registration_service.RegistrationService.
     Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/unwaitlist, organizer dashboard.
     """
-    user = auth["user"]
+    user = current_user
     await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     service = RegistrationService()
@@ -276,7 +275,7 @@ async def remove_from_waitlist(
 @router.post("/{hackathon_id}/waitlist/promote")
 async def manual_promote_waitlist(
     hackathon_id: uuid.UUID,
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Manually promote top waitlisted person to offered. Organizer only.
@@ -291,7 +290,7 @@ async def manual_promote_waitlist(
     Dependencies: app.services.registration_service.RegistrationService.
     Consumers: POST /api/hackathons/{hackathon_id}/waitlist/promote, organizer dashboard.
     """
-    user = auth["user"]
+    user = current_user
     await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     service = RegistrationService()
@@ -307,7 +306,7 @@ async def manual_promote_waitlist(
 @router.get("/{hackathon_id}/registrations/dietary-report")
 async def get_dietary_report(
     hackathon_id: uuid.UUID,
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Return aggregated dietary restrictions for accepted registrations. Organizer only.
@@ -320,10 +319,10 @@ async def get_dietary_report(
 
     Raises: HTTPException(404) if hackathon not found or not owned.
     Side Effects: None (read-only).
-    Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_organizer.
+    Dependencies: app.models.Registration, app.models.User, app.auth.require_organizer.
     Consumers: GET /api/hackathons/{hackathon_id}/registrations/dietary-report, organizer dashboard.
     """
-    user = auth["user"]
+    user = current_user
     await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     result = await db.execute(
@@ -358,7 +357,7 @@ async def get_dietary_report(
 @router.get("/{hackathon_id}/registrations/emergency-contacts")
 async def get_emergency_contacts(
     hackathon_id: uuid.UUID,
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
     """Return emergency contact info for all accepted participants. Organizer only.
@@ -370,10 +369,10 @@ async def get_emergency_contacts(
 
     Raises: HTTPException(404) if hackathon not found or not owned.
     Side Effects: None (read-only).
-    Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_organizer.
+    Dependencies: app.models.Registration, app.models.User, app.auth.require_organizer.
     Consumers: GET /api/hackathons/{hackathon_id}/registrations/emergency-contacts, organizer dashboard.
     """
-    user = auth["user"]
+    user = current_user
     await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     result = await db.execute(
@@ -406,7 +405,7 @@ async def get_emergency_contacts(
 @router.get("/{hackathon_id}/waitlist")
 async def list_waitlist(
     hackathon_id: uuid.UUID,
-    auth: dict = Depends(require_organizer),
+    current_user: User = Depends(require_organizer),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -420,10 +419,10 @@ async def list_waitlist(
 
     Raises: HTTPException(404) if hackathon not found or not owned.
     Side Effects: None (read-only).
-    Dependencies: app.services.registration_service.RegistrationService, app.clerk_auth.require_organizer.
+    Dependencies: app.services.registration_service.RegistrationService, app.auth.require_organizer.
     Consumers: GET /api/hackathons/{hackathon_id}/waitlist, organizer dashboard.
     """
-    user = auth["user"]
+    user = current_user
     await _verify_organizer_owns_hackathon(user, hackathon_id, db)
 
     service = RegistrationService()

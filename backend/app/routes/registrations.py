@@ -8,11 +8,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import decode_token
-from app.clerk_auth import require_clerk_user
+from app.auth import decode_token, get_current_user
 from app.database import get_db
 from app.discord_bot import post_application_to_discord
-from app.models import Hackathon, HackathonOrganizer, RegistrationStatus, User, UserRole
+from app.models import Hackathon, HackathonInvite, HackathonOrganizer, Registration, RegistrationStatus, User, UserRole
 from app.schemas import RegistrationCreate
 from app.services.registration_service import RegistrationService
 from app.waitlist import get_waitlist_position
@@ -73,7 +72,7 @@ async def _ensure_hackathon_organizer(
 @router.get("/hackathons/{hackathon_id}/registrations")
 async def list_hackathon_registrations(
     hackathon_id: uuid.UUID,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     status: str | None = Query(None, description="Filter by status: pending, accepted, rejected, checked_in"),
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -90,10 +89,10 @@ async def list_hackathon_registrations(
 
     Raises: HTTPException(403) if user is not an organizer. HTTPException(422) if invalid status filter.
     Side Effects: None (read-only).
-    Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_clerk_user.
+    Dependencies: app.models.Registration, app.models.User, app.auth.get_current_user.
     Consumers: GET /api/hackathons/{hackathon_id}/registrations, organizer dashboard.
     """
-    await _ensure_hackathon_organizer(db, user_payload["sub"], hackathon_id)
+    await _ensure_hackathon_organizer(db, current_user.id, hackathon_id)
 
     service = RegistrationService()
     return await service.list_registrations_for_hackathon(db, hackathon_id, status=status, offset=offset, limit=limit)
@@ -103,7 +102,7 @@ async def list_hackathon_registrations(
 async def accept_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Accept a pending or waitlisted registration (organizer only).
@@ -119,10 +118,10 @@ async def accept_registration(
 
     Raises: HTTPException(403) if user is not an organizer. HTTPException(404) if registration not found. HTTPException(409) if registration not pending or waitlisted. HTTPException(400) if hackathon at capacity.
     Side Effects: Mutates Registration status, accepted_at; increments Hackathon.current_participants.
-    Dependencies: app.models.Registration, app.models.Hackathon, app.clerk_auth.require_clerk_user.
+    Dependencies: app.models.Registration, app.models.Hackathon, app.auth.get_current_user.
     Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/accept, organizer dashboard.
     """
-    hackathon = await _ensure_hackathon_organizer(db, user_payload["sub"], hackathon_id)
+    hackathon = await _ensure_hackathon_organizer(db, current_user.id, hackathon_id)
 
     service = RegistrationService()
     reg = await service.accept_registration(
@@ -140,7 +139,7 @@ async def accept_registration(
 async def reject_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Reject a pending registration (organizer only).
@@ -152,10 +151,10 @@ async def reject_registration(
 
     Raises: HTTPException(403) if user is not an organizer. HTTPException(404) if registration not found. HTTPException(409) if registration not pending.
     Side Effects: Mutates Registration status.
-    Dependencies: app.services.registration_service.RegistrationService, app.clerk_auth.require_clerk_user.
+    Dependencies: app.services.registration_service.RegistrationService, app.auth.get_current_user.
     Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/reject, organizer dashboard.
     """
-    await _ensure_hackathon_organizer(db, user_payload["sub"], hackathon_id)
+    await _ensure_hackathon_organizer(db, current_user.id, hackathon_id)
 
     service = RegistrationService()
     reg = await service.reject_registration(db, hackathon_id, registration_id)
@@ -166,7 +165,7 @@ async def reject_registration(
 async def checkin_registration(
     hackathon_id: uuid.UUID,
     registration_id: uuid.UUID,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Check in a registration (organizer action). Only accepted registrations can be checked in.
@@ -178,10 +177,10 @@ async def checkin_registration(
 
     Raises: HTTPException(403) if user is not an organizer. HTTPException(404) if registration not found. HTTPException(409) if registration not accepted.
     Side Effects: Mutates Registration status and checked_in_at.
-    Dependencies: app.services.registration_service.RegistrationService, app.clerk_auth.require_clerk_user.
+    Dependencies: app.services.registration_service.RegistrationService, app.auth.get_current_user.
     Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/checkin, organizer dashboard.
     """
-    await _ensure_hackathon_organizer(db, user_payload["sub"], hackathon_id)
+    await _ensure_hackathon_organizer(db, current_user.id, hackathon_id)
 
     service = RegistrationService()
     reg = await service.checkin_registration(db, hackathon_id, registration_id)
@@ -193,7 +192,7 @@ async def register_for_hackathon(
     hackathon_id: uuid.UUID,
     body: RegistrationCreate,
     background_tasks: BackgroundTasks,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Register current user for a hackathon.
@@ -215,7 +214,7 @@ async def register_for_hackathon(
     Dependencies: app.models.Registration, app.models.Hackathon, app.models.User, app.discord_bot.post_application_to_discord, app.services.event_service.publish_event.
     Consumers: POST /api/hackathons/{hackathon_id}/register, participant registration form.
     """
-    user_result = await db.execute(select(User).where(User.id == user_payload["sub"]))
+    user_result = await db.execute(select(User).where(User.id == current_user.id))
     user = user_result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
@@ -225,6 +224,25 @@ async def register_for_hackathon(
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
 
+    # Invite-only validation
+    if hackathon.registration_mode == "invite_only":
+        invite_code = body.invite_code
+        if not invite_code:
+            raise HTTPException(status_code=400, detail="Invite code required for this hackathon")
+        invite_result = await db.execute(
+            select(HackathonInvite).where(
+                HackathonInvite.code == invite_code,
+                HackathonInvite.hackathon_id == hackathon_id,
+                HackathonInvite.uses_remaining > 0,
+                (HackathonInvite.expires_at.is_(None)) | (HackathonInvite.expires_at > datetime.now(UTC)),
+            )
+        )
+        invite = invite_result.scalar_one_or_none()
+        if not invite:
+            raise HTTPException(status_code=400, detail="Invalid or expired invite code")
+        invite.uses_remaining -= 1
+
+    # Check application deadline
     if hackathon.application_deadline and datetime.now(UTC) > hackathon.application_deadline:
         raise HTTPException(status_code=400, detail="Application deadline has passed")
 
@@ -268,7 +286,7 @@ async def register_for_hackathon(
 
     # Reload with answers for response
     from sqlalchemy.orm import selectinload
-    from app.models import Registration, RegistrationAnswer
+    from app.models import RegistrationAnswer
 
     result = await db.execute(
         select(Registration)
@@ -290,7 +308,7 @@ async def register_for_hackathon(
 
 @router.get("/registrations")
 async def list_my_registrations(
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     offset: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -306,10 +324,10 @@ async def list_my_registrations(
 
     Raises: HTTPException(401) if user not found.
     Side Effects: None (read-only).
-    Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_clerk_user.
+    Dependencies: app.models.Registration, app.models.User, app.auth.get_current_user.
     Consumers: GET /api/registrations, participant profile.
     """
-    result = await db.execute(select(User).where(User.id == user_payload["sub"]))
+    result = await db.execute(select(User).where(User.id == current_user.id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
@@ -321,7 +339,7 @@ async def list_my_registrations(
 @router.get("/registrations/{registration_id}")
 async def get_registration(
     registration_id: uuid.UUID,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a single registration. RLS: own only.
@@ -334,10 +352,10 @@ async def get_registration(
 
     Raises: HTTPException(401) if user not found. HTTPException(404) if registration not found or does not belong to user.
     Side Effects: None (read-only).
-    Dependencies: app.services.registration_service.RegistrationService, app.clerk_auth.require_clerk_user.
+    Dependencies: app.services.registration_service.RegistrationService, app.auth.get_current_user.
     Consumers: GET /api/registrations/{registration_id}, participant profile.
     """
-    result = await db.execute(select(User).where(User.id == user_payload["sub"]))
+    result = await db.execute(select(User).where(User.id == current_user.id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
@@ -351,14 +369,14 @@ async def get_registration(
 async def update_registration(
     registration_id: uuid.UUID,
     body: RegistrationCreate,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Update a pending registration and its answers."""
     from sqlalchemy.orm import selectinload
-    from app.models import Registration, RegistrationAnswer, RegistrationStatus
+    from app.models import RegistrationAnswer, RegistrationStatus
 
-    result = await db.execute(select(User).where(User.id == user_payload["sub"]))
+    result = await db.execute(select(User).where(User.id == current_user.id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")

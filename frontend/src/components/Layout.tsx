@@ -223,7 +223,7 @@ export default function Layout() {
     { to: '/judge', label: 'Judge Portal', roles: ['judge'] },
   ];
 
-  const NAV_ITEMS = rawNav.filter((item): item is { to: string; label: string; roles?: string[]; children?: { to: string; label: string }[] } => item.to !== null);
+  const NAV_ITEMS = rawNav.filter((item): item is { to: string; label: string; roles?: string[] } => item.to !== null);
   const visibleNav = NAV_ITEMS.filter(item => !item.roles || (role && item.roles.includes(role)));
 
   const handleLogout = () => {

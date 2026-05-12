@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache import cache_delete_pattern, cached
-from app.clerk_auth import require_clerk_user
+from app.auth import get_current_user
 from app.database import get_db
 from app.models import Hackathon, Track, User, UserRole
 
@@ -30,7 +30,7 @@ async def _get_current_user(db: AsyncSession, user_payload: dict) -> User:
     Dependencies: app.models.User.
     Consumers: Internal helper used by track routes.
     """
-    result = await db.execute(select(User).where(User.id == user_payload["sub"]))
+    result = await db.execute(select(User).where(User.id == current_user.id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -202,7 +202,7 @@ async def list_tracks(hackathon_id: str, db: AsyncSession = Depends(get_db)):
 async def create_track(
     hackathon_id: str,
     body: dict,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new track for a hackathon (organizer only).
@@ -260,7 +260,7 @@ async def update_track(
     hackathon_id: str,
     track_id: str,
     body: dict,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Update a track (organizer only).
@@ -325,7 +325,7 @@ async def update_track(
 async def delete_track(
     hackathon_id: str,
     track_id: str,
-    user_payload: dict = Depends(require_clerk_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a track (organizer only).

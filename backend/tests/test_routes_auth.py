@@ -1,4 +1,4 @@
-"""Auth route tests - Clerk-only auth. Tests removed for removed endpoints."""
+"""Auth route tests for self-hosted JWT auth."""
 
 import pytest
 

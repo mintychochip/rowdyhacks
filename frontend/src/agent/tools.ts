@@ -14,7 +14,7 @@ export function createHackathonTool(def: Tool, authToken: string): AgentTool {
   return {
     name: def.name,
     description: def.description,
-    parameters: def.parameters as any,
+    parameters: def.parameters,
     execute: async (params: Record<string, unknown>) => {
       const res = await fetch(`/api/assistant/execute-tool`, {
         method: 'POST',
@@ -81,9 +81,9 @@ export function createCodeTools(): AgentTool[] {
       parameters: {
         type: 'object',
         properties: {
-          path: { type: 'string', description: 'File path' },
-          old_string: { type: 'string', description: 'Text to replace' },
-          new_string: { type: 'string', description: 'Replacement text' },
+          path: { type: 'string' },
+          old_string: { type: 'string' },
+          new_string: { type: 'string' },
         },
         required: ['path', 'old_string', 'new_string'],
       },

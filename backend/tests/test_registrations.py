@@ -26,7 +26,7 @@ async def _create_hackathon(db, name, organizer):
 
 
 def _auth_headers(user):
-    # With Clerk dependency override in conftest, use test-<user_id> format
+    # With local auth dependency override in conftest, use test-<user_id> format
     token = f"test-{user.id}"
     return {"Authorization": f"Bearer {token}"}
 

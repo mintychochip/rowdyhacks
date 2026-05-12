@@ -45,6 +45,9 @@ from app.routes.sponsors import router as sponsors_router
 from app.routes.plugins import router as plugins_router
 from app.routes.webhooks import router as webhooks_router
 from app.routes.websocket import router as websocket_router
+from app.routes.oauth import router as oauth_router
+from app.routes.admin_oauth import router as admin_oauth_router
+from app.routes.invites import router as invites_router
 from app.routes.notifications import router as notifications_router
 from app.routes.notifications import hackathon_router as hackathon_notifications_router
 from app.routes.profiles import router as profiles_router, public_router as profiles_public_router
@@ -54,7 +57,6 @@ from app.routes.mentorship import router as mentorship_router
 from app.routes.project_expo import router as project_expo_router
 from app.routes.surveys import router as surveys_router
 from app.routes.admin import router as admin_router
-
 
 # Configure structured logging
 configure_logging(log_level=settings.log_level, json_logs=settings.json_logs)
@@ -92,6 +94,13 @@ async def lifespan(app: FastAPI):
 
     try:
         await _seed_demo_data()
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+
+    try:
+        await _bootstrap_admin()
     except Exception:
         import traceback
 
@@ -203,6 +212,32 @@ async def _seed_demo_data():
         await db.commit()
 
 
+async def _bootstrap_admin():
+    """Create first organizer from env vars if no users exist."""
+    from sqlalchemy import select, func
+    from app.database import async_session
+    from app.models import User, UserRole
+    from app.auth import hash_password
+
+    if not settings.admin_email or not settings.admin_password:
+        return
+
+    async with async_session() as db:
+        result = await db.execute(select(func.count()).select_from(User))
+        count = result.scalar()
+        if count and count > 0:
+            return
+
+        user = User(
+            email=settings.admin_email,
+            name="Admin",
+            role=UserRole.organizer,
+            password_hash=hash_password(settings.admin_password),
+        )
+        db.add(user)
+        await db.commit()
+
+
 app = FastAPI(
     title="HackVerify API",
     description="Devpost/github hackathon submission integrity checker",
@@ -236,6 +271,8 @@ app.add_middleware(
 )
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(oauth_router)
+app.include_router(admin_oauth_router)
 app.include_router(assistant_router, prefix="/api/assistant", tags=["assistant"])
 
 # LLM proxy — separate router at /api/llm (not nested under /api/assistant)
@@ -260,6 +297,7 @@ app.include_router(sponsors_router)
 app.include_router(prizes_router)
 app.include_router(help_requests_router)
 app.include_router(backup_router)
+app.include_router(invites_router)
 app.include_router(checkin_router)
 app.include_router(qr_router)
 app.include_router(crawler_router, prefix="/api/crawler", tags=["crawler"])

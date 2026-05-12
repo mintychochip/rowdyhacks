@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>OpenHack TUI Mockups</title>
+<style>
+  body { font-family: 'JetBrains Mono', 'Courier New', monospace; background: #1a1a2e; color: #eee; padding: 20px; }
+  h2 { color: #06b6d4; margin-top: 40px; border-bottom: 2px solid #2563eb; padding-bottom: 8px; }
+  .screen { background: #0f172a; border: 2px solid #2563eb; border-radius: 8px; width: 800px; padding: 16px; margin: 20px 0; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+  .title { color: #06b6d4; font-weight: bold; font-size: 1.2em; margin-bottom: 12px; }
+  .line { margin: 4px 0; }
+  .label { color: #94a3b8; }
+  .input { background: #1e293b; color: #f1f5f9; padding: 4px 8px; border-radius: 4px; display: inline-block; min-width: 300px; }
+  .btn { background: #2563eb; color: white; padding: 4px 12px; border-radius: 4px; display: inline-block; margin-right: 8px; }
+  .btn-secondary { background: #475569; }
+  .btn-error { background: #dc2626; }
+  .success { color: #22c55e; }
+  .error { color: #ef4444; }
+  .warn { color: #eab308; }
+  .tabs { display: flex; border-bottom: 2px solid #334155; margin-bottom: 12px; }
+  .tab { padding: 8px 16px; color: #94a3b8; }
+  .tab.active { color: #06b6d4; border-bottom: 2px solid #06b6d4; }
+  .statusbar { background: #1e293b; padding: 6px 12px; border-radius: 4px; margin-top: 12px; display: flex; justify-content: space-between; }
+  .table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+  .table th { text-align: left; color: #06b6d4; border-bottom: 1px solid #334155; padding: 6px; }
+  .table td { padding: 6px; border-bottom: 1px solid #1e293b; }
+  .highlight { background: #1e293b; }
+  .row { display: flex; gap: 12px; align-items: center; margin: 6px 0; }
+  .split { display: flex; gap: 16px; }
+  .split > div { flex: 1; }
+</style>
+</head>
+<body>
+
+<h2>Flow 1: Setup Wizard (openhack setup)</h2>
+
+<div class="screen">
+  <div class="title">Welcome to OpenHack</div>
+  <div class="line">Let's get your hackathon platform set up.</div>
+  <div class="line" style="margin-top:16px"><span class="btn">Next</span></div>
+</div>
+
+<div class="screen">
+  <div class="title">Database Configuration</div>
+  <div class="line"><span class="label">DATABASE_URL</span></div>
+  <div class="line"><span class="input">postgresql+asyncpg://user:pass@localhost/openhack</span></div>
+  <div class="line" style="margin-top:8px"><span class="btn btn-secondary">Test Connection</span></div>
+  <div class="line success">Connected to PostgreSQL</div>
+  <div class="line" style="margin-top:16px">
+    <span class="btn btn-secondary">Back</span>
+    <span class="btn">Next</span>
+  </div>
+</div>
+
+<div class="screen">
+  <div class="title">Services Configuration</div>
+  <div class="line"><span class="label">REDIS_URL (optional)</span></div>
+  <div class="line"><span class="input">redis://localhost:6379</span></div>
+  <div class="line"><span class="label">Email Provider</span></div>
+  <div class="line"><span class="input">SendGrid ▼</span></div>
+  <div class="line"><span class="label">SendGrid API Key</span></div>
+  <div class="line"><span class="input">SG.xxxxxxxxxxxxxxxx</span></div>
+  <div class="line" style="margin-top:16px">
+    <span class="btn btn-secondary">Back</span>
+    <span class="btn btn-secondary">Skip</span>
+    <span class="btn">Next</span>
+  </div>
+</div>
+
+<div class="screen">
+  <div class="title">Create Admin Account</div>
+  <div class="line warn">Note: Web login requires Clerk OAuth. This account is for TUI operations.</div>
+  <div class="line"><span class="label">Name *</span></div>
+  <div class="line"><span class="input">Alice Chen</span></div>
+  <div class="line"><span class="label">Email *</span></div>
+  <div class="line"><span class="input">alice@openhack.dev</span></div>
+  <div class="line"><span class="label">Role</span></div>
+  <div class="line"><span class="input">organizer ▼</span></div>
+  <div class="line" style="margin-top:8px"><span class="btn">Create Admin</span></div>
+  <div class="line success">Admin Alice Chen created</div>
+  <div class="line" style="margin-top:16px">
+    <span class="btn btn-secondary">Back</span>
+    <span class="btn">Next</span>
+  </div>
+</div>
+
+<div class="screen">
+  <div class="title">Database Migrations</div>
+  <div class="line"><span class="btn btn-secondary">Run Migrations</span> <span class="btn btn-secondary">Seed Defaults</span></div>
+  <div class="line success">Migrations applied</div>
+  <div class="line success">Seeded successfully</div>
+  <div class="line" style="margin-top:16px">
+    <span class="btn btn-secondary">Back</span>
+    <span class="btn">Next</span>
+  </div>
+</div>
+
+<div class="screen">
+  <div class="title">Create First Hackathon</div>
+  <div class="line"><span class="label">Name *</span></div>
+  <div class="line"><span class="input">OpenHack 2025</span></div>
+  <div class="line"><span class="label">Start Date *</span></div>
+  <div class="line"><span class="input">2025-10-15</span></div>
+  <div class="line"><span class="label">End Date *</span></div>
+  <div class="line"><span class="input">2025-10-17</span></div>
+  <div class="line"><span class="label">Venue</span></div>
+  <div class="line"><span class="input">UTSA Science Building</span></div>
+  <div class="line"><span class="label">Max Participants</span></div>
+  <div class="line"><span class="input">200</span></div>
+  <div class="line" style="margin-top:8px"><span class="btn">Create</span></div>
+  <div class="line success">Hackathon 'OpenHack 2025' created</div>
+  <div class="line" style="margin-top:16px">
+    <span class="btn btn-secondary">Back</span>
+    <span class="btn">Next</span>
+  </div>
+</div>
+
+<div class="screen">
+  <div class="title">Theme Configuration</div>
+  <div class="line"><span class="label">Hackathon Name</span></div>
+  <div class="line"><span class="input">OpenHack</span></div>
+  <div class="line"><span class="label">Primary Color</span></div>
+  <div class="line"><span class="input">#2563eb</span></div>
+  <div class="line"><span class="label">Background Color</span></div>
+  <div class="line"><span class="input">#0f172a</span></div>
+  <div class="line"><span class="label">Text Color</span></div>
+  <div class="line"><span class="input">#f1f5f9</span></div>
+  <div class="line"><span class="label">Accent Color</span></div>
+  <div class="line"><span class="input">#06b6d4</span></div>
+  <div class="line" style="margin-top:8px"><span class="btn">Save & Finish</span></div>
+  <div class="line success">Theme saved!</div>
+  <div class="line" style="margin-top:16px">
+    <span class="btn btn-secondary">Back</span>
+  </div>
+</div>
+
+<h2>Flow 2: Management Dashboard (openhack tui)</h2>
+
+<div class="screen">
+  <div class="tabs">
+    <div class="tab active">Overview</div>
+    <div class="tab">Hackathons</div>
+    <div class="tab">Users</div>
+    <div class="tab">Registrations</div>
+    <div class="tab">Settings</div>
+  </div>
+  <div class="title">Overview</div>
+  <div class="line">Total Hackathons: <strong>3</strong></div>
+  <div class="line">Total Registrations: <strong>147</strong></div>
+  <div class="line">Checked In: <strong>89</strong></div>
+  <div class="line">Help Queue Open: <strong>4</strong></div>
+  <div class="line" style="margin-top:12px"><span class="btn btn-secondary">Refresh</span></div>
+  <div class="statusbar">
+    <span><span style="color:#22c55e">●</span> DB: Connected</span>
+    <span style="color:#94a3b8">Last refresh: 14:32:07</span>
+  </div>
+</div>
+
+<div class="screen">
+  <div class="tabs">
+    <div class="tab">Overview</div>
+    <div class="tab active">Hackathons</div>
+    <div class="tab">Users</div>
+    <div class="tab">Registrations</div>
+    <div class="tab">Settings</div>
+  </div>
+  <div class="title">Hackathons</div>
+  <div class="row">
+    <span class="input">Search...</span>
+    <span class="btn btn-secondary">Refresh</span>
+    <span class="btn">Create New</span>
+  </div>
+  <table class="table">
+    <tr><th>ID</th><th>Name</th><th>Start</th><th>End</th><th>Participants</th><th>Status</th></tr>
+    <tr class="highlight"><td>a7f3e2d1</td><td>OpenHack 2025</td><td>2025-10-15</td><td>2025-10-17</td><td>89</td><td style="color:#22c55e">Active</td></tr>
+    <tr><td>b8c4d5e2</td><td>Spring Hack</td><td>2025-03-10</td><td>2025-03-12</td><td>120</td><td style="color:#ef4444">Ended</td></tr>
+    <tr><td>c9d6e7f3</td><td>Winter Code</td><td>2025-12-01</td><td>2025-12-03</td><td>0</td><td style="color:#eab308">Upcoming</td></tr>
+  </table>
+  <div class="line" style="margin-top:8px;color:#94a3b8">Detail: OpenHack 2025 | 2025-10-15 → 2025-10-17 | UTSA | Max: 200</div>
+  <div class="statusbar">
+    <span><span style="color:#22c55e">●</span> DB: Connected</span>
+    <span style="color:#94a3b8">Last refresh: 14:32:07</span>
+  </div>
+</div>
+
+<div class="screen">
+  <div class="tabs">
+    <div class="tab">Overview</div>
+    <div class="tab">Hackathons</div>
+    <div class="tab active">Users</div>
+    <div class="tab">Registrations</div>
+    <div class="tab">Settings</div>
+  </div>
+  <div class="title">Users</div>
+  <div class="row">
+    <span class="input">Search...</span>
+    <span class="input">All ▼</span>
+    <span class="btn btn-secondary">Refresh</span>
+  </div>
+  <table class="table">
+    <tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Banned</th></tr>
+    <tr class="highlight"><td>a7f3e2d1</td><td>Alice Chen</td><td>alice@openhack.dev</td><td>organizer</td><td>No</td></tr>
+    <tr><td>b8c4d5e2</td><td>Bob Smith</td><td>bob@example.com</td><td>participant</td><td>No</td></tr>
+    <tr><td>c9d6e7f3</td><td>Charlie Doe</td><td>charlie@example.com</td><td>judge</td><td>Yes</td></tr>
+  </table>
+  <div class="line" style="margin-top:8px">
+    <span class="btn btn-secondary">Change Role</span>
+    <span class="btn btn-error">Ban</span>
+  </div>
+  <div class="statusbar">
+    <span><span style="color:#22c55e">●</span> DB: Connected</span>
+    <span style="color:#94a3b8">Last refresh: 14:32:07</span>
+  </div>
+</div>
+
+<div class="screen">
+  <div class="tabs">
+    <div class="tab">Overview</div>
+    <div class="tab">Hackathons</div>
+    <div class="tab">Users</div>
+    <div class="tab active">Registrations</div>
+    <div class="tab">Settings</div>
+  </div>
+  <div class="title">Registrations</div>
+  <div class="row">
+    <span class="input">All ▼</span>
+    <span class="btn btn-secondary">Refresh</span>
+    <span class="btn">Accept Selected (2)</span>
+    <span class="btn btn-secondary">Waitlist Selected</span>
+  </div>
+  <table class="table">
+    <tr><th>☑</th><th>ID</th><th>User</th><th>Hackathon</th><th>Status</th><th>Applied</th></tr>
+    <tr class="highlight"><td>[x]</td><td>d1e2f3a4</td><td>Bob Smith</td><td>OpenHack 2025</td><td style="color:#eab308">pending</td><td>2025-09-01</td></tr>
+    <tr><td>[x]</td><td>e2f3a4b5</td><td>Dana Lee</td><td>OpenHack 2025</td><td style="color:#eab308">pending</td><td>2025-09-02</td></tr>
+    <tr><td>[ ]</td><td>f3a4b5c6</td><td>Evan Park</td><td>OpenHack 2025</td><td style="color:#22c55e">accepted</td><td>2025-08-15</td></tr>
+  </table>
+  <div class="statusbar">
+    <span><span style="color:#22c55e">●</span> DB: Connected</span>
+    <span style="color:#94a3b8">Last refresh: 14:32:07</span>
+  </div>
+</div>
+
+<div class="screen">
+  <div class="tabs">
+    <div class="tab">Overview</div>
+    <div class="tab">Hackathons</div>
+    <div class="tab">Users</div>
+    <div class="tab">Registrations</div>
+    <div class="tab active">Settings</div>
+  </div>
+  <div class="title">Settings</div>
+  <div class="line" style="margin-bottom:8px"><span class="btn btn-secondary">Refresh</span></div>
+  <table class="table">
+    <tr><th>Setting</th><th>Value</th><th>Source</th></tr>
+    <tr><td>Hackathon Name</td><td>OpenHack</td><td style="color:#22c55e">db</td></tr>
+    <tr><td>Primary Color</td><td>#2563eb</td><td style="color:#22c55e">db</td></tr>
+    <tr><td>Registration Open</td><td>true</td><td style="color:#eab308">env (read-only)</td></tr>
+    <tr><td>Judging Enabled</td><td>true</td><td style="color:#94a3b8">default</td></tr>
+  </table>
+  <div class="statusbar">
+    <span><span style="color:#22c55e">●</span> DB: Connected</span>
+    <span style="color:#94a3b8">Last refresh: 14:32:07</span>
+  </div>
+</div>
+
+<h2>Keybindings</h2>
+<div class="screen" style="width:400px">
+  <div class="title">Help</div>
+  <div class="line"><span class="label">Ctrl+Q</span> — Quit</div>
+  <div class="line"><span class="label">Ctrl+R</span> — Refresh current tab</div>
+  <div class="line"><span class="label">Tab / Shift+Tab</span> — Cycle focus</div>
+  <div class="line"><span class="label">Esc</span> — Close modal / clear selection</div>
+  <div class="line"><span class="label">Space</span> — Toggle row selection</div>
+  <div class="line"><span class="label">Ctrl+A</span> — Select all visible rows</div>
+  <div class="line"><span class="label">?</span> — Show this help</div>
+</div>
+
+</body>
+</html>

@@ -327,12 +327,20 @@ class User(Base):
     looking_for_team = Column(Boolean, nullable=False, default=False)
     is_banned = Column(Boolean, nullable=False, default=False)
     banned_at = Column(DateTime(timezone=True), nullable=True)
+    email_verified = Column(Boolean, default=False, nullable=False)
+    password_reset_token_hash = Column(String(255), nullable=True)
+    password_reset_expires = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("email_verified", False)
+        super().__init__(**kwargs)
 
     hackathons = relationship("Hackathon", back_populates="organizer")
     submissions = relationship("Submission", back_populates="submitter")
     registrations = relationship("Registration", back_populates="user")
     oauth_accounts = relationship("OAuthAccount", back_populates="user", cascade="all, delete-orphan")
+    refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
     co_organized_hackathons = relationship(
         "HackathonOrganizer",
         back_populates="user",
@@ -358,6 +366,9 @@ class OAuthAccount(Base):
     provider = Column(String(20), nullable=False)
     provider_user_id = Column(String(255), nullable=False)
     provider_email = Column(String(320), nullable=True)
+    access_token_encrypted = Column(Text, nullable=True)
+    refresh_token_encrypted = Column(Text, nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
     user_id = Column(String(64), ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
@@ -393,6 +404,7 @@ class Hackathon(Base):
     discord_webhook_url = Column(Text, nullable=True)
     discord_application_channel_id = Column(BigInteger, nullable=True)
     devpost_url = Column(Text, nullable=True)
+    registration_mode = Column(String(20), default="open", nullable=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     organizer = relationship("User", back_populates="hackathons")
@@ -1601,6 +1613,57 @@ class ChatMessage(Base):
 
     def __repr__(self) -> str:
         return f"<ChatMessage hackathon={self.hackathon_id} sender={self.sender_id}>"
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token_hash = Column(String(255), nullable=False, unique=True, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    user = relationship("User", back_populates="refresh_tokens")
+
+    def __repr__(self) -> str:
+        return f"<RefreshToken user={self.user_id} revoked={self.revoked_at is not None}>"
+
+
+class OAuthProvider(Base):
+    __tablename__ = "oauth_providers"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    name = Column(String(50), unique=True, nullable=False)
+    display_name = Column(String(100), nullable=False)
+    client_id = Column(String(255), nullable=False)
+    client_secret_encrypted = Column(Text, nullable=False)
+    authorize_url = Column(Text, nullable=False)
+    token_url = Column(Text, nullable=False)
+    userinfo_url = Column(Text, nullable=False)
+    scope = Column(Text, nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<OAuthProvider {self.name} active={self.is_active}>"
+
+
+class HackathonInvite(Base):
+    __tablename__ = "hackathon_invites"
+
+    id = Column(Guid, primary_key=True, default=uuid.uuid4)
+    hackathon_id = Column(Guid, ForeignKey("hackathons.id", ondelete="CASCADE"), nullable=False)
+    code = Column(String(32), unique=True, nullable=False)
+    role = Column(SAEnum(UserRole), nullable=False, default=UserRole.participant)
+    uses_remaining = Column(Integer, nullable=False, default=1)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    created_by = Column(String(64), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<HackathonInvite code={self.code} uses={self.uses_remaining}>"
 
 
 # Import assistant models to ensure they are registered with SQLAlchemy
