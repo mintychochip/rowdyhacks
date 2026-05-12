@@ -47,3 +47,8 @@ class ConfigFormWidget(Widget):
             if widget is not None:
                 values[key] = widget.value
         return values
+
+    def set_value(self, key, value):
+        widget = self._inputs.get(key)
+        if widget is not None:
+            widget.value = value
