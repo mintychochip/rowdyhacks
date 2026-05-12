@@ -1,4 +1,4 @@
-"""LLM integration with Poolside AI (m.1 model)."""
+"""LLM integration with OpenAI-compatible API endpoints."""
 
 import json
 import logging
@@ -11,35 +11,49 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Poolside API configuration
-POOLSIDE_API_URL = settings.poolside_api_url
-POOLSIDE_API_KEY = settings.get_poolside_key()
-DEFAULT_MODEL = settings.assistant_model
+# Default values from settings (for backward-compatible global singleton)
+_DEFAULT_API_URL = settings.poolside_api_url
+_DEFAULT_API_KEY = settings.get_poolside_key()
+_DEFAULT_MODEL = settings.assistant_model
+
+
+def get_llm_client(model: str | None = None) -> "LLMClient":
+    """Factory that constructs an LLMClient with resolved settings.
+
+    Precedence rules:
+    1. llm_base_url if non-empty, else poolside_api_url.
+    2. API key: llm_api_key if set, else poolside_api_key.
+    3. Model: the passed `model` arg if provided; otherwise llm_model if non-empty, else assistant_model.
+    """
+    base_url = settings.llm_base_url or settings.poolside_api_url
+    api_key = settings.get_llm_key()
+    resolved_model = model or settings.llm_model or settings.assistant_model
+    return LLMClient(base_url=base_url, api_key=api_key, model=resolved_model)
 
 
 class LLMClient:
-    """Client for Poolside AI LLM chat completions and agentic tool-calling loops.
+    """Client for OpenAI-compatible LLM chat completions and agentic tool-calling loops.
 
     Provides non-streaming and streaming chat completion methods, plus an
     iterative tool-calling loop that lets the model invoke registered
     tools until no more tool calls are requested.
     """
 
-    def __init__(self):
+    def __init__(self, base_url: str | None = None, api_key: str | None = None, model: str | None = None):
         """Initialize the LLM client with API endpoint, key, and default model.
 
         Behavior:
-        1. Read the Poolside API URL, API key, and default model from application settings.
+        1. Read the API URL, API key, and default model from parameters or application settings.
         2. Store them as instance attributes for subsequent requests.
 
         Raises: None
         Side Effects: None (read-only, no state mutation beyond self).
-        Dependencies: app.config.settings.poolside_api_url, app.config.settings.get_poolside_key, app.config.settings.assistant_model.
+        Dependencies: app.config.settings.
         Consumers: LLMClient singleton instantiation.
         """
-        self.api_url = POOLSIDE_API_URL
-        self.api_key = POOLSIDE_API_KEY
-        self.model = DEFAULT_MODEL
+        self.api_url = base_url or _DEFAULT_API_URL
+        self.api_key = api_key or _DEFAULT_API_KEY
+        self.model = model or _DEFAULT_MODEL
 
     def _get_headers(self) -> dict[str, str]:
         """Build the HTTP authorization headers for Poolside API requests.
@@ -135,8 +149,8 @@ class LLMClient:
             payload["tool_choice"] = "auto"
 
         # Debug logging
-        print(f"[DEBUG LLM] Poolside API URL: {self.api_url}")
-        print(f"[DEBUG LLM] Poolside model: {self.model}")
+        print(f"[DEBUG LLM] API URL: {self.api_url}")
+        print(f"[DEBUG LLM] Model: {self.model}")
         print(f"[DEBUG LLM] Messages count: {len(messages)}")
         print(f"[DEBUG LLM] Tools count: {len(tools) if tools else 0}")
         print(f"[DEBUG LLM] Payload preview: {json.dumps(payload, indent=2)[:500]}")
@@ -153,7 +167,7 @@ class LLMClient:
                         error_body = await response.aread()
                         error_text = error_body.decode()
                         print(f"[ERROR] Poolside API {response.status_code}: {error_text[:1000]}")
-                        yield json.dumps({"error": f"Poolside API error {response.status_code}: {error_text[:200]}"})
+                        yield json.dumps({"error": f"LLM API error {response.status_code}: {error_text[:200]}"})
                         return
                     async for line in response.aiter_lines():
                         if line.startswith("data: "):
