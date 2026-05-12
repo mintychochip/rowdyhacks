@@ -150,7 +150,16 @@ export class AgentLoop {
       { role: 'system', content: this.config.systemPrompt },
       ...this.messages.map(m => {
         const entry: { role: string; content: string; tool_calls?: any[]; tool_call_id?: string } = { role: m.role, content: m.content };
-        if (m.toolCalls?.length) entry.tool_calls = m.toolCalls;
+        if (m.toolCalls?.length) {
+          entry.tool_calls = m.toolCalls.map(tc => ({
+            id: tc.id,
+            type: 'function',
+            function: {
+              name: tc.name,
+              arguments: JSON.stringify(tc.parameters),
+            },
+          }));
+        }
         if (m.tool_call_id) entry.tool_call_id = m.tool_call_id;
         return entry;
       }),

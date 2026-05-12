@@ -2,7 +2,7 @@
 set -e
 
 CERT_DIR="/etc/nginx/ssl"
-LE_DIR="/etc/letsencrypt/live/example.com"
+LE_DIR="/etc/letsencrypt/live/rowdyhackin.duckdns.org"
 
 mkdir -p "$CERT_DIR"
 

@@ -207,9 +207,11 @@ export async function getConversations(): Promise<{
   conversations: Conversation[];
   total: number;
 }> {
+  const token = localStorage.getItem('openhack_access_token') || '';
+  console.log('[assistant.ts] getConversations token length:', token.length, 'prefix:', token.slice(0, 20));
   const res = await fetch(`${BASE}/assistant/history`, {
     headers: {
-      'Authorization': `Bearer ${localStorage.getItem('openhack_access_token') || ''}`,
+      'Authorization': `Bearer ${token}`,
     },
   });
 
@@ -253,9 +255,11 @@ export async function getAvailableTools(): Promise<{
   role: string;
   tools: Tool[];
 }> {
+  const token = localStorage.getItem('openhack_access_token') || '';
+  console.log('[assistant.ts] getAvailableTools token length:', token.length, 'prefix:', token.slice(0, 20));
   const res = await fetch(`${BASE}/assistant/tools`, {
     headers: {
-      'Authorization': `Bearer ${localStorage.getItem('openhack_access_token') || ''}`,
+      'Authorization': `Bearer ${token}`,
     },
   });
 

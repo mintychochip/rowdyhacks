@@ -925,7 +925,7 @@ async def rag_search(
         hackathon_id=str(hackathon.id) if hackathon else None,
         role=current_user.role,
         limit=5,
-        score_threshold=0.35,
+        score_threshold=0.2,
     )
 
     return {

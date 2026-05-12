@@ -111,6 +111,11 @@ class LLMClient:
                 headers=self._get_headers(),
                 json=payload,
             )
+            if response.status_code >= 400:
+                error_body = await response.aread()
+                error_text = error_body.decode()
+                print(f"[ERROR LLM] Poolside {response.status_code}: {error_text[:500]}")
+                print(f"[ERROR LLM] Payload preview: {json.dumps(payload, default=str)[:1000]}")
             response.raise_for_status()
             return response.json()
 

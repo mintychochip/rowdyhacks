@@ -52,6 +52,8 @@ export default function FloatingChatBot() {
 
     const init = async () => {
       try {
+        const tokenVal = localStorage.getItem('openhack_access_token');
+        console.log('[FloatingChatBot] init token length:', tokenVal?.length ?? 0, 'token prefix:', tokenVal?.slice(0, 20));
         const { tools } = await getAvailableTools();
         const systemPrompt = await buildSystemPrompt(tools);
         const agent = new AgentLoop({
