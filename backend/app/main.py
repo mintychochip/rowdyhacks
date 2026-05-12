@@ -57,6 +57,8 @@ from app.routes.mentorship import router as mentorship_router
 from app.routes.project_expo import router as project_expo_router
 from app.routes.surveys import router as surveys_router
 from app.routes.admin import router as admin_router
+from app.routes.resources import router as resources_router
+from app.routes.storage import router as storage_router
 
 # Configure structured logging
 configure_logging(log_level=settings.log_level, json_logs=settings.json_logs)
@@ -101,6 +103,14 @@ async def lifespan(app: FastAPI):
 
     try:
         await _bootstrap_admin()
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+
+    # Seed default markdown resources into MinIO
+    try:
+        await _seed_resources()
     except Exception:
         import traceback
 
@@ -178,37 +188,34 @@ async def _seed_demo_data():
 
     Behavior:
     1. Open an async database session.
-    2. For each demo account (alice, bob, carol, dave), query by email.
-    3. If the user exists, update their name and role.
-    4. If the user does not exist, insert a new User record.
-    5. Commit the transaction.
+    2. For each demo account, query by email.
+    3. If the user does not exist, insert a new User record with a password hash.
+    4. Commit the transaction.
 
     Raises: None (exceptions are caught and logged by the caller).
-    Side Effects: Inserts or updates User rows in the database.
+    Side Effects: Inserts User rows in the database.
     Dependencies: app.database.async_session, app.models.User, app.models.UserRole, sqlalchemy.select.
     Consumers: lifespan startup sequence.
     """
     from sqlalchemy import select
 
+    from app.auth import hash_password
     from app.database import async_session
     from app.models import User, UserRole
 
+    pw = hash_password("demo12345")
+
     async with async_session() as db:
         for email, name, role in [
-            ("alice@demo.com", "Alice", UserRole.organizer),
-            ("bob@demo.com", "Bob", UserRole.participant),
-            ("carol@demo.com", "Carol", UserRole.organizer),
-            ("dave@demo.com", "Dave", UserRole.judge),
+            ("org@demo.com", "Demo Organizer", UserRole.organizer),
+            ("judge@demo.com", "Demo Judge", UserRole.judge),
+            ("volunteer@demo.com", "Demo Volunteer", UserRole.volunteer),
+            ("alice@demo.com", "Alice", UserRole.participant),
         ]:
             result = await db.execute(select(User).where(User.email == email))
             user = result.scalar_one_or_none()
-            if user:
-                # Update existing demo account
-                user.name = name
-                user.role = role
-            else:
-                # Create local DB record - Auth0 auth0_id will be linked on first login
-                db.add(User(email=email, name=name, role=role))
+            if not user:
+                db.add(User(email=email, name=name, role=role, password_hash=pw))
         await db.commit()
 
 
@@ -236,6 +243,136 @@ async def _bootstrap_admin():
         )
         db.add(user)
         await db.commit()
+
+
+async def _seed_resources():
+    """Seed default resource markdown files into MinIO/S3.
+
+    Behavior:
+    1. Check if ``resources/getting-started.md`` already exists.
+    2. If not, upload three default .md files with YAML frontmatter.
+
+    Raises: None (exceptions are caught and logged by the caller).
+    Side Effects: Writes S3 objects under the ``resources/`` prefix.
+    """
+    from app.storage import StorageService
+
+    storage = StorageService()
+    if await storage.object_exists("resources/getting-started.md"):
+        return
+
+    files = {
+        "resources/getting-started.md": """---
+title: Getting Started
+tab_group: Guides
+sort_order: 1
+tab_group_order: 1
+---
+
+# Getting Started
+
+Welcome to the hackathon! This guide will help you hit the ground running.
+
+## What to Bring
+
+- Laptop and charger
+- Student ID for check-in
+- Water bottle and snacks
+- Any hardware you want to hack on
+
+## Schedule Overview
+
+| Time | Event |
+|------|-------|
+| 09:00 | Check-in & Breakfast |
+| 10:00 | Opening Ceremony |
+| 11:00 | Hacking Begins! |
+| 20:00 | Dinner |
+| 23:00 | Midnight Snack |
+
+## Quick Links
+
+- [Submit your project](../resources/apis)
+- [Hardware lab hours](../resources/hardware)
+- [Discord community](https://discord.gg)
+
+Have fun and build something amazing!
+""",
+        "resources/apis.md": """---
+title: APIs
+tab_group: Guides
+sort_order: 2
+tab_group_order: 1
+---
+
+# APIs & Services
+
+A curated list of free APIs and services you can use during the hackathon.
+
+## Web APIs
+
+- **OpenWeatherMap** -- Real-time weather data
+- **NewsAPI** -- Headlines and news articles
+- **GitHub API** -- Repositories, issues, and user data
+- **Twilio** -- SMS and voice messaging
+
+## AI / ML
+
+- **OpenAI API** -- GPT-4, embeddings, DALL-E
+- **Hugging Face** -- Open-source model inference
+- **Google Cloud Vision** -- Image analysis
+
+## Databases
+
+- **Firebase** -- Real-time NoSQL database
+- **Supabase** -- Open-source Firebase alternative
+- **PlanetScale** -- Serverless MySQL
+
+Check the documentation for rate limits and authentication requirements.
+""",
+        "resources/hardware.md": """---
+title: Hardware
+tab_group: Guides
+sort_order: 3
+tab_group_order: 1
+---
+
+# Hardware Lab
+
+The hardware lab is open 24/7 during the hackathon. Come build something physical!
+
+## Available Equipment
+
+- Arduino Uno & Mega boards
+- Raspberry Pi 4 (4GB)
+- Sensors: temperature, humidity, motion, distance
+- Motors, servos, and motor drivers
+- Breadboards, jumper wires, resistors, LEDs
+- Soldering stations (supervised use)
+
+## Checkout Process
+
+1. Visit the hardware desk near the main stage.
+2. Show your hackathon badge.
+3. Sign out items on the checkout sheet.
+4. Return all equipment before the closing ceremony.
+
+## Getting Help
+
+Hardware mentors are available:
+- **Friday 2PM--6PM**
+- **Saturday 10AM--8PM**
+
+Ask in the #hardware channel on Discord for quick questions.
+""",
+    }
+
+    for key, body in files.items():
+        await storage.put_object(
+            key,
+            body.encode("utf-8"),
+            content_type="text/markdown; charset=utf-8",
+        )
 
 
 app = FastAPI(
@@ -318,6 +455,8 @@ app.include_router(project_expo_router)
 app.include_router(chat_router)
 app.include_router(surveys_router)
 app.include_router(admin_router)
+app.include_router(resources_router)
+app.include_router(storage_router)
 
 
 # Add request tracking middleware

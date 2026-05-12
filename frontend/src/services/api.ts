@@ -1,6 +1,8 @@
 import { getAccessToken } from "../hooks/useAuth";
 
-const BASE = import.meta.env.VITE_API_URL || '/api';
+const rawBase = import.meta.env.VITE_API_URL || '/api';
+// In Docker/local dev, always use the Vite proxy to avoid CORS issues
+const BASE = rawBase.includes('localhost') ? '/api' : rawBase;
 
 // Deprecated: kept for backward compatibility with AuthContext during migration
 export function setTokenGetter(_fn: () => Promise<string | null>) {
@@ -190,6 +192,9 @@ export const getMyRegistrations = (params?: { offset?: number; limit?: number })
 
 export const getRegistration = (id: string) => request(`/registrations/${id}`);
 
+export const deleteRegistration = (id: string) =>
+  request(`/registrations/${id}`, { method: 'DELETE' });
+
 export const getOrganizerRegistrations = (hackathonId: string, params?: { status?: string; offset?: number; limit?: number }) => {
   const searchParams = new URLSearchParams();
   if (params?.status) searchParams.set('status', params.status);
@@ -341,16 +346,16 @@ export const addOrganizer = (hackathonId: string, email: string) =>
 export const removeOrganizer = (hackathonId: string, userId: string) =>
   request(`/hackathons/${hackathonId}/organizers/${userId}`, { method: 'DELETE' });
 
-// Content Pages
+// Content Pages (now backed by MinIO markdown files)
 export async function getContentPages(tabGroup?: string) {
   const params = tabGroup ? `?tab_group=${tabGroup}` : '';
-  const res = await fetch(`${BASE}/content/pages${params}`);
+  const res = await fetch(`${BASE}/resources${params}`);
   if (!res.ok) throw new Error('Failed to load content pages');
   return res.json();
 }
 
 export async function getContentPage(slug: string) {
-  const res = await fetch(`${BASE}/content/pages/${slug}`);
+  const res = await fetch(`${BASE}/resources/${slug}`);
   if (!res.ok) throw new Error('Failed to load content page');
   return res.json();
 }
@@ -408,5 +413,70 @@ export async function deleteContentPage(slug: string, token: string) {
     },
   });
   if (!res.ok) throw new Error('Failed to delete content page');
+  return res.json();
+}
+
+// Assistant Documents
+export const getAssistantDocuments = (hackathonId: string) =>
+  request(`/assistant/hackathons/${hackathonId}/documents`);
+
+export const deleteAssistantDocument = (hackathonId: string, docId: string) =>
+  request(`/assistant/hackathons/${hackathonId}/documents/${docId}`, { method: 'DELETE' });
+
+export async function uploadAssistantDocument(hackathonId: string, file: File) {
+  const token = await getAuthToken();
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${BASE}/assistant/hackathons/${hackathonId}/documents`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Upload failed');
+  }
+  return res.json();
+}
+
+// Prizes
+export const listPrizes = (hackathonId: string) =>
+  request(`/prizes?hackathon_id=${hackathonId}`);
+
+export const createPrize = (data: { hackathon_id: string; name: string; description?: string; amount?: string; currency?: string; track_id?: string | null }) =>
+  request('/prizes', { method: 'POST', body: JSON.stringify(data) });
+
+export const updatePrize = (prizeId: string, data: { name?: string; description?: string; amount?: string; currency?: string; track_id?: string | null }) =>
+  request(`/prizes/${prizeId}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const deletePrize = (prizeId: string) =>
+  request(`/prizes/${prizeId}`, { method: 'DELETE' });
+
+// Sponsors
+export const listSponsors = (hackathonId: string) =>
+  request(`/sponsors?hackathon_id=${hackathonId}`);
+
+export const createSponsor = (data: { hackathon_id: string; name: string; tier?: string; logo_url?: string; website_url?: string; description?: string }) =>
+  request('/sponsors', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateSponsor = (sponsorId: string, data: { name?: string; tier?: string; logo_url?: string; website_url?: string; description?: string }) =>
+  request(`/sponsors/${sponsorId}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const deleteSponsor = (sponsorId: string) =>
+  request(`/sponsors/${sponsorId}`, { method: 'DELETE' });
+
+export const listStorageObjects = (prefix: string = '') =>
+  request(`/storage/objects?prefix=${encodeURIComponent(prefix)}`);
+
+export async function indexResources() {
+  const token = await getAuthToken();
+  const res = await fetch(`${BASE}/assistant/index-resources`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Re-index failed');
+  }
   return res.json();
 }

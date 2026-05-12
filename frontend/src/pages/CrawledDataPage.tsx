@@ -38,13 +38,16 @@ export default function CrawledDataPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [projectSearch, setProjectSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'projects' | 'documents'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'documents' | 'storage'>('projects');
   const [documents, setDocuments] = useState<Array<{ id: string; filename: string; chunk_count: number; s3_url?: string; created_at?: string }>>([]);
   const [docLoading, setDocLoading] = useState(false);
   const [docUploading, setDocUploading] = useState(false);
   const [docError, setDocError] = useState('');
   const [docSuccess, setDocSuccess] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [storageObjects, setStorageObjects] = useState<Array<{ key: string; size: number; last_modified: string; url: string }>>([]);
+  const [storagePrefix, setStoragePrefix] = useState('');
+  const [storageLoading, setStorageLoading] = useState(false);
 
   useEffect(() => {
     loadHackathons();
@@ -129,11 +132,31 @@ export default function CrawledDataPage() {
     }
   };
 
+  const loadStorage = async (prefix: string = '') => {
+    setStorageLoading(true);
+    try {
+      const res = await api.listStorageObjects(prefix);
+      setStorageObjects(res.objects || []);
+      setStoragePrefix(res.prefix || '');
+    } catch (e: any) {
+      console.error('Failed to load storage objects:', e);
+      setStorageObjects([]);
+    } finally {
+      setStorageLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (selectedHackathon) {
       loadDocuments(selectedHackathon);
     }
   }, [selectedHackathon]);
+
+  useEffect(() => {
+    if (activeTab === 'storage') {
+      loadStorage();
+    }
+  }, [activeTab]);
 
   const filteredHackathons = hackathons.filter(h =>
     h.name.toLowerCase().includes(search.toLowerCase())
@@ -313,6 +336,21 @@ export default function CrawledDataPage() {
                   >
                     Documents
                   </button>
+                  <button
+                    onClick={() => setActiveTab('storage')}
+                    style={{
+                      padding: '8px 16px',
+                      background: 'none',
+                      border: 'none',
+                      borderBottom: `2px solid ${activeTab === 'storage' ? PRIMARY : 'transparent'}`,
+                      color: activeTab === 'storage' ? PRIMARY : TEXT_MUTED,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Storage
+                  </button>
                 </div>
 
                 {activeTab === 'projects' && (
@@ -468,6 +506,75 @@ export default function CrawledDataPage() {
                             >
                               Delete
                             </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {activeTab === 'storage' && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: SPACE.md }}>
+                      <span style={{ fontSize: 12, color: TEXT_MUTED }}>Prefix:</span>
+                      <input
+                        type="text"
+                        placeholder="e.g. assistant-documents/"
+                        value={storagePrefix}
+                        onChange={(e) => setStoragePrefix(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') loadStorage(storagePrefix); }}
+                        style={{
+                          flex: 1,
+                          padding: `${SPACE.sm}px ${SPACE.md}px`,
+                          background: INPUT_BG,
+                          border: `1px solid ${BORDER}`,
+                          borderRadius: RADIUS.md,
+                          color: TEXT_PRIMARY,
+                          fontSize: 13,
+                          outline: 'none',
+                        }}
+                      />
+                      <button
+                        onClick={() => loadStorage(storagePrefix)}
+                        style={{
+                          padding: '8px 16px', background: PRIMARY, border: 'none',
+                          borderRadius: RADIUS.md, color: TEXT_WHITE, fontSize: 13,
+                          fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >
+                        List
+                      </button>
+                    </div>
+                    {storageLoading ? (
+                      <p style={{ color: TEXT_MUTED, textAlign: 'center', padding: '40px 0' }}>Loading storage objects...</p>
+                    ) : storageObjects.length === 0 ? (
+                      <p style={{ color: TEXT_MUTED, textAlign: 'center', padding: '40px 0' }}>
+                        {storagePrefix ? `No objects found for prefix "${storagePrefix}"` : 'No objects in storage yet.'}
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
+                        {storageObjects.map((obj) => (
+                          <div key={obj.key} style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            padding: SPACE.md, background: INPUT_BG, borderRadius: RADIUS.md,
+                            border: `1px solid ${BORDER_LIGHT}`,
+                          }}>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{ fontSize: 14, color: TEXT_PRIMARY, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {obj.key}
+                              </div>
+                              <div style={{ fontSize: 12, color: TEXT_MUTED, marginTop: 2 }}>
+                                {(obj.size / 1024).toFixed(1)} KB · {new Date(obj.last_modified).toLocaleString()}
+                              </div>
+                            </div>
+                            <a
+                              href={obj.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: PRIMARY, fontSize: 13, fontWeight: 600, textDecoration: 'none', marginLeft: SPACE.md }}
+                            >
+                              View
+                            </a>
                           </div>
                         ))}
                       </div>
