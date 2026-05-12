@@ -11,6 +11,16 @@ class TuiApp(App):
         "dashboard": DashboardScreen,
     }
 
+    BINDINGS = [
+        ("ctrl+q", "quit", "Quit"),
+        ("ctrl+r", "refresh", "Refresh"),
+        ("?", "help", "Help"),
+    ]
+
+    CSS = """
+    Screen { align: center middle; }
+    """
+
     def __init__(self, mode: str = "dashboard", **kwargs):
         super().__init__(**kwargs)
         self.mode = mode
@@ -20,3 +30,11 @@ class TuiApp(App):
             self.push_screen("welcome")
         else:
             self.push_screen("dashboard")
+
+    async def action_refresh(self):
+        screen = self.screen
+        if hasattr(screen, "action_refresh"):
+            await screen.action_refresh()
+
+    async def action_help(self):
+        self.notify("Ctrl+Q: Quit | Ctrl+R: Refresh | Tab: Next focus | Esc: Close modal")
