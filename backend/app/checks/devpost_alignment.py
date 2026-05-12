@@ -17,7 +17,21 @@ PACKAGE_FILES = [
 
 
 async def check_alignment(context: CheckContext) -> CheckResult:
-    """Verify claimed tech stack matches actual code."""
+    """Verify that the claimed tech stack on Devpost matches actual repository code.
+
+    Behavior:
+    1. Return early if no repo path is available.
+    2. Return early if no claimed tech is present in scraped data.
+    3. Search package manifest files for each claimed technology.
+    4. Fall back to searching source directories for technology references.
+    5. Detect empty or near-empty files to flag dead file ratio.
+    6. Score and return a CheckResult with found and missing technologies.
+
+    Raises: None
+    Side Effects: None (read-only filesystem scan).
+    Dependencies: app.checks.interface.CheckContext, app.checks.interface.CheckResult.
+    Consumers: Internal check used by the analyzer pipeline.
+    """
     if not context.repo_path:
         return CheckResult(
             check_name="claimed-vs-actual-tech",

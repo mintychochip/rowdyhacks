@@ -21,7 +21,20 @@ async def get_dashboard(
     db: AsyncSession = Depends(get_db),
     auth: dict = Depends(require_organizer),
 ):
-    """Get paginated submissions list. Organizer only."""
+    """Get paginated submissions list. Organizer only.
+
+    Behavior:
+    1. Build a filtered count query based on optional hackathon_id, status, and verdict.
+    2. Execute count to get total.
+    3. Build the submissions query with the same filters, ordered by risk_score descending.
+    4. Apply pagination offset and limit.
+    5. Return submissions list, page, per_page, and total count.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: app.models.Submission, app.clerk_auth.require_organizer.
+    Consumers: GET /api/dashboard, organizer submissions review.
+    """
     query = select(Submission)
     count_query = select(func.count(Submission.id))
 

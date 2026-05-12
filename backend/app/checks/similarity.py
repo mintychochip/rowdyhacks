@@ -15,13 +15,18 @@ logger = logging.getLogger(__name__)
 
 
 def _parse_repo_name(github_url: str | None) -> str | None:
-    """Extract the 'owner/repo' portion from a GitHub URL.
+    """Extract the owner and repo name portion from a GitHub URL.
 
-    Handles formats:
-      - https://github.com/owner/repo
-      - https://github.com/owner/repo.git
-      - git@github.com:owner/repo.git
-    Returns None if the URL is invalid or not a GitHub URL.
+    Behavior:
+    1. Return None for empty or missing URLs.
+    2. Match HTTPS format https://github.com/owner/repo[.git].
+    3. Match SSH format git@github.com:owner/repo.git.
+    4. Return the owner/repo string in lowercase or None if parsing fails.
+
+    Raises: None
+    Side Effects: None (read-only string processing).
+    Dependencies: re.
+    Consumers: Internal helper used by check_cross_hackathon_duplicate.
     """
     if not github_url:
         return None
@@ -38,10 +43,18 @@ def _parse_repo_name(github_url: str | None) -> str | None:
 
 
 async def _get_head_commit(github_url: str) -> str | None:
-    """Fetch the HEAD commit hash from a GitHub repo via git ls-remote.
+    """Fetch the HEAD commit hash from a GitHub repository via git ls-remote.
 
-    Returns the full SHA-1 hash as a string, or None if the lookup fails
-    (e.g. invalid URL, network error, empty repo).
+    Behavior:
+    1. Spawn a subprocess running git ls-remote against the provided URL.
+    2. Read stdout and verify the process exited successfully.
+    3. Parse the first line to extract the 40-character SHA-1 hash.
+    4. Return the hash or None if the lookup fails.
+
+    Raises: None
+    Side Effects: None (read-only subprocess execution).
+    Dependencies: asyncio.
+    Consumers: Internal helper used by check_cross_hackathon_duplicate and the crawler scraper.
     """
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -64,7 +77,18 @@ async def _get_head_commit(github_url: str) -> str | None:
 
 
 async def run_similarity(hackathon_id: uuid.UUID) -> list[CheckResult]:
-    """Run cross-team similarity check for all submissions in a hackathon."""
+    """Run cross-team similarity check for all submissions in a hackathon.
+
+    Behavior:
+    1. Query the database for completed submissions in the given hackathon.
+    2. Scan submission GitHub URLs and flag exact duplicates within the same hackathon.
+    3. Return a list of CheckResult objects for each duplicate pair found.
+
+    Raises: None
+    Side Effects: None (read-only database query).
+    Dependencies: app.checks.interface.CheckResult, app.database.async_session, app.models.Submission, app.models.SubmissionStatus.
+    Consumers: POST /api/checks/similarity, admin cross-team duplicate review.
+    """
     results = []
     async with async_session() as db:
         result = await db.execute(

@@ -13,7 +13,19 @@ GITHUB_DOMAIN_RE = re.compile(r"^(www\.)?github\.com$", re.IGNORECASE)
 
 
 def _fetch_page_sync(url: str) -> str:
-    """Fetch a page synchronously and return its HTML text."""
+    """Fetch page HTML synchronously with a standard user agent.
+
+    Behavior:
+    1. Open an ``httpx`` client with 30-second timeout and redirect following.
+    2. Perform a GET request using the default user agent.
+    3. Raise on HTTP errors.
+    4. Return the response body text.
+
+    Raises: httpx.HTTPStatusError if the request fails.
+    Side Effects: None (read-only HTTP request).
+    Dependencies: httpx.Client.
+    Consumers: app.analyzer.analyze_submission (synchronous scraping fallback).
+    """
     with httpx.Client(timeout=30, follow_redirects=True) as client:
         response = client.get(url, headers={"User-Agent": USER_AGENT})
         response.raise_for_status()
@@ -25,17 +37,55 @@ class ScraperError(Exception):
 
 
 def is_devpost_url(url: str) -> bool:
+    """Check whether a URL belongs to the Devpost domain.
+
+    Behavior:
+    1. Parse the URL to extract the netloc.
+    2. Match the netloc against the Devpost domain regex.
+    3. Return True if it matches, otherwise False.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: urllib.parse.urlparse.
+    Consumers: app.routes.checks.submit_for_check, app.scraper.scrape_devpost.
+    """
     parsed = urlparse(url)
     return bool(DEVPOST_DOMAIN_RE.match(parsed.netloc or ""))
 
 
 def is_github_url(url: str) -> bool:
+    """Check whether a URL belongs to the GitHub domain.
+
+    Behavior:
+    1. Parse the URL to extract the netloc.
+    2. Match the netloc against the GitHub domain regex.
+    3. Return True if it matches, otherwise False.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: urllib.parse.urlparse.
+    Consumers: app.routes.checks.submit_for_check, app.scraper.scrape_devpost.
+    """
     parsed = urlparse(url)
     return bool(GITHUB_DOMAIN_RE.match(parsed.netloc or ""))
 
 
 async def scrape_devpost(url: str) -> "ScrapedData":
-    """Scrape a Devpost submission page with stealth features."""
+    """Scrape a Devpost submission page with stealth features.
+
+    Behavior:
+    1. Validate that the URL is a Devpost link; raise ScraperError if not.
+    2. Open a StealthClient and perform a stealth GET request.
+    3. Apply a human-like delay after the page loads.
+    4. Parse the HTML with BeautifulSoup.
+    5. Extract title, description, claimed tech, team members, GitHub URL, video URL, slides URL, and hackathon name.
+    6. Return a populated ScrapedData instance.
+
+    Raises: ScraperError if the URL is invalid or the HTTP request fails.
+    Side Effects: Performs external HTTP requests to Devpost.
+    Dependencies: app.crawler.stealth.StealthClient, app.crawler.stealth.human_like_delay, bs4.BeautifulSoup, app.checks.interface.ScrapedData.
+    Consumers: app.analyzer.analyze_submission, app.routes.checks.submit_for_check.
+    """
     from app.checks.interface import ScrapedData
 
     if not is_devpost_url(url):

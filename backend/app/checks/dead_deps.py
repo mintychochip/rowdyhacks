@@ -7,7 +7,21 @@ from app.checks.interface import CheckContext, CheckResult
 
 
 async def check_dead_deps(context: CheckContext) -> CheckResult:
-    """Find dependencies listed in package files that are never imported."""
+    """Find dependencies listed in package files that are never imported in the codebase.
+
+    Behavior:
+    1. Return early if no repo path is available.
+    2. Parse declared dependencies from package.json, requirements.txt, and Pipfile.
+    3. Scan all source files and accumulate import/require statements.
+    4. Check each declared dependency against normalized import patterns.
+    5. Compute a score based on the percentage of unused dependencies.
+    6. Return a CheckResult with dead dependency metrics and evidence.
+
+    Raises: None
+    Side Effects: None (read-only filesystem scan).
+    Dependencies: app.checks.interface.CheckContext, app.checks.interface.CheckResult, json, re.
+    Consumers: Internal check used by the analyzer pipeline.
+    """
     if not context.repo_path:
         return CheckResult(
             check_name="dead-dependencies",

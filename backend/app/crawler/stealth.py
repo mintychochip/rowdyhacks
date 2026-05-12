@@ -32,7 +32,25 @@ REFERRERS = [
 
 
 def get_stealth_headers(content_type: str = "text/html", referer: str | None = None) -> dict:
-    """Generate stealth request headers that look like a real browser."""
+    """Generate randomized HTTP request headers that mimic a real browser.
+
+    Rotates user agents, accept languages, cache directives, and viewport
+    hints to reduce WAF fingerprinting.
+
+    Behavior:
+    1. Select a random user agent from the rotation list.
+    2. Resolve the Accept header based on ``content_type``.
+    3. Build a headers dict with randomized language, encoding, cache
+       directives, and sec-fetch hints.
+    4. Add a Referer (explicit or random).
+    5. Optionally inject a random Viewport-Width header.
+    6. Return the headers dict.
+
+    Raises: None
+    Side Effects: None (read-only, uses random module).
+    Dependencies: random module.
+    Consumers: StealthClient, direct crawling helpers.
+    """
     user_agent = random.choice(USER_AGENTS)
     accept = ACCEPT_HEADERS.get(content_type, ACCEPT_HEADERS["text/html"])
 
@@ -63,7 +81,11 @@ def get_stealth_headers(content_type: str = "text/html", referer: str | None = N
 
 
 class StealthClient:
-    """HTTP client with stealth features: rotation, delays, retry logic."""
+    """Async HTTP client with stealth features.
+
+    Combines header rotation, randomized delays, exponential back-off,
+    and special handling for WAF responses (403/429) and server errors.
+    """
 
     def __init__(
         self,
@@ -72,6 +94,17 @@ class StealthClient:
         max_delay: float = 30.0,
         timeout: float = 30.0,
     ):
+        """Initialize the stealth HTTP client.
+
+        Behavior:
+        1. Store retry, delay, and timeout parameters as instance attributes.
+        2. Initialize the internal ``httpx.AsyncClient`` placeholder and request counter.
+
+        Raises: None
+        Side Effects: Mutates instance state.
+        Dependencies: None
+        Consumers: StealthClient instantiation.
+        """
         self.max_retries = max_retries
         self.base_delay = base_delay
         self.max_delay = max_delay
@@ -80,6 +113,17 @@ class StealthClient:
         self._request_count = 0
 
     async def __aenter__(self):
+        """Enter the async context and create the underlying ``httpx`` client.
+
+        Behavior:
+        1. Instantiate an ``httpx.AsyncClient`` with the configured timeout and redirects.
+        2. Return the ``StealthClient`` instance.
+
+        Raises: None
+        Side Effects: Creates and stores an ``httpx.AsyncClient``.
+        Dependencies: httpx.AsyncClient.
+        Consumers: Async context manager entry for StealthClient.
+        """
         self._client = httpx.AsyncClient(
             timeout=self.timeout,
             follow_redirects=True,
@@ -87,11 +131,40 @@ class StealthClient:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Exit the async context and close the underlying HTTP client.
+
+        Behavior:
+        1. If an ``httpx.AsyncClient`` is stored, close it.
+
+        Raises: None
+        Side Effects: Closes the internal ``httpx.AsyncClient``.
+        Dependencies: httpx.AsyncClient.aclose.
+        Consumers: Async context manager exit for StealthClient.
+        """
         if self._client:
             await self._client.aclose()
 
     async def get(self, url: str, headers: dict | None = None) -> httpx.Response:
-        """Make a stealth GET request with retry logic."""
+        """Make a stealth GET request with retry logic and WAF evasion.
+
+        Retries on 403 (WAF block), 429 (rate limit), and 5xx server
+        errors using randomized exponential back-off.
+
+        Behavior:
+        1. Loop up to ``max_retries`` attempts.
+        2. On subsequent attempts, apply exponential back-off with jitter.
+        3. Generate stealth headers if none are provided.
+        4. Randomize the request timeout slightly.
+        5. Execute the GET request via ``httpx``.
+        6. Handle 403 (retry with different headers) and 429 (sleep then retry).
+        7. Raise for non-retryable HTTP errors or return the response on success.
+
+        Raises: httpx.HTTPStatusError for non-retryable HTTP errors.
+        Raises: Exception if all retry attempts are exhausted.
+        Side Effects: Creates network requests; mutates ``self._request_count``.
+        Dependencies: httpx.AsyncClient, get_stealth_headers.
+        Consumers: Crawler modules, Devpost scrapers.
+        """
         last_error = None
 
         for attempt in range(self.max_retries):
@@ -144,7 +217,18 @@ class StealthClient:
         raise last_error or Exception(f"Max retries exceeded for {url}")
 
     async def post(self, url: str, data: dict | None = None, headers: dict | None = None) -> httpx.Response:
-        """Make a stealth POST request."""
+        """Make a stealth POST request.
+
+        Behavior:
+        1. Generate JSON-oriented stealth headers if none are provided.
+        2. POST the JSON payload to the target URL via ``httpx``.
+        3. Return the response.
+
+        Raises: None
+        Side Effects: Creates a network request.
+        Dependencies: httpx.AsyncClient, get_stealth_headers.
+        Consumers: Crawler modules that need POST requests.
+        """
         request_headers = headers or get_stealth_headers("json")
 
         return await self._client.post(
@@ -156,14 +240,36 @@ class StealthClient:
 
 
 class ProxyRotator:
-    """Simple proxy rotation (for future use with proxy providers)."""
+    """Round-robin proxy selector for future proxy-provider integration."""
 
     def __init__(self, proxies: list[str] | None = None):
+        """Initialize the proxy rotator.
+
+        Behavior:
+        1. Store the proxy list and reset the round-robin index to 0.
+
+        Raises: None
+        Side Effects: Mutates instance state.
+        Dependencies: None
+        Consumers: ProxyRotator instantiation.
+        """
         self.proxies = proxies or []
         self._current_index = 0
 
     def get_next_proxy(self) -> str | None:
-        """Get the next proxy in rotation."""
+        """Return the next proxy in round-robin rotation.
+
+        Behavior:
+        1. If no proxies are configured, return ``None``.
+        2. Select the current proxy by index.
+        3. Advance the index modulo the proxy list length.
+        4. Return the selected proxy URL.
+
+        Raises: None
+        Side Effects: Mutates ``self._current_index``.
+        Dependencies: None
+        Consumers: StealthClient, crawling dispatchers.
+        """
         if not self.proxies:
             return None
         proxy = self.proxies[self._current_index]
@@ -173,7 +279,19 @@ class ProxyRotator:
 
 # Human-like behavior delays
 async def human_like_delay(min_seconds: float = 0.5, max_seconds: float = 3.0, action: str = "page_view"):
-    """Simulate human-like delays between actions."""
+    """Pause execution to simulate human-like interaction delays.
+
+    Behavior:
+    1. Look up the default delay range for the given ``action``.
+    2. Fall back to the provided ``min_seconds`` and ``max_seconds`` if the action is unknown.
+    3. Generate a random delay within the resolved range.
+    4. Await ``asyncio.sleep`` for that duration.
+
+    Raises: None
+    Side Effects: Blocks the async event loop for the delay duration.
+    Dependencies: asyncio, random.
+    Consumers: Crawlers, scrapers, stealth navigation.
+    """
     base_delays = {
         "page_view": (1.0, 4.0),
         "scroll": (0.3, 1.5),
@@ -188,7 +306,18 @@ async def human_like_delay(min_seconds: float = 0.5, max_seconds: float = 3.0, a
 
 # Fingerprint randomization
 def randomize_fingerprint() -> dict:
-    """Generate randomized browser fingerprint components."""
+    """Generate randomized browser fingerprint components.
+
+    Behavior:
+    1. Randomly select viewport width and height from common presets.
+    2. Randomly select color depth, pixel ratio, and timezone offset.
+    3. Return a dict with ``viewport``, ``color_depth``, ``pixel_ratio``, and ``timezone_offset``.
+
+    Raises: None
+    Side Effects: None (read-only, uses random module).
+    Dependencies: random module.
+    Consumers: Playwright-based crawlers, stealth initialization.
+    """
     return {
         "viewport": {
             "width": random.choice([1280, 1366, 1440, 1536, 1920]),

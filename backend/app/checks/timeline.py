@@ -6,7 +6,22 @@ from app.checks.interface import CheckContext, CheckResult
 
 
 async def check_commits(context: CheckContext) -> CheckResult:
-    """Analyze git commit history for timeline integrity."""
+    """Analyze git commit history for timeline integrity against the hackathon window.
+
+    Behavior:
+    1. Return early if no repo path is available.
+    2. Run git log to extract commit hashes, ISO author dates, and messages.
+    3. Detect commits that occur before the hackathon start date.
+    4. Flag a single monolithic commit as suspicious.
+    5. Detect commit bursts with crude heuristics.
+    6. Score based on suspicious message ratios and timeline violations.
+    7. Return a CheckResult with timeline details and evidence.
+
+    Raises: None
+    Side Effects: None (read-only git log access).
+    Dependencies: app.checks.interface.CheckContext, app.checks.interface.CheckResult, asyncio.
+    Consumers: Internal check used by the analyzer pipeline.
+    """
     if not context.repo_path:
         return CheckResult(
             check_name="commit-timestamps",

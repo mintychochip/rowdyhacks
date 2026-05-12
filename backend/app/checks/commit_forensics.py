@@ -7,7 +7,18 @@ from app.checks.interface import CheckContext, CheckResult
 
 
 def _parse_git_date(date_str: str) -> datetime:
-    """Parse a Git date string to datetime."""
+    """Parse a Git date string to a timezone-aware datetime object.
+
+    Behavior:
+    1. Attempt to parse the string as an ISO 8601 date.
+    2. Fall back to parsing as a Unix timestamp integer.
+    3. Return the current UTC time if both parsing attempts fail.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: datetime.datetime, datetime.UTC.
+    Consumers: Internal helper used by check_commit_forensics.
+    """
     # Git dates can be in various formats
     try:
         # Try ISO format first
@@ -21,7 +32,23 @@ def _parse_git_date(date_str: str) -> datetime:
 
 
 async def check_commit_forensics(context: CheckContext) -> CheckResult:
-    """Perform forensic analysis on commit history to detect manipulation."""
+    """Perform forensic analysis on commit history to detect timestamp manipulation.
+
+    Behavior:
+    1. Return early if no repo path is available.
+    2. Run git log to extract commit hashes, author dates, commit dates, and authors.
+    3. Detect author versus commit date mismatches indicating backdating.
+    4. Flag commits dated in the future as impossible without clock manipulation.
+    5. Detect rapid commit spikes that may indicate copy-paste behavior.
+    6. Note single-author patterns and suspicious temporary email domains.
+    7. Compare commit timeline against the hackathon window if available.
+    8. Score and return a CheckResult with detailed forensic findings.
+
+    Raises: None
+    Side Effects: None (read-only git log and filesystem access).
+    Dependencies: app.checks.interface.CheckContext, app.checks.interface.CheckResult, asyncio.
+    Consumers: Internal check used by the analyzer pipeline.
+    """
     if not context.repo_path:
         return CheckResult(
             check_name="commit-forensics",

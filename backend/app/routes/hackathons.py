@@ -1,17 +1,17 @@
 """Hackathon management routes."""
 
 import asyncio
-import csv
-import io
 import re
 import uuid
+from uuid import UUID
 from datetime import UTC, datetime
 
 import httpx
 from bs4 import BeautifulSoup
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import and_, desc, func, select
+from pydantic import BaseModel
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache import cache_delete_pattern, cached
@@ -19,7 +19,6 @@ from app.checks.similarity import run_similarity
 from app.clerk_auth import require_clerk_user_with_db
 from app.database import get_db
 from app.models import (
-    Announcement,
     ConflictOfInterest,
     Hackathon,
     HackathonOrganizer,
@@ -39,6 +38,10 @@ from app.schemas import (
     ConflictOfInterestResponse,
     HackathonCreate,
 )
+from app.services.analytics_service import AnalyticsService
+from app.services.announcement_service import AnnouncementService
+from app.services.email_blast_service import EmailBlastService
+from app.services.registration_service import RegistrationService
 
 router = APIRouter(prefix="/api/hackathons", tags=["hackathons"])
 
@@ -485,32 +488,8 @@ async def bulk_accept_registrations(
 
     await _ensure_organizer(user, hackathon, db)
 
-    accepted_count = 0
-    waitlisted_count = 0
-
-    for reg_id in registration_ids:
-        reg_result = await db.execute(
-            select(Registration).where(and_(Registration.id == reg_id, Registration.hackathon_id == hackathon_id))
-        )
-        reg = reg_result.scalar_one_or_none()
-        if not reg or reg.status != RegistrationStatus.pending:
-            continue
-
-        # Check capacity
-        if hackathon.max_participants and hackathon.current_participants >= hackathon.max_participants:
-            if hackathon.waitlist_enabled:
-                reg.status = RegistrationStatus.waitlisted
-                waitlisted_count += 1
-            else:
-                continue
-        else:
-            reg.status = RegistrationStatus.accepted
-            reg.accepted_at = datetime.now(UTC)
-            hackathon.current_participants += 1
-            accepted_count += 1
-
-    await db.commit()
-    return {"accepted": accepted_count, "waitlisted": waitlisted_count}
+    service = RegistrationService()
+    return await service.bulk_accept(db, hackathon_id, registration_ids)
 
 
 @router.post("/{hackathon_id}/registrations/bulk-reject", status_code=200)
@@ -524,13 +503,12 @@ async def bulk_reject_registrations(
 
     Behavior:
     1. Verify the hackathon exists and the user is an organizer.
-    2. For each registration ID, skip if not pending or waitlisted.
-    3. Set status to rejected for matching registrations.
-    4. Commit and return the rejected count.
+    2. Delegate to RegistrationService.bulk_reject.
+    3. Return the rejected count.
 
     Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer.
     Side Effects: Mutates Registration.status.
-    Dependencies: app.models.Hackathon, app.models.Registration, app.models.RegistrationStatus.
+    Dependencies: app.services.registration_service.RegistrationService.
     Consumers: POST /api/hackathons/{hackathon_id}/registrations/bulk-reject, organizer registration panel.
     """
     user = auth["user"]
@@ -541,21 +519,8 @@ async def bulk_reject_registrations(
 
     await _ensure_organizer(user, hackathon, db)
 
-    rejected_count = 0
-
-    for reg_id in registration_ids:
-        reg_result = await db.execute(
-            select(Registration).where(and_(Registration.id == reg_id, Registration.hackathon_id == hackathon_id))
-        )
-        reg = reg_result.scalar_one_or_none()
-        if not reg or reg.status not in (RegistrationStatus.pending, RegistrationStatus.waitlisted):
-            continue
-
-        reg.status = RegistrationStatus.rejected
-        rejected_count += 1
-
-    await db.commit()
-    return {"rejected": rejected_count}
+    service = RegistrationService()
+    return await service.bulk_reject(db, hackathon_id, registration_ids)
 
 
 @router.post("/{hackathon_id}/registrations/bulk-waitlist", status_code=200)
@@ -569,14 +534,12 @@ async def bulk_waitlist_registrations(
 
     Behavior:
     1. Verify the hackathon exists and the user is an organizer.
-    2. Reject if waitlist is not enabled for the hackathon.
-    3. For each pending registration ID, skip if not pending.
-    4. Set status to waitlisted.
-    5. Commit and return the waitlisted count.
+    2. Delegate to RegistrationService.bulk_waitlist.
+    3. Return the waitlisted count.
 
     Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer, HTTPException(400) if waitlist disabled.
     Side Effects: Mutates Registration.status.
-    Dependencies: app.models.Hackathon, app.models.Registration, app.models.RegistrationStatus.
+    Dependencies: app.services.registration_service.RegistrationService.
     Consumers: POST /api/hackathons/{hackathon_id}/registrations/bulk-waitlist, organizer registration panel.
     """
     user = auth["user"]
@@ -587,24 +550,8 @@ async def bulk_waitlist_registrations(
 
     await _ensure_organizer(user, hackathon, db)
 
-    if not hackathon.waitlist_enabled:
-        raise HTTPException(status_code=400, detail="Waitlist is not enabled for this hackathon")
-
-    waitlisted_count = 0
-
-    for reg_id in registration_ids:
-        reg_result = await db.execute(
-            select(Registration).where(and_(Registration.id == reg_id, Registration.hackathon_id == hackathon_id))
-        )
-        reg = reg_result.scalar_one_or_none()
-        if not reg or reg.status != RegistrationStatus.pending:
-            continue
-
-        reg.status = RegistrationStatus.waitlisted
-        waitlisted_count += 1
-
-    await db.commit()
-    return {"waitlisted": waitlisted_count}
+    service = RegistrationService()
+    return await service.bulk_waitlist(db, hackathon_id, registration_ids)
 
 
 @router.get("/{hackathon_id}/registrations/export")
@@ -617,13 +564,12 @@ async def export_registrations_csv(
 
     Behavior:
     1. Verify the hackathon exists and the user is an organizer.
-    2. Query all registrations joined with user info, ordered by registration date.
-    3. Write CSV rows with full registration and user fields.
-    4. Return the CSV as a StreamingResponse download.
+    2. Delegate to RegistrationService.export_registrations_csv.
+    3. Return the CSV as a StreamingResponse download.
 
     Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer.
     Side Effects: None (read-only, generates CSV in memory).
-    Dependencies: app.models.Hackathon, app.models.Registration, app.models.User, fastapi.responses.StreamingResponse.
+    Dependencies: app.services.registration_service.RegistrationService, fastapi.responses.StreamingResponse.
     Consumers: GET /api/hackathons/{hackathon_id}/registrations/export, organizer data export.
     """
     user = auth["user"]
@@ -634,88 +580,13 @@ async def export_registrations_csv(
 
     await _ensure_organizer(user, hackathon, db)
 
-    # Get all registrations with user info
-    reg_result = await db.execute(
-        select(Registration, User)
-        .join(User, Registration.user_id == User.id)
-        .where(Registration.hackathon_id == hackathon_id)
-        .order_by(Registration.registered_at.desc())
-    )
-    rows = reg_result.all()
-
-    # Create CSV
-    output = io.StringIO()
-    writer = csv.writer(output)
-
-    # Header
-    writer.writerow(
-        [
-            "ID",
-            "Status",
-            "Registered At",
-            "Accepted At",
-            "Checked In At",
-            "Name",
-            "Email",
-            "Team Name",
-            "Team Members",
-            "School",
-            "Major",
-            "Age",
-            "Pronouns",
-            "Experience Level",
-            "Skills",
-            "T-Shirt Size",
-            "Dietary Restrictions",
-            "Phone",
-            "Emergency Contact Name",
-            "Emergency Contact Phone",
-            "LinkedIn",
-            "GitHub",
-            "Resume URL",
-            "What They Will Build",
-            "Why Participate",
-        ]
-    )
-
-    # Data
-    for reg, user in rows:
-        writer.writerow(
-            [
-                str(reg.id),
-                reg.status.value,
-                reg.registered_at.isoformat(),
-                reg.accepted_at.isoformat() if reg.accepted_at else "",
-                reg.checked_in_at.isoformat() if reg.checked_in_at else "",
-                user.name,
-                user.email,
-                reg.team_name or "",
-                ", ".join(reg.team_members) if reg.team_members else "",
-                reg.school or "",
-                reg.major or "",
-                reg.age or "",
-                reg.pronouns or "",
-                reg.experience_level or "",
-                ", ".join(reg.skills) if reg.skills else "",
-                reg.t_shirt_size or "",
-                reg.dietary_restrictions or "",
-                reg.phone or "",
-                reg.emergency_contact_name or "",
-                reg.emergency_contact_phone or "",
-                reg.linkedin_url or "",
-                reg.github_url or "",
-                reg.resume_url or "",
-                (reg.what_build or "")[:200],
-                (reg.why_participate or "")[:200],
-            ]
-        )
-
-    output.seek(0)
+    service = RegistrationService()
+    bytes_io, filename = await service.export_registrations_csv(db, hackathon_id)
 
     return StreamingResponse(
-        io.BytesIO(output.getvalue().encode()),
+        bytes_io,
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=registrations-{hackathon_id}.csv"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
@@ -749,28 +620,8 @@ async def create_announcement(
 
     await _ensure_organizer(user, hackathon, db)
 
-    announcement = Announcement(
-        hackathon_id=hackathon_id,
-        title=body.title,
-        content=body.content,
-        priority=body.priority,
-        sent_by=user.id,
-    )
-    db.add(announcement)
-    await db.commit()
-    await db.refresh(announcement)
-
-    from app.services.event_service import publish_event
-
-    await publish_event(
-        db,
-        "announcement.published",
-        {
-            "announcement_id": str(announcement.id),
-            "hackathon_id": str(hackathon_id),
-            "title": announcement.title,
-        },
-    )
+    service = AnnouncementService()
+    announcement = await service.create_announcement(db, hackathon_id, user.id, body.title, body.content, body.priority)
 
     return AnnouncementResponse.model_validate(announcement)
 
@@ -811,17 +662,8 @@ async def list_announcements(
     if not is_organizer and not registration:
         raise HTTPException(status_code=403, detail="Not authorized to view announcements for this hackathon")
 
-    # Build query
-    query = select(Announcement).where(Announcement.hackathon_id == hackathon_id)
-
-    # Non-organizers only see non-draft announcements
-    if not is_organizer:
-        query = query.where(Announcement.priority != "draft")
-
-    query = query.order_by(desc(Announcement.sent_at))
-
-    result = await db.execute(query)
-    announcements = result.scalars().all()
+    service = AnnouncementService()
+    announcements = await service.list_announcements(db, hackathon_id, is_organizer)
 
     return [AnnouncementResponse.model_validate(a) for a in announcements]
 
@@ -1114,7 +956,7 @@ async def add_organizer(
 @router.delete("/{hackathon_id}/organizers/{user_id}")
 async def remove_organizer(
     hackathon_id: uuid.UUID,
-    user_id: uuid.UUID,
+    user_id: str,
     auth: dict = Depends(require_clerk_user_with_db),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1252,9 +1094,10 @@ async def import_devpost_submissions(
             detail="No project URLs found on the gallery. Make sure the Devpost URL is a valid hackathon page.",
         )
 
-    from app.analyzer import analyze_submission
-    from app.auth import create_anonymous_token
-    from app.models import Submission, SubmissionStatus
+    from app.services.submission_service import SubmissionService
+
+    submission_service = SubmissionService()
+    from app.models import Submission
 
     imported = 0
     skipped = 0
@@ -1270,17 +1113,8 @@ async def import_devpost_submissions(
             skipped += 1
             continue
 
-        sub = Submission(
-            devpost_url=url,
-            hackathon_id=hackathon_id,
-            status=SubmissionStatus.pending,
-            access_token=create_anonymous_token(),
-        )
-        db.add(sub)
-        await db.commit()
-        await db.refresh(sub)
-
-        asyncio.create_task(analyze_submission(sub.id))
+        sub = await submission_service.create_submission(db, url=url, hackathon_id=hackathon_id)
+        asyncio.create_task(submission_service.analyze_submission(sub.id))
         imported += 1
 
     return {
@@ -1293,10 +1127,202 @@ async def import_devpost_submissions(
 
 
 async def _bust_hackathon_list_cache():
+    """Invalidate the cached hackathon list.
+
+    Side Effects:
+        Deletes Redis keys matching the hackathon list cache prefix.
+    """
     await cache_delete_pattern(f"{HK_CACHE_PFX}:list_hackathons:*")
 
 
 async def _bust_hackathon_cache(hackathon_id: str):
+    """Invalidate cached data for a specific hackathon.
+
+    Behavior:
+    1. Delete Redis cache keys for the hackathon detail endpoint pattern.
+    2. Delete Redis cache keys for the hackathon list endpoint pattern.
+    3. Delete Redis cache keys for the tracks listing endpoint pattern.
+
+    Raises: None
+    Side Effects: Deletes Redis keys.
+    Dependencies: app.cache.cache_delete_pattern.
+    Consumers: Hackathon mutation routes (create, update, delete).
+    """
     await cache_delete_pattern(f"{HK_CACHE_PFX}:get_hackathon:*")
     await cache_delete_pattern(f"{HK_CACHE_PFX}:list_hackathons:*")
     await cache_delete_pattern("tracks:list_tracks:*")
+
+
+@router.get("/{hackathon_id}/prizes/awarded")
+async def list_awarded_prizes(
+    hackathon_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """List all awarded prizes for a hackathon.
+
+    Behavior:
+    1. Fetch awarded prizes via PrizeService.list_awarded_prizes.
+    2. Return serialized list with prize and team details.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: app.services.prize_service.PrizeService.
+    Consumers: GET /api/hackathons/{hackathon_id}/prizes/awarded.
+    """
+    from app.services.prize_service import PrizeService
+
+    service = PrizeService()
+    awards = await service.list_awarded_prizes(db, UUID(hackathon_id))
+    return [
+        {
+            "id": str(award.id),
+            "prize_id": str(award.prize_id),
+            "prize_name": award.prize.name if award.prize else None,
+            "team_id": str(award.team_id),
+            "team_name": award.team.name if award.team else None,
+            "awarded_at": award.awarded_at.isoformat() if award.awarded_at else None,
+            "awarded_by": award.awarded_by,
+        }
+        for award in awards
+    ]
+
+
+class EmailBlastRequest(BaseModel):
+    """Request body for sending a bulk email blast to a registrant cohort."""
+
+    subject: str
+    body: str
+    cohort: str = "accepted"  # accepted, waitlist, checked_in, track
+    track_id: str | None = None
+
+
+@router.post("/{hackathon_id}/email-blast")
+async def email_blast(
+    hackathon_id: str,
+    body: EmailBlastRequest,
+    auth: dict = Depends(require_clerk_user_with_db),
+    db: AsyncSession = Depends(get_db),
+):
+    """Send a bulk email to a registrant cohort (organizer only).
+
+    Behavior:
+    1. Load the hackathon and verify the caller is an organizer.
+    2. Instantiate EmailBlastService and dispatch to the correct cohort method.
+    3. Return the delivery summary with sent and failed counts.
+
+    Raises: HTTPException(404) if hackathon not found. HTTPException(403) if not organizer.
+    Side Effects: Triggers outbound emails via EmailBlastService.
+    Dependencies: app.services.email_blast_service.EmailBlastService.
+    Consumers: POST /api/hackathons/{id}/email-blast, organizer communications panel.
+    """
+    user = auth["user"]
+    result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
+    hackathon = result.scalar_one_or_none()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+
+    await _ensure_organizer(user, hackathon, db)
+
+    service = EmailBlastService()
+    h_id = UUID(hackathon_id)
+    sender_id = user.id
+
+    if body.cohort == "accepted":
+        summary = await service.send_bulk_email(db, h_id, body.subject, body.body, sender_id)
+    elif body.cohort == "waitlist":
+        summary = await service.send_to_waitlist(db, h_id, body.subject, body.body, sender_id)
+    elif body.cohort == "checked_in":
+        summary = await service.send_to_checked_in(db, h_id, body.subject, body.body, sender_id)
+    elif body.cohort == "track":
+        if not body.track_id:
+            raise HTTPException(status_code=400, detail="track_id is required for track cohort")
+        summary = await service.send_to_track(db, h_id, UUID(body.track_id), body.subject, body.body, sender_id)
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown cohort: {body.cohort}")
+
+    return summary
+
+
+@router.get("/{hackathon_id}/analytics")
+async def get_hackathon_analytics(
+    hackathon_id: uuid.UUID,
+    auth: dict = Depends(require_clerk_user_with_db),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get analytics metrics for a hackathon (organizer only).
+
+    Behavior:
+    1. Verify the user is an organizer.
+    2. Load the hackathon.
+    3. Aggregate all metrics via AnalyticsService.
+    4. Return the combined analytics payload.
+
+    Raises: HTTPException(403) if not organizer, HTTPException(404) if hackathon not found.
+    """
+    user = auth["user"]
+    if user.role != UserRole.organizer:
+        raise HTTPException(status_code=403, detail="Organizer access required")
+
+    hackathon_result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
+    hackathon = hackathon_result.scalar_one_or_none()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+
+    service = AnalyticsService()
+    metrics = await service.get_all_metrics(db, hackathon_id)
+    return {"hackathon_id": str(hackathon_id), **metrics}
+
+
+@router.get("/{hackathon_id}/audit-log")
+async def get_hackathon_audit_log(
+    hackathon_id: uuid.UUID,
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    auth: dict = Depends(require_clerk_user_with_db),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get audit log entries for a hackathon (organizer only).
+
+    Behavior:
+    1. Verify the user is an organizer.
+    2. Query AuditLog rows for the hackathon, ordered by created_at desc.
+    3. Return paginated results.
+
+    Raises: HTTPException(403) if not organizer.
+    """
+    user = auth["user"]
+    if user.role != UserRole.organizer:
+        raise HTTPException(status_code=403, detail="Organizer access required")
+
+    from app.models import AuditLog
+
+    total_result = await db.execute(select(func.count(AuditLog.id)).where(AuditLog.hackathon_id == hackathon_id))
+    total = total_result.scalar() or 0
+
+    result = await db.execute(
+        select(AuditLog)
+        .where(AuditLog.hackathon_id == hackathon_id)
+        .order_by(AuditLog.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    logs = result.scalars().all()
+
+    return {
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "logs": [
+            {
+                "id": str(log.id),
+                "user_id": log.user_id,
+                "action": log.action,
+                "entity_type": log.entity_type,
+                "entity_id": log.entity_id,
+                "details_json": log.details_json,
+                "ip_address": log.ip_address,
+                "created_at": log.created_at.isoformat() if log.created_at else None,
+            }
+            for log in logs
+        ],
+    }

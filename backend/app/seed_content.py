@@ -166,9 +166,21 @@ Hardware available for loan during the hackathon.
 
 
 async def seed_default_content(db: AsyncSession) -> None:
-    """Seed default content pages if they don't exist.
+    """Seed default content pages on application startup if they do not exist.
 
-    Requires at least one organizer user to exist in the database.
+    Behavior:
+    1. Query for an organizer user to use as the page creator.
+    2. If no organizer exists, fall back to any user in the database.
+    3. If no users exist at all, skip seeding silently.
+    4. For each page in ``DEFAULT_CONTENT_PAGES``, check if a slug already exists.
+    5. If it exists, update the page fields (title, content, tab_group, sort_order, tab_group_order, is_published).
+    6. If it does not exist, create a new ContentPage row with the organizer as creator.
+    7. Commit the transaction.
+
+    Raises: None
+    Side Effects: Inserts or updates ContentPage rows in the database.
+    Dependencies: app.models.ContentPage, app.models.User, app.models.UserRole, sqlalchemy.select.
+    Consumers: app.main.lifespan startup sequence.
     """
     # Find an organizer to use as the creator
     result = await db.execute(select(User).where(User.role == UserRole.organizer).limit(1))

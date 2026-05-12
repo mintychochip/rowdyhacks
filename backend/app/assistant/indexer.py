@@ -15,13 +15,40 @@ logger = logging.getLogger(__name__)
 
 
 class DocumentIndexer:
-    """Indexes hackathon data for assistant RAG."""
+    """Indexes hackathon data into the assistant's RAG vector store.
+
+    Converts hackathon metadata, prize tracks, and FAQ entries into
+    embedded documents stored in Qdrant so the assistant can retrieve
+    them semantically during conversations.
+    """
 
     def __init__(self, db: AsyncSession):
+        """Initialize the indexer with a database session.
+
+        Behavior:
+        1. Store the database session as an instance attribute.
+
+        Raises: None
+        Side Effects: None (read-only, no state mutation beyond self).
+        Dependencies: sqlalchemy.ext.asyncio.AsyncSession.
+        Consumers: DocumentIndexer instantiation.
+        """
         self.db = db
 
     async def index_hackathon(self, hackathon: Hackathon) -> int:
-        """Index all data for a hackathon."""
+        """Index all assistant-relevant data for a hackathon.
+
+        Behavior:
+        1. Index general hackathon info.
+        2. Index prize tracks.
+        3. Index default FAQ entries.
+        4. Log and return the total document count.
+
+        Raises: None
+        Side Effects: Writes to Qdrant and the relational database.
+        Dependencies: DocumentIndexer._index_hackathon_info, DocumentIndexer._index_tracks, DocumentIndexer._index_faq.
+        Consumers: Hackathon creation/update hooks.
+        """
         count = 0
 
         # Index hackathon info
@@ -37,7 +64,20 @@ class DocumentIndexer:
         return count
 
     async def _index_hackathon_info(self, hackathon: Hackathon) -> int:
-        """Index general hackathon information."""
+        """Index general hackathon information as a single document.
+
+        Behavior:
+        1. Build a text block from hackathon metadata (name, dates, venue, WiFi, etc.).
+        2. Generate an embedding for the content.
+        3. Upsert an AssistantDocument record (create or update existing).
+        4. Index the document in Qdrant.
+        5. Commit and return 1.
+
+        Raises: None
+        Side Effects: Inserts/updates AssistantDocument row; writes to Qdrant.
+        Dependencies: app.assistant.embedder.embedder, app.assistant.vector_store.vector_store.
+        Consumers: DocumentIndexer.index_hackathon.
+        """
         # Build content
         content_parts = [
             f"Hackathon: {hackathon.name}",
@@ -119,7 +159,19 @@ class DocumentIndexer:
         return 1
 
     async def _index_tracks(self, hackathon: Hackathon) -> int:
-        """Index all tracks for a hackathon."""
+        """Index all prize tracks for a hackathon.
+
+        Behavior:
+        1. Query all Track rows for the hackathon.
+        2. For each track, build a text block, embed it, and upsert an AssistantDocument.
+        3. Index each track document in Qdrant.
+        4. Commit and return the count.
+
+        Raises: None
+        Side Effects: Inserts/updates AssistantDocument rows; writes to Qdrant.
+        Dependencies: app.assistant.embedder.embedder, app.assistant.vector_store.vector_store.
+        Consumers: DocumentIndexer.index_hackathon.
+        """
         result = await self.db.execute(select(Track).where(Track.hackathon_id == hackathon.id))
         tracks = result.scalars().all()
 
@@ -188,7 +240,19 @@ class DocumentIndexer:
         return count
 
     async def _index_faq(self, hackathon: Hackathon) -> int:
-        """Index FAQ entries."""
+        """Index default FAQ entries for a hackathon.
+
+        Behavior:
+        1. Define a set of default FAQ question/answer pairs.
+        2. Check if any FAQ already exists for this hackathon; if so, skip.
+        3. For each default FAQ, build text, embed it, create an AssistantDocument, and index in Qdrant.
+        4. Commit and return the count.
+
+        Raises: None
+        Side Effects: Inserts AssistantDocument rows; writes to Qdrant.
+        Dependencies: app.assistant.embedder.embedder, app.assistant.vector_store.vector_store.
+        Consumers: DocumentIndexer.index_hackathon.
+        """
         # For now, create some default FAQ entries
         default_faqs = [
             {
@@ -263,7 +327,19 @@ class DocumentIndexer:
         question: str,
         answer: str,
     ) -> str:
-        """Add a new FAQ entry and index it."""
+        """Add a custom FAQ entry and index it for semantic retrieval.
+
+        Behavior:
+        1. Build the FAQ text block.
+        2. Generate an embedding.
+        3. Create an AssistantDocument and index it in Qdrant.
+        4. Commit and return the Qdrant point ID.
+
+        Raises: None
+        Side Effects: Inserts AssistantDocument row; writes to Qdrant.
+        Dependencies: app.assistant.embedder.embedder, app.assistant.vector_store.vector_store.
+        Consumers: FAQ management endpoints.
+        """
         content = f"Q: {question}\nA: {answer}"
         embedding = embedder.embed_text(content)
 
@@ -294,7 +370,18 @@ class DocumentIndexer:
         return doc_id
 
     async def delete_hackathon_documents(self, hackathon_id: str) -> int:
-        """Delete all documents for a hackathon."""
+        """Delete all indexed documents associated with a hackathon.
+
+        Behavior:
+        1. Delete matching points from Qdrant.
+        2. Query and delete matching AssistantDocument rows from the database.
+        3. Commit and return the Qdrant deletion count.
+
+        Raises: None
+        Side Effects: Deletes rows from PostgreSQL and points from Qdrant.
+        Dependencies: app.assistant.vector_store.vector_store.delete_by_hackathon.
+        Consumers: Hackathon cleanup endpoints.
+        """
         # Delete from Qdrant
         count = await vector_store.delete_by_hackathon(hackathon_id)
 
@@ -310,7 +397,18 @@ class DocumentIndexer:
 
 
 async def initialize_vector_store() -> None:
-    """Initialize the vector store on startup."""
+    """Initialize the Qdrant vector store on application startup.
+
+    Behavior:
+    1. Call ``vector_store.initialize`` to ensure collections exist.
+    2. Log success.
+    3. On exception, log the error but do not raise, so the assistant can still operate without semantic search.
+
+    Raises: None (all exceptions are caught and logged).
+    Side Effects: Creates Qdrant collections if missing.
+    Dependencies: vector_store.initialize.
+    Consumers: Application lifespan startup.
+    """
     try:
         await vector_store.initialize()
         logger.info("Vector store initialized successfully")

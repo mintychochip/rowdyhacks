@@ -8,6 +8,8 @@ from uuid import UUID
 
 
 class CheckCategory(str, Enum):
+    """Classification for analysis check types."""
+
     TIMELINE = "timeline"
     DEVPOST_ALIGNMENT = "devpost_alignment"
     SUBMISSION_HISTORY = "submission_history"
@@ -66,6 +68,18 @@ class CheckResult:
     evidence: list[str] = field(default_factory=list)
 
     def __post_init__(self):
+        """Validate status and score are within allowed ranges.
+
+        Behavior:
+        1. Verify status is one of pass, warn, fail, or error.
+        2. Verify score is between 0 and 100 inclusive.
+        3. Raise ValueError if either check fails.
+
+        Raises: ValueError if status is invalid or score is out of range.
+        Side Effects: None (pure validation).
+        Dependencies: None.
+        Consumers: Internal helper used by CheckResult instantiation.
+        """
         if self.status not in ("pass", "warn", "fail", "error"):
             raise ValueError(f"Invalid status: {self.status}")
         if not 0 <= self.score <= 100:
@@ -73,3 +87,4 @@ class CheckResult:
 
 
 CheckFn = Callable[[CheckContext], Awaitable[CheckResult]]
+"""Async callable that takes a CheckContext and returns a CheckResult."""

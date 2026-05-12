@@ -18,15 +18,40 @@ DEFAULT_MODEL = settings.assistant_model
 
 
 class LLMClient:
-    """Client for Poolside AI LLM."""
+    """Client for Poolside AI LLM chat completions and agentic tool-calling loops.
+
+    Provides non-streaming and streaming chat completion methods, plus an
+    iterative tool-calling loop that lets the model invoke registered
+    tools until no more tool calls are requested.
+    """
 
     def __init__(self):
+        """Initialize the LLM client with API endpoint, key, and default model.
+
+        Behavior:
+        1. Read the Poolside API URL, API key, and default model from application settings.
+        2. Store them as instance attributes for subsequent requests.
+
+        Raises: None
+        Side Effects: None (read-only, no state mutation beyond self).
+        Dependencies: app.config.settings.poolside_api_url, app.config.settings.get_poolside_key, app.config.settings.assistant_model.
+        Consumers: LLMClient singleton instantiation.
+        """
         self.api_url = POOLSIDE_API_URL
         self.api_key = POOLSIDE_API_KEY
         self.model = DEFAULT_MODEL
 
     def _get_headers(self) -> dict[str, str]:
-        """Get authorization headers."""
+        """Build the HTTP authorization headers for Poolside API requests.
+
+        Behavior:
+        1. Build a dict with Bearer token Authorization and Content-Type headers.
+
+        Raises: None
+        Side Effects: None (read-only).
+        Dependencies: None
+        Consumers: LLMClient.chat_completion, LLMClient.chat_completion_stream.
+        """
         return {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -40,7 +65,20 @@ class LLMClient:
         max_tokens: int = 2000,
         stream: bool = False,
     ) -> dict[str, Any]:
-        """Send a chat completion request."""
+        """Send a non-streaming chat completion request to the Poolside LLM.
+
+        Behavior:
+        1. Build the request payload with model, messages, temperature, max_tokens, and stream flag.
+        2. If tools are provided, add them and set tool_choice to auto.
+        3. POST to the Poolside chat completions endpoint.
+        4. Raise for non-2xx status codes.
+        5. Return the parsed JSON response.
+
+        Raises: httpx.HTTPStatusError if the API returns a non-2xx status.
+        Side Effects: Makes an outbound HTTP POST.
+        Dependencies: httpx.AsyncClient.
+        Consumers: LLMClient.execute_tool_loop.
+        """
         payload = {
             "model": self.model,
             "messages": messages,
@@ -70,7 +108,20 @@ class LLMClient:
         max_tokens: int = 800,
         model: str | None = None,
     ) -> AsyncGenerator[str, None]:
-        """Stream chat completion response (SSE format)."""
+        """Stream a chat completion response from the Poolside LLM in SSE format.
+
+        Behavior:
+        1. Build the streaming request payload.
+        2. Open an async stream to the chat completions endpoint.
+        3. If the status is >=400, yield a JSON error and return.
+        4. Otherwise parse SSE lines, extract content deltas, and yield them.
+        5. On exception, yield a JSON error with the traceback.
+
+        Raises: None (errors are yielded as JSON strings).
+        Side Effects: Makes an outbound HTTP streaming POST; prints debug logs.
+        Dependencies: httpx.AsyncClient.
+        Consumers: LLMClient.execute_tool_loop, assistant streaming endpoints.
+        """
         payload = {
             "model": model or self.model,
             "messages": messages,
@@ -134,9 +185,19 @@ class LLMClient:
         tool_executor: callable,
         max_iterations: int = 5,
     ) -> AsyncGenerator[str, None]:
-        """
-        Execute LLM with tool calling loop.
-        Yields content chunks. Tool calls are executed and results added.
+        """Execute an agentic LLM conversation with an iterative tool-calling loop.
+
+        Behavior:
+        1. Assemble the message list from system prompt, history, and user message.
+        2. Stream the assistant's reply via chat_completion_stream.
+        3. Detect JSON tool-call payloads in the stream.
+        4. If tool calls are found, execute them via tool_executor.
+        5. Append tool results to the conversation and loop up to max_iterations.
+
+        Raises: None
+        Side Effects: Invokes tool_executor; mutates local messages list.
+        Dependencies: LLMClient.chat_completion_stream.
+        Consumers: Assistant chat endpoint.
         """
         messages = [
             {"role": "system", "content": system_prompt},

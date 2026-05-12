@@ -16,7 +16,21 @@ scheduler = AsyncIOScheduler()
 
 
 async def cleanup_expired_offers():
-    """Run every 5 minutes. Expire old offers and promote next waitlisted."""
+    """Expire stale spot offers and promote the next waitlisted applicant.
+
+    Behavior:
+    1. Open an async database session.
+    2. Query all registrations whose ``offered`` status has passed the expiry timestamp.
+    3. For each expired offer, revert the status to ``waitlisted`` and increment the declined count.
+    4. Trigger promotion from the waitlist once per affected hackathon.
+    5. Commit the transaction.
+    6. Catch and print any exception to prevent the scheduler from crashing.
+
+    Raises: None (exceptions are caught and logged).
+    Side Effects: Updates Registration rows; may send offer emails via promote_from_waitlist.
+    Dependencies: app.database.async_session, app.models.Registration, app.models.RegistrationStatus, app.waitlist.promote_from_waitlist.
+    Consumers: APScheduler job running every 5 minutes.
+    """
     async with async_session() as db:
         try:
             now = datetime.now(UTC)
@@ -52,7 +66,22 @@ async def cleanup_expired_offers():
 
 
 async def send_event_reminders():
-    """Run daily at 9am. Send reminder emails for events starting tomorrow."""
+    """Send reminder emails to accepted participants for hackathons starting tomorrow.
+
+    Behavior:
+    1. Open an async database session.
+    2. Compute tomorrow's date window (midnight to 23:59:59).
+    3. Query hackathons whose start_date falls within that window.
+    4. For each matching hackathon, query all accepted registrations.
+    5. Load the user record for each registration.
+    6. Dispatch an event-reminder email via send_email_with_retry.
+    7. Catch and print any exception to prevent the scheduler from crashing.
+
+    Raises: None (exceptions are caught and logged).
+    Side Effects: Sends external emails via SendGrid or SMTP.
+    Dependencies: app.database.async_session, app.models.Hackathon, app.models.Registration, app.models.RegistrationStatus, app.models.User, app.email_service.send_email_with_retry.
+    Consumers: APScheduler job running daily at 9:00 AM.
+    """
     async with async_session() as db:
         try:
             tomorrow = datetime.now(UTC) + timedelta(days=1)
@@ -99,7 +128,19 @@ async def send_event_reminders():
 
 
 def start_scheduler():
-    """Start background job scheduler."""
+    """Start the APScheduler background job scheduler.
+
+    Behavior:
+    1. Register the cleanup_expired_offers job to run every 5 minutes.
+    2. Register the send_event_reminders job to run daily at 9:00 AM.
+    3. Start the scheduler event loop.
+    4. Print a startup confirmation message.
+
+    Raises: None
+    Side Effects: Starts the APScheduler event loop and registers persistent jobs.
+    Dependencies: apscheduler.schedulers.asyncio.AsyncIOScheduler, apscheduler.triggers.interval.IntervalTrigger, apscheduler.triggers.cron.CronTrigger.
+    Consumers: app.main.lifespan startup sequence.
+    """
     # Cleanup expired offers every 5 minutes
     scheduler.add_job(
         cleanup_expired_offers, IntervalTrigger(minutes=5), id="cleanup_expired_offers", replace_existing=True
@@ -115,6 +156,16 @@ def start_scheduler():
 
 
 def shutdown_scheduler():
-    """Shutdown scheduler gracefully."""
+    """Shut down the APScheduler background job scheduler gracefully.
+
+    Behavior:
+    1. Invoke the scheduler's shutdown method.
+    2. Print a shutdown confirmation message.
+
+    Raises: None
+    Side Effects: Stops the APScheduler event loop and terminates pending jobs.
+    Dependencies: apscheduler.schedulers.asyncio.AsyncIOScheduler.
+    Consumers: app.main.lifespan shutdown sequence.
+    """
     scheduler.shutdown()
     print("Background scheduler stopped")

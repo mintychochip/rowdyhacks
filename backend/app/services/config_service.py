@@ -1,4 +1,9 @@
-"""Instance configuration service with DB + env fallback + Redis cache."""
+"""Instance configuration service with DB + env fallback + Redis cache.
+
+Provides hierarchical configuration resolution: environment variables override
+ database values, which override hard-coded defaults. Results are cached in
+Redis for fast repeated reads.
+"""
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,7 +44,30 @@ _CSS_MAP = {
 
 
 class ConfigService:
+    """Instance configuration with environment fallback, DB persistence, and Redis cache.
+
+    Configuration resolution order:
+        1. Environment variable (if mapped in DEFAULTS).
+        2. Database SiteConfig entry.
+        3. Hard-coded default.
+
+    The ``get_all`` result is cached in Redis with a short TTL to reduce DB load.
+    """
+
     async def get(self, key: str, db: AsyncSession) -> str:
+        """Get a config value, preferring env then DB then default.
+
+        Behavior:
+        1. Validate the key exists in DEFAULTS.
+        2. Check the environment variable override.
+        3. Query the SiteConfig table for a persisted value.
+        4. Fall back to the hard-coded default.
+
+        Raises: ValueError if the key is not defined in DEFAULTS.
+        Side Effects: None (read-only).
+        Dependencies: app.models.SiteConfig, app.config.settings.
+        Consumers: Config endpoints and theme builders.
+        """
         if key not in DEFAULTS:
             raise ValueError(f"Unknown key '{key}'. Valid keys: {list(DEFAULTS.keys())}")
         default_value, env_attr, _ = DEFAULTS[key]
@@ -54,6 +82,20 @@ class ConfigService:
         return default_value
 
     async def get_all(self, db: AsyncSession, category: str | None = None) -> dict[str, str]:
+        """Get all config values, optionally filtered by category.
+
+        Behavior:
+        1. Check Redis cache for the full config dictionary.
+        2. If cached, optionally filter by category and return.
+        3. Otherwise query all SiteConfig rows from the database.
+        4. Resolve each key using env > DB > default precedence.
+        5. Store the result in Redis cache.
+
+        Raises: None
+        Side Effects: Reads/writes Redis cache.
+        Dependencies: app.cache.cache_get, app.cache.cache_set, app.models.SiteConfig.
+        Consumers: Config listing endpoints.
+        """
         cached = await cache_get(_CACHE_KEY)
         if cached and isinstance(cached, dict):
             if category:
@@ -76,6 +118,19 @@ class ConfigService:
         return config
 
     async def set(self, key: str, value: str, db: AsyncSession) -> None:
+        """Set a single config value in the database and clear the cache.
+
+        Behavior:
+        1. Validate the key exists in DEFAULTS.
+        2. Upsert the SiteConfig row in the database.
+        3. Commit the transaction.
+        4. Invalidate the Redis cache.
+
+        Raises: ValueError if the key is not defined in DEFAULTS.
+        Side Effects: Inserts/updates SiteConfig row; deletes Redis cache key.
+        Dependencies: app.models.SiteConfig, app.cache.cache_delete.
+        Consumers: Config update endpoints.
+        """
         if key not in DEFAULTS:
             raise ValueError(f"Unknown key '{key}'. Valid keys: {list(DEFAULTS.keys())}")
         result = await db.execute(select(SiteConfig).where(SiteConfig.key == key))
@@ -88,6 +143,19 @@ class ConfigService:
         await cache_delete(_CACHE_KEY)
 
     async def set_many(self, updates: dict[str, str], db: AsyncSession) -> None:
+        """Batch update config values and clear the cache.
+
+        Behavior:
+        1. Validate every key exists in DEFAULTS.
+        2. Upsert each SiteConfig row in the database.
+        3. Commit the transaction.
+        4. Invalidate the Redis cache.
+
+        Raises: ValueError if any key is not defined in DEFAULTS.
+        Side Effects: Inserts/updates SiteConfig rows; deletes Redis cache key.
+        Dependencies: app.models.SiteConfig, app.cache.cache_delete.
+        Consumers: Config batch update endpoints.
+        """
         invalid = [k for k in updates if k not in DEFAULTS]
         if invalid:
             raise ValueError(f"Unknown keys: {invalid}. Valid keys: {list(DEFAULTS.keys())}")
@@ -102,6 +170,18 @@ class ConfigService:
         await cache_delete(_CACHE_KEY)
 
     async def get_theme_css(self, db: AsyncSession) -> str:
+        """Generate CSS custom properties from the current theme config.
+
+        Behavior:
+        1. Load all configuration values.
+        2. Build a ``:root`` block with mapped CSS variables.
+        3. Return the resulting CSS string.
+
+        Raises: None
+        Side Effects: None (read-only).
+        Dependencies: ConfigService.get_all.
+        Consumers: Theme CSS endpoint.
+        """
         all_config = await self.get_all(db)
         lines = [":root {"]
         for key, css_var in _CSS_MAP.items():
@@ -111,10 +191,55 @@ class ConfigService:
         return "\n".join(lines)
 
     async def get_custom_css(self, db: AsyncSession) -> str | None:
+        """Return custom CSS override if set, otherwise None.
+
+        Behavior:
+        1. Fetch the ``custom_css`` config value.
+        2. Return it if non-empty, otherwise return None.
+
+        Raises: None
+        Side Effects: None (read-only).
+        Dependencies: ConfigService.get.
+        Consumers: Theme CSS endpoint.
+        """
         val = await self.get("custom_css", db)
         return val if val else None
 
+    async def delete(self, key: str, db: AsyncSession) -> None:
+        """Delete a config value from the database and clear the cache.
+
+        Behavior:
+        1. Validate the key exists in DEFAULTS.
+        2. Remove the SiteConfig row from the database if present.
+        3. Commit the transaction.
+        4. Invalidate the Redis cache.
+
+        Raises: ValueError if the key is not defined in DEFAULTS.
+        Side Effects: Deletes SiteConfig row; deletes Redis cache key.
+        """
+        if key not in DEFAULTS:
+            raise ValueError(f"Unknown key '{key}'. Valid keys: {list(DEFAULTS.keys())}")
+        result = await db.execute(select(SiteConfig).where(SiteConfig.key == key))
+        row = result.scalar_one_or_none()
+        if row:
+            await db.delete(row)
+        await db.commit()
+        await cache_delete(_CACHE_KEY)
+
     async def _seed_defaults(self, db: AsyncSession) -> None:
+        """Insert default config values into the database on first run.
+
+        Behavior:
+        1. Iterate over all DEFAULTS entries.
+        2. Skip keys that already exist in SiteConfig.
+        3. Insert missing keys with their default (or env-override) values.
+        4. Commit the transaction.
+
+        Raises: None
+        Side Effects: Inserts SiteConfig rows.
+        Dependencies: app.models.SiteConfig.
+        Consumers: Application startup bootstrap.
+        """
         for key, (default, env_attr, category) in DEFAULTS.items():
             result = await db.execute(select(SiteConfig).where(SiteConfig.key == key))
             row = result.scalar_one_or_none()

@@ -9,7 +9,21 @@ from app.checks.interface import CheckContext, CheckResult
 
 
 async def check_repo_age(context: CheckContext) -> CheckResult:
-    """Check repo age, stars, and fork status via GitHub API."""
+    """Check repository age, stars, fork status, and push timeline via the GitHub API.
+
+    Behavior:
+    1. Return early if no GitHub URL is present or if the URL cannot be parsed.
+    2. Call the GitHub API for the target repository metadata.
+    3. Compute repository age in days and flag repos older than six months.
+    4. If hackathon context is available, compare creation and last-push dates against the hackathon window.
+    5. Flag high star counts and fork status as unlikely for a hackathon project.
+    6. Return a CheckResult with age, star, fork, and timeline findings.
+
+    Raises: None
+    Side Effects: None (read-only external HTTP request to GitHub API).
+    Dependencies: app.checks.interface.CheckContext, app.checks.interface.CheckResult, httpx.
+    Consumers: Internal check used by the analyzer pipeline.
+    """
     gh_url = context.scraped.github_url
     if not gh_url:
         return CheckResult(

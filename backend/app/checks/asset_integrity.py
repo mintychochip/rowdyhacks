@@ -19,7 +19,20 @@ AI_KEYWORDS = [
 
 
 async def check_assets(context: CheckContext) -> CheckResult:
-    """Check links, README, and AI disclosure."""
+    """Check asset links, README presence, and AI disclosure in a repository.
+
+    Behavior:
+    1. Validate external links (GitHub, video, slides) via HEAD requests.
+    2. Record broken links and increment score for each failure.
+    3. Check for README files in the repository root.
+    4. Scan README content for AI-related disclosure keywords.
+    5. Return a CheckResult with link status and AI disclosure flag.
+
+    Raises: None
+    Side Effects: None (read-only HTTP and filesystem checks).
+    Dependencies: app.checks.interface.CheckContext, app.checks.interface.CheckResult, app.config.settings.
+    Consumers: Internal check used by the analyzer pipeline.
+    """
     score = 0
     details = {"broken_links": [], "missing_assets": [], "ai_disclosure": False}
     evidence = []

@@ -23,6 +23,19 @@ class ApplicationView(discord.ui.View):
     """Buttons for reviewing / accepting / rejecting a single application."""
 
     def __init__(self, registration_id: str, hackathon_id: str):
+        """Initialize interactive action buttons for a registration review message.
+
+        Behavior:
+        1. Call the parent View constructor with no timeout.
+        2. Store the registration and hackathon IDs.
+        3. Create Review, Accept, and Reject buttons and attach their callbacks.
+        4. Add the buttons to the view.
+
+        Raises: None
+        Side Effects: Adds discord.ui.Button items to the view.
+        Dependencies: discord.ui.View, discord.ui.Button.
+        Consumers: post_application_to_discord when building the application embed.
+        """
         super().__init__(timeout=None)
         self.registration_id = registration_id
         self.hackathon_id = hackathon_id
@@ -52,7 +65,20 @@ class ApplicationView(discord.ui.View):
         self.add_item(reject_btn)
 
     async def _review_callback(self, interaction: discord.Interaction):
-        """Show the full application details in an ephemeral message."""
+        """Show the full application details in an ephemeral message.
+
+        Behavior:
+        1. Open an async database session.
+        2. Load the registration with its user eagerly loaded.
+        3. If the registration is missing, reply with an error and return.
+        4. Build a Discord embed with all applicant fields.
+        5. Send the embed as an ephemeral reply.
+
+        Raises: None
+        Side Effects: Sends an ephemeral Discord message.
+        Dependencies: app.database.async_session, sqlalchemy.orm.selectinload, discord.Embed.
+        Consumers: Discord UI button callback triggered by the Review button.
+        """
         async with async_session() as db:
             result = await db.execute(
                 select(Registration)
@@ -108,6 +134,23 @@ class ApplicationView(discord.ui.View):
         await interaction.response.send_message(embed=detail, ephemeral=True)
 
     async def _accept_callback(self, interaction: discord.Interaction):
+        """Accept the registration and generate a QR token.
+
+        Behavior:
+        1. Open an async database session.
+        2. Load the registration with its user eagerly loaded.
+        3. Validate the registration exists and is still pending.
+        4. Update the status to ``accepted`` and set the accepted timestamp.
+        5. Generate a QR token bound to the registration, user, and hackathon.
+        6. Commit the transaction.
+        7. Update the original Discord embed to show Accepted and remove the action view.
+        8. Send an ephemeral confirmation reply.
+
+        Raises: None
+        Side Effects: Updates a Registration row; edits a Discord message; sends a Discord reply.
+        Dependencies: app.database.async_session, app.auth.create_qr_token, sqlalchemy.orm.selectinload.
+        Consumers: Discord UI button callback triggered by the Accept button.
+        """
         async with async_session() as db:
             result = await db.execute(
                 select(Registration)
@@ -144,6 +187,22 @@ class ApplicationView(discord.ui.View):
         )
 
     async def _reject_callback(self, interaction: discord.Interaction):
+        """Reject the registration and update the message embed.
+
+        Behavior:
+        1. Open an async database session.
+        2. Load the registration with its user eagerly loaded.
+        3. Validate the registration exists and is still pending.
+        4. Update the status to ``rejected``.
+        5. Commit the transaction.
+        6. Update the original Discord embed to show Rejected and remove the action view.
+        7. Send an ephemeral confirmation reply.
+
+        Raises: None
+        Side Effects: Updates a Registration row; edits a Discord message; sends a Discord reply.
+        Dependencies: app.database.async_session, sqlalchemy.orm.selectinload.
+        Consumers: Discord UI button callback triggered by the Reject button.
+        """
         async with async_session() as db:
             result = await db.execute(
                 select(Registration)
@@ -172,16 +231,21 @@ class ApplicationView(discord.ui.View):
 
 
 class HackathonBot(discord.Client):
+    """Discord client with slash commands for hackathon management."""
+
     def __init__(self):
+        """Set up default intents and the command tree."""
         intents = discord.Intents.default()
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
+        """Sync slash commands after login."""
         await self.tree.sync()
         logger.info("Discord bot commands synced")
 
     async def on_ready(self):
+        """Log bot connection details on startup."""
         print(f"[BOT] on_ready: {self.user}, guilds={len(self.guilds)}")
         logger.info(f"Discord bot logged in as {self.user}")
 
@@ -192,6 +256,23 @@ bot = HackathonBot()
 @bot.tree.command(name="applications", description="List pending hackathon applications")
 @app_commands.describe(status="Filter by status: pending, accepted, all")
 async def list_applications(interaction: discord.Interaction, status: str = "pending"):
+    """List hackathon registrations filtered by status.
+
+    Behavior:
+    1. Defer the interaction response.
+    2. Open an async database session.
+    3. Find the most recently created hackathon.
+    4. Build a query filtering registrations by hackathon and optional status.
+    5. Load up to 25 registrations with eagerly loaded users.
+    6. Count total matching registrations.
+    7. Build Discord embeds for each registration.
+    8. Send embeds in batches of 10 (Discord limit).
+
+    Raises: None
+    Side Effects: Sends Discord follow-up messages with embeds.
+    Dependencies: app.database.async_session, app.models.Hackathon, app.models.Registration, app.models.RegistrationStatus, sqlalchemy.orm.selectinload.
+    Consumers: Discord /applications slash command.
+    """
     await interaction.response.defer(ephemeral=False)
 
     async with async_session() as db:
@@ -255,6 +336,22 @@ async def list_applications(interaction: discord.Interaction, status: str = "pen
 
 @bot.tree.command(name="stats", description="Show hackathon statistics")
 async def show_stats(interaction: discord.Interaction):
+    """Display registration and submission statistics for the latest hackathon.
+
+    Behavior:
+    1. Defer the interaction response.
+    2. Open an async database session.
+    3. Find the most recently created hackathon.
+    4. Count registrations grouped by status.
+    5. Load submissions and compute average risk score and verdict breakdown.
+    6. Build a Discord embed with all statistics.
+    7. Send the embed as a follow-up message.
+
+    Raises: None
+    Side Effects: Sends a Discord follow-up message with an embed.
+    Dependencies: app.database.async_session, app.models.Hackathon, app.models.Registration, app.models.Submission, app.models.Verdict, sqlalchemy.func.count.
+    Consumers: Discord /stats slash command.
+    """
     await interaction.response.defer()
 
     async with async_session() as db:
@@ -307,6 +404,23 @@ async def show_stats(interaction: discord.Interaction):
 @bot.tree.command(name="accept", description="Accept a pending application by ID")
 @app_commands.describe(registration_id="The registration ID to accept")
 async def accept_application(interaction: discord.Interaction, registration_id: str):
+    """Accept a pending registration by ID via Discord slash command.
+
+    Behavior:
+    1. Defer the interaction as ephemeral.
+    2. Open an async database session.
+    3. Load the registration with eagerly loaded user and hackathon.
+    4. Validate the registration exists and is still pending.
+    5. Update the status to ``accepted`` and set the accepted timestamp.
+    6. Generate a QR token bound to the registration, user, and hackathon end date.
+    7. Commit the transaction.
+    8. Send an ephemeral confirmation follow-up.
+
+    Raises: None
+    Side Effects: Updates a Registration row; sends a Discord follow-up message.
+    Dependencies: app.database.async_session, app.auth.create_qr_token, sqlalchemy.orm.selectinload.
+    Consumers: Discord /accept slash command.
+    """
     await interaction.response.defer(ephemeral=True)
 
     async with async_session() as db:
@@ -341,6 +455,22 @@ async def accept_application(interaction: discord.Interaction, registration_id: 
 @bot.tree.command(name="reject", description="Reject a pending application by ID")
 @app_commands.describe(registration_id="The registration ID to reject")
 async def reject_application(interaction: discord.Interaction, registration_id: str):
+    """Reject a pending registration by ID via Discord slash command.
+
+    Behavior:
+    1. Defer the interaction as ephemeral.
+    2. Open an async database session.
+    3. Load the registration with eagerly loaded user.
+    4. Validate the registration exists and is still pending.
+    5. Update the status to ``rejected``.
+    6. Commit the transaction.
+    7. Send an ephemeral confirmation follow-up.
+
+    Raises: None
+    Side Effects: Updates a Registration row; sends a Discord follow-up message.
+    Dependencies: app.database.async_session, sqlalchemy.orm.selectinload.
+    Consumers: Discord /reject slash command.
+    """
     await interaction.response.defer(ephemeral=True)
 
     async with async_session() as db:
@@ -366,9 +496,22 @@ async def reject_application(interaction: discord.Interaction, registration_id: 
 
 async def post_application_to_discord(registration_id: str) -> bool:
     """Post a new application to a Discord channel with Accept/Reject buttons.
-    Uses the bot to send interactive buttons if channel is configured,
-    falls back to webhook if available.
-    Returns True if successful."""
+
+    Behavior:
+    1. Return False immediately if no Discord bot token is configured.
+    2. Open an async database session.
+    3. Load the registration with eagerly loaded user and hackathon.
+    4. Build a rich Discord embed with applicant details.
+    5. Instantiate an ApplicationView with action buttons.
+    6. If a channel ID is configured, attempt to send the embed with buttons via the bot.
+    7. On failure, fall back to a webhook (text-only, no buttons).
+    8. Return True if any delivery method succeeds.
+
+    Raises: None (exceptions are caught and logged).
+    Side Effects: Sends a Discord message or webhook request.
+    Dependencies: app.database.async_session, app.models.Registration, app.models.Hackathon, discord.Embed, discord.SyncWebhook.
+    Consumers: Registration creation route to notify organizers.
+    """
     # Skip if Discord bot not configured (test environments)
     if not settings.discord_bot_token:
         return False
@@ -470,7 +613,20 @@ async def post_application_to_discord(registration_id: str) -> bool:
 
 
 def get_bot_invite_url() -> str | None:
-    """Generate the Discord bot invite URL with required permissions."""
+    """Generate the Discord bot OAuth invite URL with required permissions.
+
+    Behavior:
+    1. Read the Discord client ID from settings.
+    2. Return None if the client ID is not configured.
+    3. Build a Permissions object with send_messages, embed_links, and read_messages enabled.
+    4. Assemble the standard Discord OAuth2 bot invite URL with the permission value and scope.
+    5. Return the invite URL string.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: discord.Permissions, app.config.settings.discord_client_id.
+    Consumers: GET /api/discord/invite-url and app.discord_bot.start_bot console output.
+    """
     client_id = settings.discord_client_id
     if not client_id:
         return None
@@ -487,7 +643,23 @@ def get_bot_invite_url() -> str | None:
 
 
 async def start_bot():
-    """Start the Discord bot if a token is configured. Waits for bot to be ready."""
+    """Start the Discord bot if a token is configured and wait for readiness.
+
+    Behavior:
+    1. Read the Discord bot token from settings.
+    2. If no token is configured, print a skip message and return None.
+    3. Print the invite URL if the client ID is configured.
+    4. Spawn an asyncio task to start the bot connection.
+    5. Yield to the event loop so the task can schedule.
+    6. Wait up to 15 seconds for the bot to become ready.
+    7. Log timeout or runtime errors without crashing the app.
+    8. Return the bot instance.
+
+    Raises: None (exceptions are caught and logged).
+    Side Effects: Spawns a background asyncio task; connects to the Discord gateway.
+    Dependencies: discord.Client.start, app.config.settings.discord_bot_token, app.discord_bot.get_bot_invite_url.
+    Consumers: app.main.lifespan startup sequence.
+    """
     token = settings.discord_bot_token
     if not token:
         print("[BOT] No token configured, skipping")

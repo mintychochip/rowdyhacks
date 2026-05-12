@@ -19,13 +19,25 @@ CACHE_PFX = "content"
 
 
 def _slugify(title: str) -> str:
-    """Convert title to URL-friendly slug."""
+    """Convert a page title to a URL-friendly slug.
+
+    Behavior:
+    1. Strip non-alphanumeric characters and lowercase the title.
+    2. Collapse spaces and hyphens into a single hyphen.
+    3. Trim to a maximum of 100 characters.
+
+    Raises: None
+    Side Effects: None (pure function).
+    Dependencies: re module.
+    Consumers: content.py create_page helper.
+    """
     slug = re.sub(r"[^\w\s-]", "", title.lower())
     slug = re.sub(r"[-\s]+", "-", slug)
     return slug.strip("-")[:100]
 
 
 def _page_to_response(page: ContentPage, author_name: str | None = None) -> dict:
+    """Serialize a ContentPage model to a response dict."""
     return {
         "id": str(page.id),
         "slug": page.slug,
@@ -48,7 +60,19 @@ async def list_pages(
     tab_group: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """List content pages, optionally filtered by tab_group."""
+    """List published content pages, optionally filtered by tab_group.
+
+    Behavior:
+    1. Query published ContentPage rows joined with author names.
+    2. Optionally filter by tab_group query parameter.
+    3. Order results by tab_group_order and sort_order.
+    4. Return serialized pages and the set of present tab_groups.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: app.models.ContentPage, app.models.User, app.cache.cached.
+    Consumers: GET /api/content/pages, public page listing.
+    """
     query = (
         select(ContentPage, User.name)
         .outerjoin(User, ContentPage.created_by == User.id)
@@ -69,7 +93,18 @@ async def list_pages(
 @router.get("/pages/{slug}")
 @cached(ttl_seconds=CONTENT_CACHE_TTL, key_prefix=CACHE_PFX)
 async def get_page(slug: str, db: AsyncSession = Depends(get_db)):
-    """Get a single content page by slug."""
+    """Get a single published content page by slug.
+
+    Behavior:
+    1. Query ContentPage by slug where is_published is True, joined with author name.
+    2. Return 404 if no matching page exists.
+    3. Return serialized page details.
+
+    Raises: HTTPException(404) if the page is not found or unpublished.
+    Side Effects: None (read-only).
+    Dependencies: app.models.ContentPage, app.models.User.
+    Consumers: GET /api/content/pages/{slug}, public page viewer.
+    """
     result = await db.execute(
         select(ContentPage, User.name)
         .outerjoin(User, ContentPage.created_by == User.id)
@@ -89,7 +124,21 @@ async def create_page(
     user_payload: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new content page (organizer only)."""
+    """Create a new content page (organizer only).
+
+    Behavior:
+    1. Validate the title is present; 422 if missing.
+    2. Generate or validate the slug (lowercase alphanumeric with hyphens); 422 if invalid.
+    3. Check for slug conflicts; 409 if duplicate.
+    4. Create and persist the ContentPage row.
+    5. Bust the content cache.
+    6. Return the created page's serialized details.
+
+    Raises: HTTPException(422) if title is missing or slug is invalid. HTTPException(409) if slug already exists.
+    Side Effects: Inserts ContentPage row; clears content cache.
+    Dependencies: app.models.ContentPage, app.cache.cache_delete_pattern.
+    Consumers: POST /api/content/pages, organizer dashboard.
+    """
     user = user_payload["user"]
 
     # Validate slug or generate from title
@@ -134,7 +183,20 @@ async def update_page(
     user_payload: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update a content page (organizer only)."""
+    """Update a content page (organizer only).
+
+    Behavior:
+    1. Look up the page by slug; 404 if not found.
+    2. Apply allowed field updates from the body (title, content, tab_group, sort_order, tab_group_order, is_published).
+    3. Update the updated_at timestamp.
+    4. Commit changes and bust the content cache.
+    5. Return the updated page's serialized details.
+
+    Raises: HTTPException(404) if the page is not found.
+    Side Effects: Mutates ContentPage row; clears content cache.
+    Dependencies: app.models.ContentPage.
+    Consumers: PUT /api/content/pages/{slug}, organizer dashboard.
+    """
     result = await db.execute(select(ContentPage).where(ContentPage.slug == slug))
     page = result.scalar_one_or_none()
     if not page:
@@ -169,7 +231,19 @@ async def delete_page(
     user_payload: dict = Depends(require_organizer),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete a content page (organizer only)."""
+    """Delete a content page (organizer only).
+
+    Behavior:
+    1. Look up the page by slug; 404 if not found.
+    2. Delete the page from the database and commit.
+    3. Bust the content cache.
+    4. Return confirmation dict.
+
+    Raises: HTTPException(404) if the page is not found.
+    Side Effects: Deletes ContentPage row; clears content cache.
+    Dependencies: app.models.ContentPage.
+    Consumers: DELETE /api/content/pages/{slug}, organizer dashboard.
+    """
     result = await db.execute(select(ContentPage).where(ContentPage.slug == slug))
     page = result.scalar_one_or_none()
     if not page:

@@ -1,9 +1,24 @@
+"""Application settings loaded from environment variables.
+
+Centralizes all runtime configuration for the hackathon platform,
+including database, cache, OAuth, LLM, email, S3, and branding.
+Values are read from the environment with the ``HACKVERIFY_`` prefix
+and validated on import.
+"""
+
 from apscheduler.triggers.cron import CronTrigger
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    """Application configuration loaded from environment variables.
+
+    Groups settings by concern (database, OAuth, LLM, storage, email,
+    branding) and validates critical values such as the JWT secret
+    key length and the crawler cron expression on instantiation.
+    """
+
     database_url: str = Field(
         default="postgresql+asyncpg://postgres:postgres@localhost:5432/hackverify",
         description="PostgreSQL connection string (asyncpg driver)",
@@ -108,26 +123,17 @@ class Settings(BaseSettings):
     @field_validator("secret_key")
     @classmethod
     def secret_key_min_length(cls, v: str) -> str:
-        """
-        Ensure the secret_key setting meets the minimum length requirement.
+        """Ensure the secret_key setting meets the minimum length requirement.
 
-        Expected Inputs:
-            - v (str): The secret_key value being validated.
+        Behavior:
+        1. Measure the length of the provided string.
+        2. If shorter than 32 characters, raise a ValueError.
+        3. Otherwise, return the value unchanged.
 
-        Step-by-Step Implementation:
-            1. Measure the length of the provided string.
-            2. If shorter than 32 characters, raise a ValueError.
-            3. Otherwise, return the value unchanged.
-
-        Side Effects:
-            - None
-
-        Returns:
-            str
-            - The validated secret_key string.
-
-        Raises:
-            - ValueError: If the secret_key is fewer than 32 characters.
+        Raises: ValueError if the secret_key is fewer than 32 characters.
+        Side Effects: None (read-only validation).
+        Dependencies: pydantic.field_validator.
+        Consumers: Pydantic Settings instantiation on app startup.
         """
         if len(v) < 32:
             raise ValueError("secret_key must be at least 32 characters")
@@ -136,26 +142,17 @@ class Settings(BaseSettings):
     @field_validator("crawler_schedule")
     @classmethod
     def validate_cron(cls, v: str) -> str:
-        """
-        Ensure the crawler_schedule setting is a valid APScheduler cron expression.
+        """Ensure the crawler_schedule setting is a valid APScheduler cron expression.
 
-        Expected Inputs:
-            - v (str): The cron expression string being validated.
+        Behavior:
+        1. Attempt to parse the string with CronTrigger.from_crontab().
+        2. If parsing raises ValueError or TypeError, wrap it in a descriptive ValueError and re-raise.
+        3. Otherwise, return the expression unchanged.
 
-        Step-by-Step Implementation:
-            1. Attempt to parse the string with CronTrigger.from_crontab().
-            2. If parsing raises ValueError or TypeError, wrap it in a descriptive ValueError and re-raise.
-            3. Otherwise, return the expression unchanged.
-
-        Side Effects:
-            - None
-
-        Returns:
-            str
-            - The validated cron expression.
-
-        Raises:
-            - ValueError: If the cron expression is invalid or unparseable.
+        Raises: ValueError if the cron expression is invalid or unparseable.
+        Side Effects: None (read-only validation).
+        Dependencies: apscheduler.triggers.cron.CronTrigger.
+        Consumers: Pydantic Settings instantiation on app startup.
         """
         try:
             CronTrigger.from_crontab(v)
@@ -189,25 +186,16 @@ class Settings(BaseSettings):
     model_config = {"env_prefix": "HACKVERIFY_", "env_file": ".env", "extra": "ignore"}
 
     def get_poolside_key(self) -> str:
-        """
-        Return the Poolside API key, falling back to the generic LLM key if empty.
+        """Return the Poolside API key, falling back to the generic LLM key if empty.
 
-        Expected Inputs:
-            - None (reads instance attributes).
+        Behavior:
+        1. Return poolside_api_key if it is truthy.
+        2. Otherwise, return llm_api_key as the fallback.
 
-        Step-by-Step Implementation:
-            1. Return poolside_api_key if it is truthy.
-            2. Otherwise, return llm_api_key as the fallback.
-
-        Side Effects:
-            - None
-
-        Returns:
-            str
-            - The resolved API key (may be an empty string if both are unset).
-
-        Raises:
-            - None
+        Raises: None
+        Side Effects: None (read-only).
+        Dependencies: None.
+        Consumers: app.assistant.llm.LLMClient initialization.
         """
         return self.poolside_api_key or self.llm_api_key
 

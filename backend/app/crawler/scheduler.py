@@ -16,18 +16,35 @@ _crawler_running: bool = False
 
 
 def is_crawling() -> bool:
-    """Check if a crawl is currently in progress."""
+    """Return whether a crawl cycle is currently running.
+
+    Behavior:
+    1. Return the value of the module-level ``_crawler_running`` flag.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: None
+    Consumers: Crawl status endpoints, scheduler health checks.
+    """
     return _crawler_running
 
 
 async def run_crawl() -> dict:
-    """Run a full crawl cycle.
+    """Orchestrate a full crawl cycle.
 
-    1. Discover new hackathons
-    2. For active hackathons, discover submissions
-    3. Scrape uncrawled projects
+    Behavior:
+    1. Check the ``_crawler_running`` flag; if already active, raise ``RuntimeError``.
+    2. Set the flag to ``True`` and initialize a summary dict.
+    3. Discover new hackathons on Devpost and record the count.
+    4. Iterate over all known hackathons and discover their submissions.
+    5. Scrape metadata for all uncrawled projects in batches until no new projects remain.
+    6. Record any errors encountered during the cycle.
+    7. Reset the flag and return the summary dict.
 
-    Returns summary dict.
+    Raises: RuntimeError if another crawl is already in progress.
+    Side Effects: Mutates ``_crawler_running``; writes to PostgreSQL via downstream crawlers.
+    Dependencies: app.crawler.discovery.discover_hackathons, app.crawler.submission_discovery.discover_submissions, app.crawler.project_scraper.scrape_projects.
+    Consumers: Background task scheduler, manual crawl triggers.
     """
     global _crawler_running
 

@@ -23,15 +23,42 @@ logger = logging.getLogger(__name__)
 
 
 class ToolExecutor:
-    """Executes tools with proper database access."""
+    """Dispatcher that runs assistant tools with database and user context.
+
+    Each public ``tool_*`` method maps to a registered tool name. The
+    ``execute()`` method routes incoming tool calls to the correct
+    implementation while injecting the current DB session, user, and
+    hackathon objects automatically.
+    """
 
     def __init__(self, db: AsyncSession, user: User, hackathon: Optional[Hackathon] = None):
+        """Initialize the tool executor.
+
+        Behavior:
+        1. Store the database session, user, and optional hackathon as instance attributes.
+
+        Raises: None
+        Side Effects: Mutates instance state (sets ``self.db``, ``self.user``, ``self.hackathon``).
+        Dependencies: None
+        Consumers: Assistant endpoint that instantiates ToolExecutor per request.
+        """
         self.db = db
         self.user = user
         self.hackathon = hackathon
 
     async def execute(self, tool_name: str, parameters: Dict[str, Any]) -> Any:
-        """Execute a tool by name."""
+        """Dispatch a tool call by name.
+
+        Behavior:
+        1. Look up the method named ``tool_{tool_name}`` on this instance.
+        2. If no such method exists, raise ``ValueError``.
+        3. Await and return the method's result.
+
+        Raises: ValueError if the requested tool is not registered.
+        Side Effects: None beyond the invoked tool's own effects.
+        Dependencies: None
+        Consumers: Assistant response pipeline, tool-calling loop.
+        """
         method = getattr(self, f"tool_{tool_name}", None)
         if not method:
             raise ValueError(f"Unknown tool: {tool_name}")
@@ -40,7 +67,18 @@ class ToolExecutor:
     # ========== Common Tools ==========
 
     async def tool_query_hackathon_info(self, query: str) -> Dict[str, Any]:
-        """Get general hackathon information."""
+        """Return general information about the current hackathon.
+
+        Behavior:
+        1. Verify a hackathon is attached to the executor context.
+        2. Build an info dict with dates, venue, WiFi, parking, Discord, and Devpost URLs.
+        3. Return the dict wrapped under a ``hackathon`` key.
+
+        Raises: None
+        Side Effects: None (read-only).
+        Dependencies: None
+        Consumers: Assistant ``query_hackathon_info`` tool.
+        """
         if not self.hackathon:
             return {"error": "No hackathon context available"}
 
@@ -63,7 +101,20 @@ class ToolExecutor:
         return {"hackathon": info}
 
     async def tool_get_tracks(self, hackathon_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """List all tracks for the hackathon."""
+        """List all prize tracks for a hackathon.
+
+        Behavior:
+        1. Resolve the target hackathon ID from the parameter or the current context.
+        2. Query the database for Track rows scoped to that hackathon, ordered by name.
+        3. Map each track to a dict with ``id``, ``name``, ``description``,
+           ``criteria``, ``resources``, ``prize``, and ``color``.
+        4. Return the list of track dicts.
+
+        Raises: None
+        Side Effects: None (read-only database query).
+        Dependencies: sqlalchemy.select, app.models.Track.
+        Consumers: Assistant ``get_tracks`` tool.
+        """
         target_hackathon_id = hackathon_id or (str(self.hackathon.id) if self.hackathon else None)
         if not target_hackathon_id:
             return {"error": "No hackathon specified"}
@@ -87,7 +138,18 @@ class ToolExecutor:
         ]
 
     async def tool_view_schedule(self, day: Optional[str] = None) -> Dict[str, Any]:
-        """Get hackathon schedule."""
+        """Return the hackathon schedule.
+
+        Behavior:
+        1. Verify a hackathon is attached to the executor context.
+        2. Build a schedule dict with ``hackathon_name``, ``start``, ``end``, and a note.
+        3. Return the dict.
+
+        Raises: None
+        Side Effects: None (read-only).
+        Dependencies: None
+        Consumers: Assistant ``view_schedule`` tool.
+        """
         # For now, return basic hackathon timing
         if not self.hackathon:
             return {"error": "No hackathon context"}
@@ -102,7 +164,19 @@ class ToolExecutor:
         return schedule
 
     async def tool_faq_query(self, question: str) -> Dict[str, Any]:
-        """Search FAQ."""
+        """Search the FAQ knowledge base by semantic similarity.
+
+        Behavior:
+        1. Embed the user's question using the sentence-transformers embedder.
+        2. Search the vector store for FAQ documents scoped to the current hackathon and user role.
+        3. Map the top matches into ``{question, answer}`` dicts.
+        4. Return the matches, or an empty list with a guidance message if nothing is found.
+
+        Raises: None
+        Side Effects: None (read-only vector search).
+        Dependencies: app.assistant.embedder.embedder, app.assistant.vector_store.vector_store.
+        Consumers: Assistant ``faq_query`` tool.
+        """
         # Search through indexed FAQ documents
         from app.assistant.embedder import embedder
         from app.assistant.vector_store import vector_store
@@ -127,7 +201,19 @@ class ToolExecutor:
     # ========== Participant Tools ==========
 
     async def tool_ideation_help(self, interests: List[str], track_id: Optional[str] = None) -> Dict[str, Any]:
-        """Get ideation help based on interests."""
+        """Provide project ideation suggestions based on user interests.
+
+        Behavior:
+        1. Build a base suggestions dict with generic advice and resources.
+        2. If ``track_id`` is provided, query the matching Track and append
+           track-specific criteria into ``track_focus``.
+        3. Return the suggestions dict.
+
+        Raises: None
+        Side Effects: None (read-only database query if track_id is given).
+        Dependencies: sqlalchemy.select, app.models.Track.
+        Consumers: Assistant ``ideation_help`` tool.
+        """
         suggestions = {
             "interests": interests,
             "suggestions": [
@@ -154,7 +240,19 @@ class ToolExecutor:
         return suggestions
 
     async def tool_submission_guidance(self, topic: Optional[str] = None) -> Dict[str, Any]:
-        """Get help with submission requirements."""
+        """Return guidance for hackathon submission requirements.
+
+        Behavior:
+        1. Build a guidance dict with general requirements and tips.
+        2. If ``topic`` is provided, append a focused advice block for
+           ``video``, ``devpost``, or ``github``.
+        3. Return the guidance dict.
+
+        Raises: None
+        Side Effects: None (read-only).
+        Dependencies: None
+        Consumers: Assistant ``submission_guidance`` tool.
+        """
         guidance = {
             "general_requirements": [
                 "Submit via Devpost before the deadline",
@@ -192,10 +290,21 @@ class ToolExecutor:
         return guidance
 
     async def tool_view_own_submission_status(self) -> Dict[str, Any]:
-        """View user's submission status."""
+        """Return the current user's submission status for the active hackathon.
+
+        Behavior:
+        1. Query Submission rows scoped to the current user and hackathon.
+        2. If no submissions exist, return a prompt to submit.
+        3. Otherwise map each submission into a dict and return under a ``submissions`` key.
+
+        Raises: None
+        Side Effects: None (read-only database query).
+        Dependencies: sqlalchemy.select, app.models.Submission.
+        Consumers: Assistant ``view_own_submission_status`` tool.
+        """
         result = await self.db.execute(
             select(Submission)
-            .where(Submission.submitter_id == self.user.id)
+            .where(Submission.submitted_by == self.user.id)
             .where(Submission.hackathon_id == self.hackathon.id if self.hackathon else True)
         )
         submissions = result.scalars().all()
@@ -221,7 +330,20 @@ class ToolExecutor:
     # ========== Judge Tools ==========
 
     async def tool_judging_guidelines(self, track_id: Optional[str] = None) -> Dict[str, Any]:
-        """Get judging guidelines."""
+        """Return judging guidelines for the active hackathon.
+
+        Behavior:
+        1. Verify a hackathon context exists.
+        2. Query the JudgingSession for the hackathon.
+        3. Build a guidelines dict with ``general_principles`` and ``session_info``.
+        4. If ``track_id`` is provided, append track-specific criteria.
+        5. Return the guidelines dict.
+
+        Raises: None
+        Side Effects: None (read-only database queries).
+        Dependencies: sqlalchemy.select, app.models.JudgingSession, app.models.Track.
+        Consumers: Assistant ``judging_guidelines`` tool.
+        """
         if not self.hackathon:
             return {"error": "No hackathon context"}
 
@@ -257,7 +379,20 @@ class ToolExecutor:
         return guidelines
 
     async def tool_view_assigned_submissions(self) -> List[Dict[str, Any]]:
-        """List submissions assigned to judge."""
+        """List all submissions assigned to the current judge.
+
+        Behavior:
+        1. Verify a hackathon context exists.
+        2. Query JudgeAssignment rows joined to Submission for the current judge and hackathon.
+        3. Map each row into a dict with ``assignment_id``, ``submission_id``,
+           ``project_name``, ``devpost_url``, ``status``, and ``scores_submitted``.
+        4. Return the list.
+
+        Raises: None
+        Side Effects: None (read-only database query).
+        Dependencies: sqlalchemy.select, app.models.JudgeAssignment, app.models.Submission.
+        Consumers: Assistant ``view_assigned_submissions`` tool.
+        """
         if not self.hackathon:
             return {"error": "No hackathon context"}
 
@@ -282,7 +417,18 @@ class ToolExecutor:
         ]
 
     async def tool_view_submission_details(self, submission_id: str) -> Dict[str, Any]:
-        """Get detailed submission information."""
+        """Return detailed metadata for a specific submission.
+
+        Behavior:
+        1. Query the Submission row by ``submission_id``.
+        2. If not found, return an error dict.
+        3. Otherwise map the submission fields into a dict and return it.
+
+        Raises: None
+        Side Effects: None (read-only database query).
+        Dependencies: sqlalchemy.select, app.models.Submission.
+        Consumers: Assistant ``view_submission_details`` tool.
+        """
         result = await self.db.execute(select(Submission).where(Submission.id == submission_id))
         submission = result.scalar_one_or_none()
 
@@ -296,7 +442,7 @@ class ToolExecutor:
             "devpost_url": submission.devpost_url,
             "github_url": submission.github_url,
             "demo_url": submission.demo_url,
-            "submitter_id": str(submission.submitter_id),
+            "submitted_by": str(submission.submitted_by),
             "status": submission.status,
             "risk_score": submission.risk_score,
             "verdict": submission.verdict,
@@ -305,7 +451,20 @@ class ToolExecutor:
     # ========== Organizer Tools ==========
 
     async def tool_participant_search(self, query: str) -> List[Dict[str, Any]]:
-        """Search participants."""
+        """Search participants by name, email, school, or team.
+
+        Behavior:
+        1. Verify a hackathon context exists.
+        2. Build an ILIKE search pattern from ``query``.
+        3. Query User rows joined to Registration, filtering by hackathon and matching
+           name, email, school, or team name.
+        4. Map results into participant dicts and return the list.
+
+        Raises: None
+        Side Effects: None (read-only database query).
+        Dependencies: sqlalchemy.select, app.models.User, app.models.Registration.
+        Consumers: Assistant ``participant_search`` tool.
+        """
         if not self.hackathon:
             return {"error": "No hackathon context"}
 
@@ -338,7 +497,20 @@ class ToolExecutor:
         ]
 
     async def tool_submission_analytics(self, track_id: Optional[str] = None) -> Dict[str, Any]:
-        """Get submission analytics."""
+        """Return aggregate submission statistics.
+
+        Behavior:
+        1. Verify a hackathon context exists.
+        2. Count total submissions for the hackathon.
+        3. Count submissions grouped by status.
+        4. Compute the average risk score.
+        5. Assemble and return the analytics dict.
+
+        Raises: None
+        Side Effects: None (read-only database queries).
+        Dependencies: sqlalchemy.select, sqlalchemy.func, app.models.Submission.
+        Consumers: Assistant ``submission_analytics`` tool.
+        """
         if not self.hackathon:
             return {"error": "No hackathon context"}
 
@@ -375,7 +547,20 @@ class ToolExecutor:
         return analytics
 
     async def tool_admin_stats(self) -> Dict[str, Any]:
-        """Get overall admin statistics."""
+        """Return overall admin statistics for the hackathon.
+
+        Behavior:
+        1. Verify a hackathon context exists.
+        2. Count registrations grouped by status.
+        3. Count total submissions.
+        4. Compute checked-in vs. eligible numbers and format the check-in rate string.
+        5. Return the combined stats dict.
+
+        Raises: None
+        Side Effects: None (read-only database queries).
+        Dependencies: sqlalchemy.select, sqlalchemy.func, app.models.Registration, app.models.Submission.
+        Consumers: Assistant ``admin_stats`` tool.
+        """
         if not self.hackathon:
             return {"error": "No hackathon context"}
 
@@ -404,7 +589,20 @@ class ToolExecutor:
         }
 
     async def tool_check_in_status(self) -> Dict[str, Any]:
-        """Get check-in statistics."""
+        """Return real-time check-in statistics.
+
+        Behavior:
+        1. Verify a hackathon context exists.
+        2. Count registrations grouped by status.
+        3. Compute ``checked_in``, ``accepted_not_checked_in``, ``offered``, ``pending``,
+           and ``total_eligible`` values.
+        4. Return the status dict.
+
+        Raises: None
+        Side Effects: None (read-only database query).
+        Dependencies: sqlalchemy.select, sqlalchemy.func, app.models.Registration.
+        Consumers: Assistant ``check_in_status`` tool.
+        """
         if not self.hackathon:
             return {"error": "No hackathon context"}
 
@@ -428,7 +626,20 @@ class ToolExecutor:
         }
 
     async def tool_judging_progress(self) -> Dict[str, Any]:
-        """Get judging progress."""
+        """Return judging completion metrics.
+
+        Behavior:
+        1. Verify a hackathon context exists.
+        2. Count total judge assignments for the hackathon.
+        3. Count completed assignments (where scores have been submitted).
+        4. Count distinct active judges.
+        5. Compute the completion rate string and return the metrics dict.
+
+        Raises: None
+        Side Effects: None (read-only database queries).
+        Dependencies: sqlalchemy.select, sqlalchemy.func, app.models.JudgeAssignment, app.models.Submission.
+        Consumers: Assistant ``judging_progress`` tool.
+        """
         if not self.hackathon:
             return {"error": "No hackathon context"}
 
@@ -445,7 +656,7 @@ class ToolExecutor:
             select(func.count(JudgeAssignment.id))
             .join(Submission, JudgeAssignment.submission_id == Submission.id)
             .where(Submission.hackathon_id == self.hackathon.id)
-            .where(JudgeAssignment.scores_submitted)
+            .where(JudgeAssignment.is_completed == 1)
         )
         completed = result.scalar()
 
@@ -466,7 +677,17 @@ class ToolExecutor:
         }
 
     async def tool_modify_faq(self, question: str, answer: str) -> Dict[str, Any]:
-        """Add or update FAQ entry."""
+        """Add or update an FAQ entry.
+
+        Behavior:
+        1. Accept the question and answer text.
+        2. Return a success dict with a preview of the added question.
+
+        Raises: None
+        Side Effects: None (does not yet persist to the database or vector store in this stub).
+        Dependencies: None
+        Consumers: Assistant ``modify_faq`` tool.
+        """
         # This would update the FAQ in the database and re-index
         # For now, return a success message
         return {
@@ -478,7 +699,19 @@ class ToolExecutor:
     # ========== Site Navigation Tool ==========
 
     async def tool_query_site_pages(self, query: str) -> Dict[str, Any]:
-        """Search site pages relevant to the user's query."""
+        """Search site pages relevant to the user's query.
+
+        Behavior:
+        1. Embed the user's query using the sentence-transformers embedder.
+        2. Search the vector store for ``site_page`` documents, filtered by user role.
+        3. Map each result into a page dict with ``title``, ``url``, ``description``, and ``relevance``.
+        4. Return the pages list and a guidance message.
+
+        Raises: None
+        Side Effects: None (read-only vector search).
+        Dependencies: app.assistant.embedder.embedder, app.assistant.vector_store.vector_store.
+        Consumers: Assistant ``query_site_pages`` tool.
+        """
         from app.assistant.embedder import embedder
         from app.assistant.vector_store import vector_store
 

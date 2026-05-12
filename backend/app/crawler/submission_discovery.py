@@ -37,13 +37,20 @@ _EXTRACT_SUBMISSIONS_JS = (
 
 
 async def discover_submissions(hackathon_id: uuid.UUID, hackathon_url: str) -> list[str]:
-    """Load the JS-rendered submission gallery, extract project URLs, insert new rows.
+    """Scrape a hackathon's project-gallery page and persist newly discovered submissions.
 
-    Args:
-        hackathon_id: UUID of the CrawledHackathon row
-        hackathon_url: Devpost URL of the hackathon (e.g. https://slug.devpost.com)
+    Behavior:
+    1. Query already-known Devpost project URLs from the database.
+    2. Launch a headless Playwright browser with stealth settings.
+    3. Navigate to the hackathon's ``/project-gallery`` page.
+    4. Scroll through the infinite-load gallery and extract every ``/software/`` or ``/projects/`` link via JavaScript.
+    5. Insert new ``CrawledProject`` rows for unseen URLs, linked to the given hackathon.
+    6. Commit and return the list of newly created project ID strings.
 
-    Returns list of new CrawledProject IDs.
+    Raises: None
+    Side Effects: Inserts new ``CrawledProject`` rows into PostgreSQL.
+    Dependencies: playwright.async_api.async_playwright, sqlalchemy.select, app.models.CrawledProject.
+    Consumers: Crawl scheduler, manual submission discovery triggers.
     """
     new_ids: list[str] = []
     base_url = hackathon_url.rstrip("/")

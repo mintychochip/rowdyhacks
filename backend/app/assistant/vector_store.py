@@ -10,6 +10,7 @@ from qdrant_client.http.models import (
     FieldCondition,
     Filter,
     MatchValue,
+    MinShould,
     PointIdsList,
     PointStruct,
     VectorParams,
@@ -31,31 +32,72 @@ GLOBAL_HACKATHON_ID = "global"
 
 
 class VectorStore:
-    """Manages Qdrant vector store for assistant documents and messages."""
+    """Singleton manager for the Qdrant vector store.
+
+    Maintains two collections: ``assistant_documents`` (RAG knowledge base)
+    and ``assistant_messages`` (conversation history). All vectors are
+    384-dimensional cosine-similarity embeddings produced by ``all-MiniLM-L6-v2``.
+    """
 
     _instance: Optional["VectorStore"] = None
     _client: Optional[AsyncQdrantClient] = None
 
     def __new__(cls) -> "VectorStore":
+        """Create or return the singleton vector store instance.
+
+        Behavior:
+        1. Instantiate the singleton on first call.
+        2. Return the existing instance on subsequent calls.
+
+        Raises: None
+        Side Effects: Sets ``cls._instance`` on first call.
+        Dependencies: None
+        Consumers: Global ``vector_store`` instance.
+        """
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
     @property
     def client(self) -> AsyncQdrantClient:
-        """Get or create Qdrant client."""
+        """Get or create the async Qdrant client.
+
+        Behavior:
+        1. Instantiate the client from ``settings.qdrant_url`` if not cached.
+        2. Return the cached client.
+
+        Raises: None
+        Side Effects: Sets ``self._client`` on first access.
+        Dependencies: qdrant_client.AsyncQdrantClient, app.config.settings.
+        Consumers: All VectorStore methods.
+        """
         if self._client is None:
             self._client = AsyncQdrantClient(url=settings.qdrant_url)
         return self._client
 
     async def initialize(self) -> None:
-        """Initialize collections if they don't exist."""
+        """Ensure both collections exist with the proper vector schema.
+
+        Creates ``assistant_documents`` and ``assistant_messages`` if they
+        do not already exist, using 384-dimensional cosine distance.
+        """
         await self._ensure_collection(DOCUMENTS_COLLECTION)
         await self._ensure_collection(MESSAGES_COLLECTION)
         logger.info("Vector store initialized")
 
     async def _ensure_collection(self, name: str) -> None:
-        """Ensure a collection exists with proper schema."""
+        """Create a collection if missing and verify it is healthy.
+
+        Behavior:
+        1. List existing collections.
+        2. If the collection is missing, create it with cosine distance and 384 dimensions.
+        3. If it exists, verify the status is GREEN and log warnings otherwise.
+
+        Raises: Exception if Qdrant communication fails (re-raised after logging).
+        Side Effects: Creates Qdrant collection if missing.
+        Dependencies: qdrant_client.AsyncQdrantClient, qdrant_client.http.models.VectorParams, qdrant_client.http.models.Distance.
+        Consumers: VectorStore.initialize.
+        """
         try:
             collections = await self.client.get_collections()
             collection_names = [c.name for c in collections.collections]
@@ -89,10 +131,17 @@ class VectorStore:
         metadata: Optional[Dict[str, Any]] = None,
         role_access: Optional[List[str]] = None,
     ) -> None:
-        """Index a document with its embedding.
+        """Index a document with its embedding in the knowledge base.
 
-        If hackathon_id is None, the document is stored as a "global" document
-        that will match any hackathon context during search.
+        Behavior:
+        1. Build a payload dict with content, hackathon_id, doc_type, title, metadata, and role_access.
+        2. Create a Qdrant PointStruct from the doc_id, embedding, and payload.
+        3. Upsert the point into the ``assistant_documents`` collection.
+
+        Raises: None
+        Side Effects: Writes to Qdrant DOCUMENTS_COLLECTION.
+        Dependencies: qdrant_client.http.models.PointStruct.
+        Consumers: DocumentIndexer, FAQ indexing.
         """
         payload = {
             "content": content,
@@ -119,10 +168,18 @@ class VectorStore:
         limit: int = 5,
         score_threshold: float = 0.7,
     ) -> List[Dict[str, Any]]:
-        """Search documents by similarity with filters.
+        """Search documents by vector similarity with optional metadata filters.
 
-        When hackathon_id is provided, also returns global documents
-        (those with hackathon_id set to the GLOBAL_HACKATHON_ID sentinel).
+        Behavior:
+        1. Build must conditions for doc_type and role filters.
+        2. Build should conditions to match the requested hackathon OR global documents.
+        3. Assemble a Qdrant Filter and execute vector search.
+        4. Map results into dicts with id, score, content, title, doc_type, and metadata.
+
+        Raises: None
+        Side Effects: None (read-only from caller perspective).
+        Dependencies: qdrant_client.http.models.Filter, qdrant_client.http.models.FieldCondition, qdrant_client.http.models.MatchValue.
+        Consumers: Assistant context builder, FAQ search.
         """
         must_conditions = []
         should_conditions = []
@@ -162,7 +219,7 @@ class VectorStore:
             search_filter = Filter(
                 must=must_conditions or None,
                 should=should_conditions or None,
-                min_should=1 if should_conditions else None,
+                min_should=MinShould(conditions=should_conditions, min_count=1) if should_conditions else None,
             )
 
         results = await self.client.search(
@@ -186,7 +243,18 @@ class VectorStore:
         ]
 
     async def delete_by_hackathon(self, hackathon_id: str) -> int:
-        """Delete all documents for a hackathon."""
+        """Delete all documents scoped to a specific hackathon.
+
+        Behavior:
+        1. Build a Filter matching the hackathon_id field.
+        2. Scroll to collect all point IDs in the collection.
+        3. Delete the points and return the count.
+
+        Raises: None
+        Side Effects: Deletes points from Qdrant DOCUMENTS_COLLECTION.
+        Dependencies: qdrant_client.http.models.Filter, qdrant_client.http.models.PointIdsList.
+        Consumers: DocumentIndexer.delete_hackathon_documents.
+        """
         filter_ = Filter(
             must=[
                 FieldCondition(
@@ -214,7 +282,16 @@ class VectorStore:
         return 0
 
     async def delete_document(self, doc_id: str) -> None:
-        """Delete a specific document."""
+        """Delete a single document by its Qdrant point ID.
+
+        Behavior:
+        1. Delete the point from the DOCUMENTS_COLLECTION by ID.
+
+        Raises: None
+        Side Effects: Deletes a point from Qdrant DOCUMENTS_COLLECTION.
+        Dependencies: qdrant_client.http.models.PointIdsList.
+        Consumers: Document management endpoints.
+        """
         await self.client.delete(
             collection_name=DOCUMENTS_COLLECTION,
             points_selector=PointIdsList(points=[doc_id]),
@@ -228,7 +305,17 @@ class VectorStore:
         content: str,
         role: str,
     ) -> None:
-        """Index a message for semantic search in history."""
+        """Index a chat message for semantic search within conversation history.
+
+        Behavior:
+        1. Build a payload with content, conversation_id, and role.
+        2. Create a PointStruct and upsert into MESSAGES_COLLECTION.
+
+        Raises: None
+        Side Effects: Writes to Qdrant MESSAGES_COLLECTION.
+        Dependencies: qdrant_client.http.models.PointStruct.
+        Consumers: Assistant message indexing.
+        """
         payload = {
             "content": content,
             "conversation_id": str(conversation_id),
@@ -248,7 +335,18 @@ class VectorStore:
         conversation_id: Optional[str] = None,
         limit: int = 5,
     ) -> List[Dict[str, Any]]:
-        """Search messages by similarity."""
+        """Search indexed messages by vector similarity.
+
+        Behavior:
+        1. Build a must condition for conversation_id if provided.
+        2. Execute vector search over MESSAGES_COLLECTION.
+        3. Map results into dicts with id, score, content, and role.
+
+        Raises: None
+        Side Effects: None (read-only from caller perspective).
+        Dependencies: qdrant_client.http.models.Filter, qdrant_client.http.models.FieldCondition, qdrant_client.http.models.MatchValue.
+        Consumers: Assistant conversation history retrieval.
+        """
         must_conditions = []
 
         if conversation_id:
@@ -280,7 +378,18 @@ class VectorStore:
         ]
 
     async def delete_conversation_messages(self, conversation_id: str) -> None:
-        """Delete all messages for a conversation."""
+        """Delete every message belonging to a conversation.
+
+        Behavior:
+        1. Build a Filter matching the conversation_id field.
+        2. Scroll to collect all point IDs in MESSAGES_COLLECTION.
+        3. Delete the points.
+
+        Raises: None
+        Side Effects: Deletes points from Qdrant MESSAGES_COLLECTION.
+        Dependencies: qdrant_client.http.models.Filter, qdrant_client.http.models.PointIdsList.
+        Consumers: Assistant conversation cleanup.
+        """
         filter_ = Filter(
             must=[
                 FieldCondition(

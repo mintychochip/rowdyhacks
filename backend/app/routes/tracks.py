@@ -18,6 +18,18 @@ CACHE_PFX = "tracks"
 
 
 async def _get_current_user(db: AsyncSession, user_payload: dict) -> User:
+    """Fetch the current user from the database by Clerk sub.
+
+    Behavior:
+    1. Query the User table by the Clerk sub (user_id).
+    2. Return the matched User ORM object.
+    3. Raise 404 if the user is not found.
+
+    Raises: HTTPException(404) if user not found.
+    Side Effects: None (read-only).
+    Dependencies: app.models.User.
+    Consumers: Internal helper used by track routes.
+    """
     result = await db.execute(select(User).where(User.id == user_payload["sub"]))
     user = result.scalar_one_or_none()
     if not user:
@@ -26,6 +38,20 @@ async def _get_current_user(db: AsyncSession, user_payload: dict) -> User:
 
 
 async def _require_organizer(hackathon_id: str, db: AsyncSession, user_payload: dict) -> Hackathon:
+    """Verify the user is an organizer and return the hackathon.
+
+    Behavior:
+    1. Fetch the current user and verify role is organizer.
+    2. Raise 403 if the user is not an organizer.
+    3. Query the hackathon by id.
+    4. Raise 404 if the hackathon is not found.
+    5. Return the Hackathon ORM object.
+
+    Raises: HTTPException(403) if user is not an organizer. HTTPException(404) if hackathon not found.
+    Side Effects: None (read-only).
+    Dependencies: app.models.Hackathon, app.models.User, app.models.UserRole.
+    Consumers: Internal helper used by track management routes.
+    """
     user = await _get_current_user(db, user_payload)
     if user.role != UserRole.organizer:
         raise HTTPException(status_code=403, detail="Only organizers can manage tracks")
@@ -37,6 +63,16 @@ async def _require_organizer(hackathon_id: str, db: AsyncSession, user_payload: 
 
 
 def _track_to_response(t: Track) -> dict:
+    """Serialize a Track model to a response dict.
+
+    Behavior:
+    1. Extract fields from the Track ORM instance.
+    2. Return a dict with all track properties.
+
+    Side Effects: None (read-only).
+    Dependencies: None.
+    Consumers: Internal helper used by track list/create/update/delete routes.
+    """
     return {
         "id": str(t.id),
         "hackathon_id": str(t.hackathon_id),
@@ -115,6 +151,17 @@ DEFAULT_TRACKS = [
 
 
 def seed_tracks(hackathon_id: uuid.UUID) -> list[Track]:
+    """Return default track records for a new hackathon.
+
+    Behavior:
+    1. Build Track ORM instances from the DEFAULT_TRACKS list.
+    2. Associate each track with the given hackathon_id.
+    3. Return the list of pre-filled tracks.
+
+    Side Effects: None (returns new objects, no DB write).
+    Dependencies: app.models.Track.
+    Consumers: Internal helper used by hackathon creation.
+    """
     return [
         Track(
             hackathon_id=hackathon_id,
@@ -135,6 +182,17 @@ def seed_tracks(hackathon_id: uuid.UUID) -> list[Track]:
 @router.get("/{hackathon_id}/tracks")
 @cached(ttl_seconds=TRACKS_CACHE_TTL, key_prefix=CACHE_PFX)
 async def list_tracks(hackathon_id: str, db: AsyncSession = Depends(get_db)):
+    """List all tracks for a hackathon.
+
+    Behavior:
+    1. Query Track rows filtered by hackathon_id, ordered by created_at.
+    2. Serialize each track using _track_to_response.
+    3. Return a dict with hackathon_id and the tracks list.
+
+    Side Effects: None (read-only).
+    Dependencies: app.models.Track.
+    Consumers: GET /api/hackathons/{hackathon_id}/tracks, hackathon details.
+    """
     result = await db.execute(select(Track).where(Track.hackathon_id == hackathon_id).order_by(Track.created_at))
     tracks = result.scalars().all()
     return {"hackathon_id": hackathon_id, "tracks": [_track_to_response(t) for t in tracks]}
@@ -147,6 +205,20 @@ async def create_track(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Create a new track for a hackathon (organizer only).
+
+    Behavior:
+    1. Verify the user is an organizer for the hackathon.
+    2. Create a Track ORM instance from the request body.
+    3. Persist the track to the database.
+    4. Reindex hackathon data and bust the tracks cache.
+    5. Return the created track details.
+
+    Raises: HTTPException(403) if user is not an organizer. HTTPException(404) if hackathon not found.
+    Side Effects: Inserts Track row; reindexes hackathon; busts cache.
+    Dependencies: app.models.Track, app.assistant.indexer.DocumentIndexer, app.cache.cache_delete_pattern.
+    Consumers: POST /api/hackathons/{hackathon_id}/tracks, organizer dashboard.
+    """
     await _require_organizer(hackathon_id, db, user_payload)
     track = Track(
         hackathon_id=hackathon_id,
@@ -191,6 +263,22 @@ async def update_track(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Update a track (organizer only).
+
+    Behavior:
+    1. Verify the user is an organizer for the hackathon.
+    2. Load the track by id and hackathon_id.
+    3. Raise 404 if the track is not found.
+    4. Update allowed fields from the request body.
+    5. Commit changes.
+    6. Reindex hackathon data and bust the tracks cache.
+    7. Return the updated track details.
+
+    Raises: HTTPException(403) if user is not an organizer. HTTPException(404) if track not found.
+    Side Effects: Mutates Track row; reindexes hackathon; busts cache.
+    Dependencies: app.models.Track, app.assistant.indexer.DocumentIndexer, app.cache.cache_delete_pattern.
+    Consumers: PUT /api/hackathons/{hackathon_id}/tracks/{track_id}, organizer dashboard.
+    """
     await _require_organizer(hackathon_id, db, user_payload)
     result = await db.execute(select(Track).where(Track.id == track_id, Track.hackathon_id == hackathon_id))
     track = result.scalar_one_or_none()
@@ -240,6 +328,21 @@ async def delete_track(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Delete a track (organizer only).
+
+    Behavior:
+    1. Verify the user is an organizer for the hackathon.
+    2. Load the track by id and hackathon_id.
+    3. Raise 404 if the track is not found.
+    4. Delete the track and commit.
+    5. Reindex hackathon data and bust the tracks cache.
+    6. Return a confirmation dict.
+
+    Raises: HTTPException(403) if user is not an organizer. HTTPException(404) if track not found.
+    Side Effects: Deletes Track row; reindexes hackathon; busts cache.
+    Dependencies: app.models.Track, app.assistant.indexer.DocumentIndexer, app.cache.cache_delete_pattern.
+    Consumers: DELETE /api/hackathons/{hackathon_id}/tracks/{track_id}, organizer dashboard.
+    """
     await _require_organizer(hackathon_id, db, user_payload)
     result = await db.execute(select(Track).where(Track.id == track_id, Track.hackathon_id == hackathon_id))
     track = result.scalar_one_or_none()
@@ -268,5 +371,13 @@ async def delete_track(
 
 
 async def _bust_tracks_cache(hackathon_id: str):
-    """Invalidate cached track listings after a mutation."""
+    """Invalidate cached track listings after a mutation.
+
+    Behavior:
+    1. Delete cache entries matching the tracks key prefix pattern.
+
+    Side Effects: Deletes cache keys matching the tracks prefix.
+    Dependencies: app.cache.cache_delete_pattern.
+    Consumers: Internal helper called after track mutations.
+    """
     await cache_delete_pattern(f"{CACHE_PFX}:list_tracks:*")

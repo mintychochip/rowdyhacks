@@ -26,7 +26,21 @@ async def get_me(
     authorization: str | None = Header(alias="Authorization", default=None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return the current authenticated user. Clerk-only with auto-create fallback."""
+    """Return the current authenticated user. Clerk-only with auto-create fallback.
+
+    Behavior:
+    1. Validate the Authorization header contains a Bearer token.
+    2. Verify the token is a Clerk JWT and decode it.
+    3. Extract the user ID and email from the Clerk payload.
+    4. Query the local database for the user by ID.
+    5. Auto-create the user from Clerk profile data if not found.
+    6. Return the user as a UserResponse.
+
+    Raises: HTTPException(401) if the token is missing, invalid, or the user cannot be resolved.
+    Side Effects: May insert a User row (auto-create fallback).
+    Dependencies: app.clerk_auth.decode_clerk_token, app.clerk_auth.is_clerk_token, app.clerk_auth.extract_clerk_user_id, app.models.User.
+    Consumers: GET /me, frontend auth context.
+    """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid token")
     token = authorization.removeprefix("Bearer ")

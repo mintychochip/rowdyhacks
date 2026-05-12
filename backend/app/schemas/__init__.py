@@ -1,9 +1,11 @@
 """Stub schema exports to satisfy imports until full schemas are restored."""
 
+import enum
+import uuid
 from datetime import datetime
 from typing import Any, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserResponse(BaseModel):
@@ -118,8 +120,8 @@ class RegistrationCreate(BaseModel):
     """Pydantic schema for creating a new hackathon registration.
 
     Behavior:
-    1. Stub schema with no fields until full registration flow is restored.
-    2. Reserved for future fields: team_name, dietary_restrictions, etc.
+    1. Validates optional registration fields.
+    2. All fields are optional to support flexible registration flows.
 
     Raises: ValidationError on unexpected extra fields if strict mode is enabled.
     Side Effects: None.
@@ -127,15 +129,74 @@ class RegistrationCreate(BaseModel):
     Consumers: POST /api/registrations route, signup wizard.
     """
 
-    pass
+    team_name: str | None = None
+    team_members: list[str] | None = None
+    linkedin_url: str | None = None
+    github_url: str | None = None
+    resume_url: str | None = None
+    experience_level: str | None = None
+    t_shirt_size: str | None = None
+    phone: str | None = None
+    dietary_restrictions: str | None = None
+    what_build: str | None = None
+    why_participate: str | None = None
+    age: int | None = None
+    school: str | None = None
+    major: str | None = None
+    pronouns: str | None = None
+    skills: list[str] | None = None
+    emergency_contact_name: str | None = None
+    emergency_contact_phone: str | None = None
+    answers: Optional[List[Any]] = None
+
+
+class RegistrationAnswerItem(BaseModel):
+    """Schema for a single answer within a registration payload."""
+
+    question_id: str
+    value: Any
+
+
+class RegistrationQuestionCreate(BaseModel):
+    """Schema for creating a custom registration question."""
+
+    question_text: str = Field(..., max_length=500)
+    question_type: str
+    options: Optional[List[str]] = None
+    is_required: bool = True
+    sort_order: int = 0
+
+
+class RegistrationQuestionUpdate(BaseModel):
+    """Schema for updating a custom registration question."""
+
+    question_text: Optional[str] = Field(None, max_length=500)
+    question_type: Optional[str] = None
+    options: Optional[List[str]] = None
+    is_required: Optional[bool] = None
+    sort_order: Optional[int] = None
+
+
+class RegistrationReviewNoteCreate(BaseModel):
+    """Schema for creating a review note."""
+
+    note_text: str
+    rating: Optional[int] = Field(None, ge=1, le=5)
+
+
+class RegistrationReviewNoteUpdate(BaseModel):
+    """Schema for updating a review note."""
+
+    note_text: Optional[str] = None
+    rating: Optional[int] = Field(None, ge=1, le=5)
 
 
 class AnnouncementCreate(BaseModel):
     """Pydantic schema for creating a new announcement.
 
     Behavior:
-    1. Stub schema with no fields until full announcement flow is restored.
-    2. Reserved for future fields: title, body, priority, target_audience.
+    1. Validates title, content, and priority.
+    2. Consumed by the announcement creation endpoint.
 
     Raises: ValidationError on unexpected extra fields if strict mode is enabled.
     Side Effects: None.
@@ -143,15 +204,18 @@ class AnnouncementCreate(BaseModel):
     Consumers: POST /api/announcements route, organizer broadcast panel.
     """
 
-    pass
+    model_config = ConfigDict(extra="allow")
+    title: str
+    content: str
+    priority: str = "normal"
 
 
 class AnnouncementResponse(BaseModel):
     """Pydantic schema for a serialized announcement.
 
     Behavior:
-    1. Stub schema with no fields until full announcement flow is restored.
-    2. Reserved for future fields: id, title, body, created_at, sender.
+    1. Maps Announcement model fields for API responses.
+    2. Supports attribute-based validation from SQLAlchemy instances.
 
     Raises: ValidationError on unexpected extra fields if strict mode is enabled.
     Side Effects: None.
@@ -159,15 +223,22 @@ class AnnouncementResponse(BaseModel):
     Consumers: GET /api/announcements route, dashboard feed, public timeline.
     """
 
-    pass
+    model_config = ConfigDict(from_attributes=True, extra="allow")
+    id: Any
+    title: Optional[str] = None
+    content: Optional[str] = None
+    priority: Optional[str] = None
+    hackathon_id: Any = None
+    sent_by: Optional[str] = None
+    sent_at: Optional[datetime] = None
 
 
 class ConflictOfInterestCreate(BaseModel):
     """Pydantic schema for creating a new conflict-of-interest declaration.
 
     Behavior:
-    1. Stub schema with no fields until full COI flow is restored.
-    2. Reserved for future fields: judge_id, team_id, reason.
+    1. Validates submission_id and reason fields.
+    2. Consumed by the COI declaration endpoint.
 
     Raises: ValidationError on unexpected extra fields if strict mode is enabled.
     Side Effects: None.
@@ -175,15 +246,17 @@ class ConflictOfInterestCreate(BaseModel):
     Consumers: POST /api/coi route, judge declaration form.
     """
 
-    pass
+    model_config = ConfigDict(extra="allow")
+    submission_id: Any
+    reason: Optional[str] = None
 
 
 class ConflictOfInterestResponse(BaseModel):
     """Pydantic schema for a serialized conflict-of-interest record.
 
     Behavior:
-    1. Stub schema with no fields until full COI flow is restored.
-    2. Reserved for future fields: id, judge_id, team_id, status, created_at.
+    1. Maps ConflictOfInterest model fields for API responses.
+    2. Supports attribute-based validation from SQLAlchemy instances.
 
     Raises: ValidationError on unexpected extra fields if strict mode is enabled.
     Side Effects: None.
@@ -191,15 +264,21 @@ class ConflictOfInterestResponse(BaseModel):
     Consumers: GET /api/coi route, admin review panel.
     """
 
-    pass
+    model_config = ConfigDict(from_attributes=True, extra="allow")
+    id: Any
+    judge_id: Optional[str] = None
+    hackathon_id: Any = None
+    submission_id: Any = None
+    reason: Optional[str] = None
+    declared_at: Optional[datetime] = None
 
 
 class HackathonCreate(BaseModel):
     """Pydantic schema for creating a new hackathon event.
 
     Behavior:
-    1. Stub schema with no fields until full hackathon creation flow is restored.
-    2. Reserved for future fields: name, start_date, end_date, max_participants, url_slug.
+    1. Validates required name, start_date, end_date and optional settings.
+    2. Consumed by the hackathon creation endpoint.
 
     Raises: ValidationError on unexpected extra fields if strict mode is enabled.
     Side Effects: None.
@@ -207,4 +286,67 @@ class HackathonCreate(BaseModel):
     Consumers: POST /api/hackathons route, organizer event wizard.
     """
 
-    pass
+    model_config = ConfigDict(extra="allow")
+    name: str
+    start_date: datetime
+    end_date: datetime
+    description: Optional[str] = None
+    application_deadline: Optional[datetime] = None
+    max_participants: Optional[int] = None
+    waitlist_enabled: Optional[bool] = False
+    venue_address: Optional[str] = None
+    parking_info: Optional[str] = None
+    wifi_ssid: Optional[str] = None
+    wifi_password: Optional[str] = None
+    discord_invite_url: Optional[str] = None
+    devpost_url: Optional[str] = None
+    schedule: Optional[Any] = None
+
+
+class WorkshopRSVPStatus(str, enum.Enum):
+    """Pydantic schema for workshop RSVP status values."""
+
+    registered = "registered"
+    attended = "attended"
+    cancelled = "cancelled"
+
+
+class WorkshopRSVPCreate(BaseModel):
+    """Pydantic schema for creating a workshop RSVP.
+
+    Behavior:
+    1. Validates workshop_id and optional hackathon_id.
+    2. Consumed by the RSVP registration endpoint.
+
+    Raises: ValidationError on unexpected extra fields if strict mode is enabled.
+    Side Effects: None.
+    Dependencies: pydantic.BaseModel.
+    Consumers: POST /api/workshops/{workshop_id}/rsvp route.
+    """
+
+    model_config = ConfigDict(extra="allow")
+    workshop_id: Optional[str] = None
+    hackathon_id: Optional[str] = None
+
+
+class WorkshopRSVPResponse(BaseModel):
+    """Pydantic schema for a serialized workshop RSVP record.
+
+    Behavior:
+    1. Maps WorkshopRSVP model fields for API responses.
+    2. Supports attribute-based validation from SQLAlchemy instances.
+
+    Raises: ValidationError on unexpected extra fields if strict mode is enabled.
+    Side Effects: None.
+    Dependencies: pydantic.BaseModel.
+    Consumers: GET /api/workshops/{workshop_id}/rsvps, GET /api/hackathons/{hackathon_id}/my-rsvps.
+    """
+
+    model_config = ConfigDict(from_attributes=True, extra="allow")
+    id: Any
+    user_id: Optional[str] = None
+    workshop_id: Any = None
+    hackathon_id: Any = None
+    status: Optional[str] = None
+    registered_at: Optional[datetime] = None
+    attended_at: Optional[datetime] = None

@@ -1,3 +1,5 @@
+"""Route module lazy-loader for optional content routes."""
+
 try:
     from app.routes.content import router as content_router
 except ImportError:

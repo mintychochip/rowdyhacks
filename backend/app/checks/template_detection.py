@@ -77,7 +77,18 @@ TEMPLATE_PATTERNS = {
 
 
 def _detect_package_manager(repo: Path) -> str:
-    """Detect which package manager files exist."""
+    """Detect which package manager is used by inspecting repository manifest files.
+
+    Behavior:
+    1. Check for the existence of common package manager files in the repo root.
+    2. Return the first matched package manager name.
+    3. Return unknown if no manifest file is found.
+
+    Raises: None
+    Side Effects: None (read-only filesystem check).
+    Dependencies: pathlib.Path.
+    Consumers: Internal helper used by check_template.
+    """
     if (repo / "package.json").exists():
         return "npm"
     if (repo / "requirements.txt").exists():
@@ -92,7 +103,19 @@ def _detect_package_manager(repo: Path) -> str:
 
 
 def _count_meaningful_lines(repo: Path) -> tuple[int, int]:
-    """Count total lines vs meaningful (non-comment, non-empty) lines."""
+    """Count total lines versus meaningful non-comment, non-empty lines in a repository.
+
+    Behavior:
+    1. Walk the repository recursively and skip irrelevant directories.
+    2. Filter to known code file extensions.
+    3. For each file, count total lines and lines that are not empty or pure comments.
+    4. Return the total line count and the meaningful line count.
+
+    Raises: None
+    Side Effects: None (read-only filesystem scan).
+    Dependencies: pathlib.Path.
+    Consumers: Internal helper used by check_template.
+    """
     total = 0
     meaningful = 0
 
@@ -123,7 +146,20 @@ def _count_meaningful_lines(repo: Path) -> tuple[int, int]:
 
 
 def _check_template_markers(repo: Path) -> dict:
-    """Check for template-specific markers."""
+    """Check for template-specific markers and expected files in a repository.
+
+    Behavior:
+    1. Iterate over each known template signature in TEMPLATE_PATTERNS.
+    2. Search file contents for regex marker patterns and count matches.
+    3. Check for expected template files, handling project-name wildcards.
+    4. Compute a confidence score as the ratio of matches to total checks.
+    5. Return a mapping of template names to confidence scores and match counts.
+
+    Raises: None
+    Side Effects: None (read-only filesystem scan).
+    Dependencies: pathlib.Path, re.
+    Consumers: Internal helper used by check_template.
+    """
     results = {}
 
     for template_name, config in TEMPLATE_PATTERNS.items():
@@ -179,7 +215,19 @@ def _check_template_markers(repo: Path) -> dict:
 
 
 def _check_boilerplate_ratio(repo: Path) -> float:
-    """Calculate ratio of boilerplate to custom code."""
+    """Calculate the ratio of boilerplate lines to total lines of code.
+
+    Behavior:
+    1. Walk the repository and skip irrelevant directories.
+    2. Match each line against known boilerplate regex patterns.
+    3. Count lines that match any boilerplate signature versus total lines scanned.
+    4. Return the boilerplate ratio or 0 if no lines were found.
+
+    Raises: None
+    Side Effects: None (read-only filesystem scan).
+    Dependencies: pathlib.Path, re.
+    Consumers: Internal helper used by check_template.
+    """
     total_lines = 0
     boilerplate_lines = 0
 
@@ -219,7 +267,22 @@ def _check_boilerplate_ratio(repo: Path) -> float:
 
 
 async def check_template(context: CheckContext) -> CheckResult:
-    """Detect if the submission is an unmodified or minimally modified template."""
+    """Detect if the submission is an unmodified or minimally modified project template.
+
+    Behavior:
+    1. Return early if no repo path is available.
+    2. Count total and meaningful lines of code in the repository.
+    3. Check for template markers and compute the best matching template confidence.
+    4. Calculate the boilerplate ratio across all source files.
+    5. Score based on high template confidence, low meaningful lines, and high boilerplate ratio.
+    6. Inspect README files for default template language.
+    7. Return a CheckResult with template detection details and evidence.
+
+    Raises: None
+    Side Effects: None (read-only filesystem scan).
+    Dependencies: app.checks.interface.CheckContext, app.checks.interface.CheckResult, pathlib.Path, re.
+    Consumers: Internal check used by the analyzer pipeline.
+    """
     if not context.repo_path:
         return CheckResult(
             check_name="template-detection",

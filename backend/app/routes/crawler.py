@@ -2,26 +2,31 @@
 
 import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clerk_auth import require_organizer
 from app.crawler.scheduler import is_crawling, run_crawl
+from app.database import get_db
+from app.services.crawler_service import CrawlerService
 
 # Backward-compat alias for tests that import _require_organizer
 _require_organizer = require_organizer
-from app.database import get_db
-from app.models import CrawledHackathon, CrawledProject
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+crawler_service = CrawlerService()
+
+
 class CreateCrawledHackathonRequest(BaseModel):
+    """Request body for manually adding a crawled hackathon entry."""
+
     devpost_url: str
     name: str
     start_date: str
@@ -70,7 +75,7 @@ async def create_crawled_hackathon(
 
     Raises: HTTPException(400) if date format is invalid.
     Side Effects: Inserts CrawledHackathon row.
-    Dependencies: app.models.CrawledHackathon.
+    Dependencies: app.services.crawler_service.CrawlerService.
     Consumers: POST /hackathons, admin/debug panel.
     """
     try:
@@ -79,15 +84,13 @@ async def create_crawled_hackathon(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {e}")
 
-    hackathon = CrawledHackathon(
+    hackathon = await crawler_service.create_hackathon(
+        db=db,
         devpost_url=req.devpost_url,
         name=req.name,
         start_date=start,
         end_date=end,
-        last_crawled_at=datetime.now(UTC),
     )
-    db.add(hackathon)
-    await db.commit()
     return {"id": str(hackathon.id), "name": hackathon.name, "created": True}
 
 
@@ -106,41 +109,10 @@ async def list_crawled_hackathons(
 
     Raises: None
     Side Effects: None (read-only).
-    Dependencies: app.models.CrawledHackathon, app.models.CrawledProject, sqlalchemy.func.count.
+    Dependencies: app.services.crawler_service.CrawlerService.
     Consumers: GET /hackathons, organizer crawler dashboard.
     """
-    from sqlalchemy import func, select
-
-    query = (
-        select(
-            CrawledHackathon.id,
-            CrawledHackathon.name,
-            CrawledHackathon.devpost_url,
-            CrawledHackathon.start_date,
-            CrawledHackathon.end_date,
-            CrawledHackathon.last_crawled_at,
-            func.count(CrawledProject.id).label("project_count"),
-        )
-        .outerjoin(CrawledProject, CrawledProject.hackathon_id == CrawledHackathon.id)
-        .group_by(CrawledHackathon.id)
-        .order_by(CrawledHackathon.last_crawled_at.desc().nulls_last())
-    )
-
-    result = await db.execute(query)
-    rows = result.all()
-
-    return [
-        {
-            "id": str(r.id),
-            "name": r.name,
-            "devpost_url": r.devpost_url,
-            "start_date": r.start_date.isoformat() if r.start_date else None,
-            "end_date": r.end_date.isoformat() if r.end_date else None,
-            "last_crawled_at": r.last_crawled_at.isoformat() if r.last_crawled_at else None,
-            "project_count": r.project_count,
-        }
-        for r in rows
-    ]
+    return await crawler_service.list_hackathons(db)
 
 
 @router.get("/hackathons/{hackathon_id}/projects")
@@ -162,58 +134,20 @@ async def list_crawled_projects(
 
     Raises: HTTPException(400) for invalid UUID, HTTPException(404) if hackathon not found.
     Side Effects: None (read-only).
-    Dependencies: app.models.CrawledHackathon, app.models.CrawledProject.
+    Dependencies: app.services.crawler_service.CrawlerService.
     Consumers: GET /hackathons/{hackathon_id}/projects, organizer project browser.
     """
-    from uuid import UUID
-
     try:
         hk_id = UUID(hackathon_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid hackathon ID")
 
-    # Verify hackathon exists
-    hk_result = await db.execute(select(CrawledHackathon).where(CrawledHackathon.id == hk_id))
-    hackathon = hk_result.scalar_one_or_none()
-    if not hackathon:
-        raise HTTPException(status_code=404, detail="Hackathon not found")
+    try:
+        data = await crawler_service.list_projects(db, hk_id, offset=offset, limit=limit)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
-    # Get projects
-    query = (
-        select(CrawledProject)
-        .where(CrawledProject.hackathon_id == hk_id)
-        .order_by(CrawledProject.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-    )
-    result = await db.execute(query)
-    projects = result.scalars().all()
-
-    # Get total count
-    count_result = await db.execute(select(func.count()).where(CrawledProject.hackathon_id == hk_id))
-    total = count_result.scalar()
-
-    return {
-        "hackathon": {
-            "id": str(hackathon.id),
-            "name": hackathon.name,
-            "devpost_url": hackathon.devpost_url,
-        },
-        "projects": [
-            {
-                "id": str(p.id),
-                "title": p.title,
-                "devpost_url": p.devpost_url,
-                "github_url": p.github_url,
-                "team_members": p.team_members,
-                "created_at": p.created_at.isoformat() if p.created_at else None,
-            }
-            for p in projects
-        ],
-        "total": total,
-        "offset": offset,
-        "limit": limit,
-    }
+    return data
 
 
 @router.get("/projects")
@@ -234,29 +168,7 @@ async def search_crawled_projects(
 
     Raises: None
     Side Effects: None (read-only).
-    Dependencies: app.models.CrawledProject.
+    Dependencies: app.services.crawler_service.CrawlerService.
     Consumers: GET /projects, organizer project search.
     """
-
-    query = select(CrawledProject)
-    if q:
-        query = query.where(CrawledProject.title.ilike(f"%{q}%"))
-
-    query = query.order_by(CrawledProject.created_at.desc()).offset(offset).limit(limit)
-    result = await db.execute(query)
-    projects = result.scalars().all()
-
-    return {
-        "projects": [
-            {
-                "id": str(p.id),
-                "title": p.title,
-                "devpost_url": p.devpost_url,
-                "github_url": p.github_url,
-                "hackathon_id": str(p.hackathon_id),
-                "created_at": p.created_at.isoformat() if p.created_at else None,
-            }
-            for p in projects
-        ],
-        "total": len(projects),
-    }
+    return await crawler_service.search_projects(db, query_str=q, offset=offset, limit=limit)

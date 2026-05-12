@@ -1,4 +1,9 @@
-"""Hackathon backup and restore service."""
+"""Hackathon backup and restore service.
+
+Provides full export and restore capabilities for hackathon data including
+tracks, teams, workshops, sponsors, prizes, and registrations. Handles
+serialization of UUID, datetime, and enum values.
+"""
 
 import json
 from datetime import datetime
@@ -21,7 +26,26 @@ from app.models import (
 
 
 class _HackathonEncoder(json.JSONEncoder):
+    """JSON encoder that handles UUID, datetime, and enum values.
+
+    Extends the standard JSONEncoder to serialize SQLAlchemy-friendly types
+    that are not natively JSON serializable.
+    """
+
     def default(self, obj):
+        """Serialize unsupported types to JSON-compatible values.
+
+        Behavior:
+        1. If the object is a UUID, return its string representation.
+        2. If the object is a datetime, return its ISO format string.
+        3. If the object is a RegistrationStatus enum, return its value.
+        4. Otherwise, delegate to the standard JSONEncoder default.
+
+        Raises: TypeError if the type is not serializable (from super().default).
+        Side Effects: None (pure computation).
+        Dependencies: json.JSONEncoder.
+        Consumers: Internal helper used by _serialize during backup export.
+        """
         if isinstance(obj, UUID):
             return str(obj)
         if isinstance(obj, datetime):
@@ -32,10 +56,34 @@ class _HackathonEncoder(json.JSONEncoder):
 
 
 def _serialize(obj: dict) -> str:
+    """Serialize a dict using the hackathon-aware JSON encoder.
+
+    Behavior:
+    1. Call json.dumps with _HackathonEncoder as the cls parameter.
+    2. Return the resulting JSON string.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: json.dumps, _HackathonEncoder.
+    Consumers: Internal helper used by export_hackathon.
+    """
     return json.dumps(obj, cls=_HackathonEncoder)
 
 
 def _parse_dt(value):
+    """Parse a datetime from string or return the existing datetime object.
+
+    Behavior:
+    1. Return None if the input is None.
+    2. Return the input unchanged if it is already a datetime.
+    3. If the input is a string, normalize "Z" to "+00:00" and parse with fromisoformat.
+    4. Return the input unchanged for any other type.
+
+    Raises: ValueError if the string is not a valid ISO datetime.
+    Side Effects: None (pure computation).
+    Dependencies: datetime.fromisoformat.
+    Consumers: Internal helper used by restore_hackathon.
+    """
     if value is None:
         return None
     if isinstance(value, datetime):
@@ -46,10 +94,28 @@ def _parse_dt(value):
 
 
 class BackupService:
-    """Export and restore hackathon data."""
+    """Export and restore hackathon data.
+
+    Performs deep export of a hackathon and all related entities into a
+    plain dictionary suitable for JSON serialization. Restore reconstructs
+    the hackathon and its related records from such a dictionary.
+    """
 
     async def export_hackathon(self, db: AsyncSession, hackathon_id) -> dict:
-        """Export a hackathon and all related data."""
+        """Export a hackathon and all related data into a serializable dict.
+
+        Behavior:
+        1. Load the Hackathon record by ID.
+        2. Raise if the hackathon does not exist.
+        3. Build a dict with hackathon metadata, tracks, teams (with members), workshops, sponsors, prizes, and registrations.
+        4. Serialize relational data into plain dicts with id/name/etc fields.
+        5. Return the composite data dict.
+
+        Raises: ValueError if the hackathon is not found.
+        Side Effects: None (read-only).
+        Dependencies: app.models.Hackathon, app.models.Track, app.models.Team, app.models.TeamMember, app.models.Workshop, app.models.Sponsor, app.models.Prize, app.models.Registration.
+        Consumers: GET /api/backup/{hackathon_id}, organizer export endpoint.
+        """
         result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
         hackathon = result.scalar_one_or_none()
         if not hackathon:
@@ -156,7 +222,7 @@ class BackupService:
                 {
                     "user_id": reg.user_id,
                     "status": reg.status,
-                    "created_at": reg.created_at,
+                    "registered_at": reg.registered_at,
                 }
             )
 
@@ -168,7 +234,20 @@ class BackupService:
         organizer_id: str,
         data: dict,
     ) -> Hackathon:
-        """Restore a hackathon from exported data."""
+        """Restore a hackathon and its related data from an exported data dict.
+
+        Behavior:
+        1. Extract hackathon metadata from the data payload.
+        2. Parse datetime fields and create a new Hackathon instance with the given organizer_id.
+        3. Persist the hackathon to the database.
+        4. Iterate over tracks, workshops, sponsors, and prizes in the payload and create corresponding records linked to the new hackathon.
+        5. Commit all inserts and return the restored hackathon.
+
+        Raises: ValueError if datetime parsing fails.
+        Side Effects: Inserts Hackathon, Track, Workshop, Sponsor, and Prize rows into the database.
+        Dependencies: app.models.Hackathon, app.models.Track, app.models.Workshop, app.models.Sponsor, app.models.Prize, _parse_dt.
+        Consumers: POST /api/backup/restore, organizer restore endpoint.
+        """
         h_data = data.get("hackathon", {})
         hackathon = Hackathon(
             name=h_data.get("name", "Restored Hackathon"),

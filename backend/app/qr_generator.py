@@ -7,7 +7,20 @@ from qrcode.image.pil import PilImage
 
 
 def generate_qr_png(url: str, box_size: int = 10, border: int = 4) -> bytes:
-    """Generate a QR code PNG image for the given URL."""
+    """Generate a QR code PNG image for the given URL.
+
+    Behavior:
+    1. Instantiate a QRCode with medium error correction and the requested box size.
+    2. Add the URL data and compute the optimal QR version.
+    3. Render the code to a PIL image.
+    4. Serialize the image to a PNG bytes buffer.
+    5. Return the raw PNG bytes.
+
+    Raises: None
+    Side Effects: None (pure computation).
+    Dependencies: qrcode.QRCode, qrcode.image.pil.PilImage, io.BytesIO.
+    Consumers: app.routes.qr and check-in workflows.
+    """
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_M,

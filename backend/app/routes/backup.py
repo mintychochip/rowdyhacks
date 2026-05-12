@@ -14,6 +14,12 @@ router = APIRouter(prefix="/api/backup", tags=["backup"])
 
 
 class RestoreRequest(BaseModel):
+    """Request body for restoring a hackathon from exported data.
+
+    Attributes:
+        data: Full exported hackathon payload previously returned by the backup endpoint.
+    """
+
     data: dict
 
 
@@ -23,7 +29,18 @@ async def backup_hackathon(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Export a hackathon and all related data."""
+    """Export a hackathon and all related data.
+
+    Behavior:
+    1. Validate hackathon_id UUID and invoke BackupService.export_hackathon.
+    2. Return 404 if the hackathon is not found.
+    3. Return the full hackathon snapshot dict.
+
+    Raises: HTTPException(404) if the hackathon is not found.
+    Side Effects: None (read-only).
+    Dependencies: app.services.backup_service.BackupService.
+    Consumers: GET /api/backup/{hackathon_id}, organizer backup tool.
+    """
     service = BackupService()
     try:
         data = await service.export_hackathon(db, UUID(hackathon_id))
@@ -38,7 +55,17 @@ async def restore_hackathon(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Restore a hackathon from exported data."""
+    """Restore a hackathon from exported data.
+
+    Behavior:
+    1. Invoke BackupService.restore_hackathon with the user's sub as organizer.
+    2. Return the restored hackathon's id, name, and restored flag.
+
+    Raises: None
+    Side Effects: Inserts hackathon and related rows into the database.
+    Dependencies: app.services.backup_service.BackupService.
+    Consumers: POST /api/backup/restore, organizer backup tool.
+    """
     service = BackupService()
     hackathon = await service.restore_hackathon(db, user_payload["sub"], body.data)
     return {

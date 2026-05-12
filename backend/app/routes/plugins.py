@@ -14,6 +14,17 @@ router = APIRouter(prefix="/api/plugins", tags=["plugins"])
 
 
 class RegisterPluginRequest(BaseModel):
+    """Request body for registering a plugin.
+
+    Behavior:
+    1. Define the schema for a plugin registration request.
+    2. Provide name, version, description, enabled, and config fields.
+
+    Side Effects: None (schema definition).
+    Dependencies: pydantic.BaseModel.
+    Consumers: POST /api/plugins, plugin registry.
+    """
+
     name: str
     version: str = "0.1.0"
     description: str | None = None
@@ -22,6 +33,17 @@ class RegisterPluginRequest(BaseModel):
 
 
 class UpdatePluginRequest(BaseModel):
+    """Request body for updating a plugin.
+
+    Behavior:
+    1. Define the schema for a plugin update request.
+    2. Provide version, description, enabled, and config fields.
+
+    Side Effects: None (schema definition).
+    Dependencies: pydantic.BaseModel.
+    Consumers: PUT /api/plugins/{plugin_id}, plugin update.
+    """
+
     version: str | None = None
     description: str | None = None
     enabled: bool | None = None
@@ -34,7 +56,18 @@ async def register_plugin(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Register a new plugin."""
+    """Register a new plugin.
+
+    Behavior:
+    1. Call PluginService to register the plugin with the given fields.
+    2. Catch ValueError and raise 400 for duplicate names.
+    3. Return the created plugin details.
+
+    Raises: HTTPException(400) if registration fails (e.g. duplicate name).
+    Side Effects: Inserts Plugin row via PluginService.
+    Dependencies: app.services.plugin_service.PluginService, app.clerk_auth.require_clerk_user.
+    Consumers: POST /api/plugins, plugin registry.
+    """
     service = PluginService()
     try:
         plugin = await service.register_plugin(
@@ -61,7 +94,17 @@ async def register_plugin(
 async def list_plugins(
     db: AsyncSession = Depends(get_db),
 ):
-    """List all registered plugins."""
+    """List all registered plugins.
+
+    Behavior:
+    1. Query all registered plugins via PluginService.
+    2. Serialize each plugin to a dict with full details.
+    3. Return the list.
+
+    Side Effects: None (read-only).
+    Dependencies: app.services.plugin_service.PluginService.
+    Consumers: GET /api/plugins, plugin registry.
+    """
     service = PluginService()
     plugins = await service.list_plugins(db)
     return [
@@ -83,7 +126,18 @@ async def get_plugin(
     plugin_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get a single plugin."""
+    """Get a single plugin by ID.
+
+    Behavior:
+    1. Load the plugin via PluginService.
+    2. Raise 404 if the plugin does not exist.
+    3. Return the plugin details.
+
+    Raises: HTTPException(404) if plugin not found.
+    Side Effects: None (read-only).
+    Dependencies: app.services.plugin_service.PluginService.
+    Consumers: GET /api/plugins/{plugin_id}, plugin registry.
+    """
     service = PluginService()
     plugin = await service.get_plugin(db, UUID(plugin_id))
     if not plugin:
@@ -106,7 +160,18 @@ async def update_plugin(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update a plugin."""
+    """Update a plugin.
+
+    Behavior:
+    1. Call PluginService to update the plugin by UUID with the given fields.
+    2. Catch ValueError and raise 404 if the plugin is not found.
+    3. Return the updated plugin id, name, enabled flag, and updated flag.
+
+    Raises: HTTPException(404) if plugin not found.
+    Side Effects: Mutates Plugin row via PluginService.
+    Dependencies: app.services.plugin_service.PluginService, app.clerk_auth.require_clerk_user.
+    Consumers: PUT /api/plugins/{plugin_id}, plugin registry.
+    """
     service = PluginService()
     try:
         plugin = await service.update_plugin(
@@ -134,7 +199,18 @@ async def delete_plugin(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Unregister a plugin."""
+    """Unregister a plugin.
+
+    Behavior:
+    1. Call PluginService to delete the plugin by UUID.
+    2. Catch ValueError and raise 404 if the plugin is not found.
+    3. Return None (204 response).
+
+    Raises: HTTPException(404) if plugin not found.
+    Side Effects: Deletes Plugin row via PluginService.
+    Dependencies: app.services.plugin_service.PluginService, app.clerk_auth.require_clerk_user.
+    Consumers: DELETE /api/plugins/{plugin_id}, plugin registry.
+    """
     service = PluginService()
     try:
         await service.delete_plugin(db, UUID(plugin_id))

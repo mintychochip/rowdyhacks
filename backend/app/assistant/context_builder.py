@@ -58,10 +58,18 @@ BUILD_INTENT_PATTERNS = [
 
 
 def detect_build_intent(message: str) -> tuple[bool, float]:
-    """Detect if user message indicates intent to build a project.
+    """Detect whether a user message signals intent to build a hackathon project.
 
-    Returns:
-        Tuple of (has_intent, confidence_score)
+    Behavior:
+    1. Lowercase the input message.
+    2. Match against curated regex patterns for build statements, project types, planning phrases, and hackathon vocabulary.
+    3. Count the number of matches.
+    4. Return a boolean flag and a confidence score (0.6 / 0.75 / 0.9 based on match count).
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: re.search.
+    Consumers: Assistant response routing.
     """
     message_lower = message.lower()
 
@@ -86,7 +94,19 @@ def build_plan_generation_prompt(
     hackathon_name: str | None = None,
     tracks: list[dict] | None = None,
 ) -> str:
-    """Build a prompt for the AI to generate a project plan."""
+    """Assemble a structured prompt for AI project-plan generation.
+
+    Behavior:
+    1. Start with the AI mentor identity and a 6-hour hackathon constraint.
+    2. Inject the user's project description.
+    3. Optionally append hackathon name and prize track context.
+    4. Return the fully formatted prompt string.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: None
+    Consumers: Assistant plan-generation endpoint.
+    """
     parts = []
 
     parts.append("You are an AI hackathon mentor. Create a detailed project plan based on the user's description.")
@@ -132,7 +152,19 @@ def build_project_generation_prompt(
     plan: dict,
     project_type: str,
 ) -> str:
-    """Build a prompt for the AI to generate project code."""
+    """Assemble a structured prompt for AI starter-code generation.
+
+    Behavior:
+    1. Start with the AI code-generator identity.
+    2. Inject the project plan (name, type, tech stack, tasks).
+    3. Add file-type instructions based on the project_type category.
+    4. Return the fully formatted prompt string.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: None
+    Consumers: Assistant starter-code endpoint.
+    """
     parts = []
 
     parts.append("You are an AI code generator. Create starter code for a hackathon project.")
@@ -179,9 +211,24 @@ def build_project_generation_prompt(
 
 
 class ContextBuilder:
-    """Builds context for LLM conversations."""
+    """Constructs LLM system prompts and conversation history.
+
+    Gathers hackathon metadata, available prize tracks, role-scoped tools,
+    and semantically relevant documents to produce a rich context string
+    for each assistant interaction.
+    """
 
     def __init__(self, db: AsyncSession):
+        """Initialize the context builder with a database session.
+
+        Behavior:
+        1. Store the database session as an instance attribute.
+
+        Raises: None
+        Side Effects: None (read-only, no state mutation beyond self).
+        Dependencies: sqlalchemy.ext.asyncio.AsyncSession.
+        Consumers: ContextBuilder instantiation.
+        """
         self.db = db
 
     async def build_system_prompt(
@@ -190,7 +237,20 @@ class ContextBuilder:
         hackathon: Hackathon | None = None,
         user_query: str | None = None,
     ) -> str:
-        """Build a comprehensive system prompt for the LLM."""
+        """Build a comprehensive system prompt for the LLM.
+
+        Behavior:
+        1. Append identity and role lines.
+        2. Append available tool definitions for the user's role.
+        3. Append hackathon metadata and prize tracks if provided.
+        4. Inject semantically relevant knowledge-base documents.
+        5. Append response guidelines and return the joined prompt.
+
+        Raises: None
+        Side Effects: None (read-only from caller perspective, but triggers vector search).
+        Dependencies: app.assistant.permissions.get_tools_for_role, app.assistant.embedder.embedder, app.assistant.vector_store.vector_store.
+        Consumers: Assistant chat endpoint.
+        """
         parts = []
 
         # Identity and role
@@ -254,7 +314,19 @@ class ContextBuilder:
         conversation_id: str,
         limit: int = 10,
     ) -> list[dict[str, str]]:
-        """Build conversation history for context window."""
+        """Fetch recent messages for a conversation in chronological order.
+
+        Behavior:
+        1. Query AssistantMessage rows filtered by conversation_id.
+        2. Order by created_at descending and apply the limit.
+        3. Reverse the list to restore chronological order.
+        4. Map each row to a dict with role and content.
+
+        Raises: None
+        Side Effects: None (read-only).
+        Dependencies: app.models_assistant.AssistantMessage.
+        Consumers: Assistant chat endpoint.
+        """
         from app.models_assistant import AssistantMessage
 
         result = await self.db.execute(
@@ -280,7 +352,17 @@ class ContextBuilder:
         return history
 
     async def _get_tracks(self, hackathon_id: str) -> list[dict[str, Any]]:
-        """Get tracks for a hackathon."""
+        """Retrieve prize tracks for a hackathon.
+
+        Behavior:
+        1. Query Track rows filtered by hackathon_id ordered by name.
+        2. Map each track to a dict with id, name, description, and prize.
+
+        Raises: None
+        Side Effects: None (read-only).
+        Dependencies: app.models.Track.
+        Consumers: ContextBuilder.build_system_prompt.
+        """
         result = await self.db.execute(select(Track).where(Track.hackathon_id == hackathon_id).order_by(Track.name))
         tracks = result.scalars().all()
 
@@ -301,7 +383,18 @@ class ContextBuilder:
         role: str,
         limit: int = 3,
     ) -> list[dict[str, Any]]:
-        """Get relevant documents via semantic search."""
+        """Retrieve semantically relevant documents from the knowledge base.
+
+        Behavior:
+        1. Embed the user's query text.
+        2. Search the vector store for matching documents filtered by hackathon, role, and score threshold.
+        3. Return the documents or an empty list on failure.
+
+        Raises: None
+        Side Effects: None (read-only from caller perspective, but triggers vector search).
+        Dependencies: app.assistant.embedder.embedder, app.assistant.vector_store.vector_store.
+        Consumers: ContextBuilder.build_system_prompt.
+        """
         try:
             query_embedding = embedder.embed_text(query)
             docs = await vector_store.search_documents(
@@ -317,7 +410,18 @@ class ContextBuilder:
             return []
 
     async def get_user_active_hackathons(self, user_id: str) -> list[dict[str, Any]]:
-        """Get hackathons the user is actively participating in."""
+        """List hackathons the user is actively participating in or organizing.
+
+        Behavior:
+        1. Query accepted/checked-in registrations joined with hackathons ending within the last 7 days.
+        2. Query hackathons where the user is an organizer (also ending within the last 7 days).
+        3. Deduplicate and return a combined list of hackathon dicts.
+
+        Raises: None
+        Side Effects: None (read-only).
+        Dependencies: app.models.Registration, app.models.Hackathon.
+        Consumers: Assistant context builder, user dashboard.
+        """
         # Get registrations
         result = await self.db.execute(
             select(Registration, Hackathon)

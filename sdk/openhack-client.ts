@@ -6,14 +6,17 @@
 /** Pydantic schema for creating a new announcement. */
 /**  */
 /** Behavior: */
-/** 1. Stub schema with no fields until full announcement flow is restored. */
-/** 2. Reserved for future fields: title, body, priority, target_audience. */
+/** 1. Validates title, content, and priority. */
+/** 2. Consumed by the announcement creation endpoint. */
 /**  */
 /** Raises: ValidationError on unexpected extra fields if strict mode is enabled. */
 /** Side Effects: None. */
 /** Dependencies: pydantic.BaseModel. */
 /** Consumers: POST /api/announcements route, organizer broadcast panel. */
 export interface AnnouncementCreate {
+  title: string;
+  content: string;
+  priority?: string;
 }
 
 /** Pydantic schema returned after a successful branding asset upload. */
@@ -51,6 +54,36 @@ export interface BrandingResponse {
   hackathon_year: number;
 }
 
+/** Request body for broadcasting a notification to hackathon participants. */
+/**  */
+/** Attributes: */
+/**     title: Short headline of the notification. */
+/**     message: Body text of the notification. */
+/**     type: Severity level (info, success, warning, error). Defaults to info. */
+/**     action_url: Optional URL to open when the user clicks the action button. */
+/**     action_text: Optional label for the action button. */
+export interface BroadcastNotificationRequest {
+  title: string;
+  message: string;
+  type?: NotificationType;
+  action_url?: string | null;
+  action_text?: string | null;
+}
+
+/** Request body for changing a user's role. */
+export interface ChangeRoleRequest {
+  role: string;
+}
+
+/** Request body for persisting a browser agent conversation. */
+/**  */
+/** Behavior: */
+/** 1. Define the schema for a chat log persistence request. */
+/** 2. Provide messages and optional conversation_id fields. */
+/**  */
+/** Side Effects: None (schema definition). */
+/** Dependencies: pydantic.BaseModel. */
+/** Consumers: POST /api/chat-log, assistant chat logging. */
 export interface ChatLogRequest {
   messages: Record<string, unknown>[];
   conversation_id?: string | null;
@@ -88,16 +121,19 @@ export interface ConfigUpdateResponse {
 /** Pydantic schema for creating a new conflict-of-interest declaration. */
 /**  */
 /** Behavior: */
-/** 1. Stub schema with no fields until full COI flow is restored. */
-/** 2. Reserved for future fields: judge_id, team_id, reason. */
+/** 1. Validates submission_id and reason fields. */
+/** 2. Consumed by the COI declaration endpoint. */
 /**  */
 /** Raises: ValidationError on unexpected extra fields if strict mode is enabled. */
 /** Side Effects: None. */
 /** Dependencies: pydantic.BaseModel. */
 /** Consumers: POST /api/coi route, judge declaration form. */
 export interface ConflictOfInterestCreate {
+  submission_id: unknown;
+  reason?: string | null;
 }
 
+/** Request body for manually adding a crawled hackathon entry. */
 export interface CreateCrawledHackathonRequest {
   devpost_url: string;
   name: string;
@@ -105,12 +141,32 @@ export interface CreateCrawledHackathonRequest {
   end_date?: string | null;
 }
 
+/** Request body for creating a help request. */
+/**  */
+/** Attributes: */
+/**     hackathon_id: UUID of the hackathon where help is needed. */
+/**     title: Short summary of the request. */
+/**     description: Optional detailed description of the problem. */
 export interface CreateHelpRequestRequest {
   hackathon_id: string;
   title: string;
   description?: string | null;
 }
 
+/** Request body for creating a mentorship request. */
+export interface CreateMentorshipRequest {
+  topic: string;
+}
+
+/** Request body for creating a prize. */
+/**  */
+/** Attributes: */
+/**     hackathon_id: UUID of the hackathon this prize belongs to. */
+/**     name: Display name of the prize. */
+/**     description: Optional description of the prize. */
+/**     amount: Optional prize amount string (e.g. "500"). */
+/**     currency: Currency code (default "USD"). */
+/**     track_id: Optional UUID of the associated track. */
 export interface CreatePrizeRequest {
   hackathon_id: string;
   name: string;
@@ -120,6 +176,15 @@ export interface CreatePrizeRequest {
   track_id?: string | null;
 }
 
+/** Request body for creating a sponsor. */
+/**  */
+/** Attributes: */
+/**     hackathon_id: UUID of the hackathon this sponsor supports. */
+/**     name: Display name of the sponsor. */
+/**     tier: Sponsorship tier (default "silver"). */
+/**     logo_url: Optional URL to the sponsor's logo. */
+/**     website_url: Optional URL to the sponsor's website. */
+/**     description: Optional description or tagline. */
 export interface CreateSponsorRequest {
   hackathon_id: string;
   name: string;
@@ -129,11 +194,26 @@ export interface CreateSponsorRequest {
   description?: string | null;
 }
 
+/** Request body for creating a survey. */
+export interface CreateSurveyRequest {
+  title: string;
+  questions_json: Record<string, unknown> | unknown[];
+}
+
+/** Request body for creating a team finder post. */
+export interface CreateTeamFinderPostRequest {
+  post_type: string;
+  skills_needed?: string[] | null;
+  description?: string | null;
+}
+
+/** Request body for creating a new team within a hackathon. */
 export interface CreateTeamRequest {
   hackathon_id: string;
   name: string;
 }
 
+/** Request body for creating a workshop. */
 export interface CreateWorkshopRequest {
   hackathon_id: string;
   title: string;
@@ -142,6 +222,7 @@ export interface CreateWorkshopRequest {
   end_time: string;
   location?: string | null;
   speaker_name?: string | null;
+  max_capacity?: number | null;
 }
 
 /** Pydantic schema for a single rubric criterion. */
@@ -161,6 +242,23 @@ export interface CriterionCreate {
   sort_order?: number;
 }
 
+/** Request body for sending a bulk email blast to a registrant cohort. */
+export interface EmailBlastRequest {
+  subject: string;
+  body: string;
+  cohort?: string;
+  track_id?: string | null;
+}
+
+/** Request body for executing an assistant tool. */
+/**  */
+/** Behavior: */
+/** 1. Define the schema for a tool execution request. */
+/** 2. Provide tool_name and parameters fields. */
+/**  */
+/** Side Effects: None (schema definition). */
+/** Dependencies: pydantic.BaseModel. */
+/** Consumers: POST /api/execute-tool, assistant tool execution. */
 export interface ExecuteToolRequest {
   tool_name: string;
   parameters?: Record<string, unknown>;
@@ -181,16 +279,37 @@ export interface HTTPValidationError {
 /** Pydantic schema for creating a new hackathon event. */
 /**  */
 /** Behavior: */
-/** 1. Stub schema with no fields until full hackathon creation flow is restored. */
-/** 2. Reserved for future fields: name, start_date, end_date, max_participants, url_slug. */
+/** 1. Validates required name, start_date, end_date and optional settings. */
+/** 2. Consumed by the hackathon creation endpoint. */
 /**  */
 /** Raises: ValidationError on unexpected extra fields if strict mode is enabled. */
 /** Side Effects: None. */
 /** Dependencies: pydantic.BaseModel. */
 /** Consumers: POST /api/hackathons route, organizer event wizard. */
 export interface HackathonCreate {
+  name: string;
+  start_date: string;
+  end_date: string;
+  description?: string | null;
+  application_deadline?: string | null;
+  max_participants?: number | null;
+  waitlist_enabled?: boolean | null;
+  venue_address?: string | null;
+  parking_info?: string | null;
+  wifi_ssid?: string | null;
+  wifi_password?: string | null;
+  discord_invite_url?: string | null;
+  devpost_url?: string | null;
+  schedule?: unknown | null;
 }
 
+/** Health check response schema. */
+/**  */
+/** Attributes: */
+/**     status: Overall health status ("healthy" or "degraded"). */
+/**     timestamp: ISO 8601 timestamp of the check. */
+/**     version: Application version string. */
+/**     checks: Dict of subsystem names to status strings. */
 export interface HealthStatus {
   status: string;
   timestamp: string;
@@ -198,6 +317,7 @@ export interface HealthStatus {
   checks: Record<string, unknown>;
 }
 
+/** Request body for joining an existing team by its join code. */
 export interface JoinTeamRequest {
   join_code: string;
 }
@@ -220,9 +340,22 @@ export interface JudgingSessionCreate {
   criteria?: CriterionCreate[];
 }
 
+/** Request body for LLM chat proxy. */
+/**  */
+/** Behavior: */
+/** 1. Define the schema for an LLM chat proxy request. */
+/** 2. Provide messages and model fields. */
+/**  */
+/** Side Effects: None (schema definition). */
+/** Dependencies: pydantic.BaseModel. */
+/** Consumers: POST /api/llm/chat (mounted in main.py), LLM proxy. */
 export interface LLMChatRequest {
   messages: Record<string, unknown>[];
   model?: string;
+}
+
+/** Severity level of an in-app notification. */
+export interface NotificationType {
 }
 
 /** Schema for a single task in a project plan. */
@@ -259,10 +392,28 @@ export interface ProjectPlanSchema {
   stretchGoals?: string[] | null;
 }
 
+/** Request body for RAG document search. */
+/**  */
+/** Behavior: */
+/** 1. Define the schema for a RAG search request. */
+/** 2. Provide a query field. */
+/**  */
+/** Side Effects: None (schema definition). */
+/** Dependencies: pydantic.BaseModel. */
+/** Consumers: POST /api/rag-search, assistant document search. */
 export interface RAGSearchRequest {
   query: string;
 }
 
+/** Request body for registering a plugin. */
+/**  */
+/** Behavior: */
+/** 1. Define the schema for a plugin registration request. */
+/** 2. Provide name, version, description, enabled, and config fields. */
+/**  */
+/** Side Effects: None (schema definition). */
+/** Dependencies: pydantic.BaseModel. */
+/** Consumers: POST /api/plugins, plugin registry. */
 export interface RegisterPluginRequest {
   name: string;
   version?: string;
@@ -274,16 +425,69 @@ export interface RegisterPluginRequest {
 /** Pydantic schema for creating a new hackathon registration. */
 /**  */
 /** Behavior: */
-/** 1. Stub schema with no fields until full registration flow is restored. */
-/** 2. Reserved for future fields: team_name, dietary_restrictions, etc. */
+/** 1. Validates optional registration fields. */
+/** 2. All fields are optional to support flexible registration flows. */
 /**  */
 /** Raises: ValidationError on unexpected extra fields if strict mode is enabled. */
 /** Side Effects: None. */
 /** Dependencies: pydantic.BaseModel. */
 /** Consumers: POST /api/registrations route, signup wizard. */
 export interface RegistrationCreate {
+  team_name?: string | null;
+  team_members?: string[] | null;
+  linkedin_url?: string | null;
+  github_url?: string | null;
+  resume_url?: string | null;
+  experience_level?: string | null;
+  t_shirt_size?: string | null;
+  phone?: string | null;
+  dietary_restrictions?: string | null;
+  what_build?: string | null;
+  why_participate?: string | null;
+  age?: number | null;
+  school?: string | null;
+  major?: string | null;
+  pronouns?: string | null;
+  skills?: string[] | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  answers?: unknown[] | null;
 }
 
+/** Schema for creating a custom registration question. */
+export interface RegistrationQuestionCreate {
+  question_text: string;
+  question_type: string;
+  options?: string[] | null;
+  is_required?: boolean;
+  sort_order?: number;
+}
+
+/** Schema for updating a custom registration question. */
+export interface RegistrationQuestionUpdate {
+  question_text?: string | null;
+  question_type?: string | null;
+  options?: string[] | null;
+  is_required?: boolean | null;
+  sort_order?: number | null;
+}
+
+/** Schema for creating a review note. */
+export interface RegistrationReviewNoteCreate {
+  note_text: string;
+  rating?: number | null;
+}
+
+/** Schema for updating a review note. */
+export interface RegistrationReviewNoteUpdate {
+  note_text?: string | null;
+  rating?: number | null;
+}
+
+/** Request body for restoring a hackathon from exported data. */
+/**  */
+/** Attributes: */
+/**     data: Full exported hackathon payload previously returned by the backup endpoint. */
 export interface RestoreRequest {
   data: Record<string, unknown>;
 }
@@ -300,6 +504,12 @@ export interface RestoreRequest {
 export interface ScoreItem {
   criterion_id: string;
   score: number;
+}
+
+/** Request body for sending a chat message within a hackathon. */
+export interface SendMessageRequest {
+  message: string;
+  recipient_id?: string | null;
 }
 
 /** Pydantic schema for a project submission request. */
@@ -331,12 +541,36 @@ export interface SubmitScoreRequest {
   scores?: ScoreItem[];
 }
 
+/** Request body for submitting a survey response. */
+export interface SubmitSurveyResponseRequest {
+  answers_json: Record<string, unknown> | unknown[];
+  nps_score?: number | null;
+}
+
+/** Request body for creating a webhook subscription. */
+/**  */
+/** Behavior: */
+/** 1. Define the schema for a webhook subscription request. */
+/** 2. Provide url, secret, and events fields. */
+/**  */
+/** Side Effects: None (schema definition). */
+/** Dependencies: pydantic.BaseModel. */
+/** Consumers: POST /api/webhooks/subscribe, subscription creation. */
 export interface SubscribeRequest {
   url: string;
   secret: string;
   events: string[];
 }
 
+/** Response schema for a webhook subscription. */
+/**  */
+/** Behavior: */
+/** 1. Define the schema for a webhook subscription response. */
+/** 2. Provide id, url, events, active, and created_at fields. */
+/**  */
+/** Side Effects: None (schema definition). */
+/** Dependencies: pydantic.BaseModel. */
+/** Consumers: GET /api/webhooks/subscriptions, subscription listing. */
 export interface SubscriptionResponse {
   id: string;
   url: string;
@@ -345,6 +579,15 @@ export interface SubscriptionResponse {
   created_at: string;
 }
 
+/** Request body for updating a plugin. */
+/**  */
+/** Behavior: */
+/** 1. Define the schema for a plugin update request. */
+/** 2. Provide version, description, enabled, and config fields. */
+/**  */
+/** Side Effects: None (schema definition). */
+/** Dependencies: pydantic.BaseModel. */
+/** Consumers: PUT /api/plugins/{plugin_id}, plugin update. */
 export interface UpdatePluginRequest {
   version?: string | null;
   description?: string | null;
@@ -352,6 +595,14 @@ export interface UpdatePluginRequest {
   config?: Record<string, unknown> | null;
 }
 
+/** Request body for updating a prize. */
+/**  */
+/** Attributes: */
+/**     name: Optional new display name. */
+/**     description: Optional new description. */
+/**     amount: Optional new prize amount. */
+/**     currency: Optional new currency code. */
+/**     track_id: Optional new associated track UUID. */
 export interface UpdatePrizeRequest {
   name?: string | null;
   description?: string | null;
@@ -360,6 +611,23 @@ export interface UpdatePrizeRequest {
   track_id?: string | null;
 }
 
+/** Request body for updating a user's public profile. */
+export interface UpdateProfileRequest {
+  bio?: string | null;
+  skills?: unknown[] | null;
+  links?: Record<string, unknown> | null;
+  availability?: string | null;
+  looking_for_team?: boolean | null;
+}
+
+/** Request body for updating a sponsor. */
+/**  */
+/** Attributes: */
+/**     name: Optional new display name. */
+/**     tier: Optional new sponsorship tier. */
+/**     logo_url: Optional new logo URL. */
+/**     website_url: Optional new website URL. */
+/**     description: Optional new description. */
 export interface UpdateSponsorRequest {
   name?: string | null;
   tier?: string | null;
@@ -368,10 +636,12 @@ export interface UpdateSponsorRequest {
   description?: string | null;
 }
 
+/** Request body for updating a team's name. */
 export interface UpdateTeamRequest {
   name: string;
 }
 
+/** Request body for updating a workshop. */
 export interface UpdateWorkshopRequest {
   title?: string | null;
   description?: string | null;
@@ -379,6 +649,7 @@ export interface UpdateWorkshopRequest {
   end_time?: string | null;
   location?: string | null;
   speaker_name?: string | null;
+  max_capacity?: number | null;
 }
 
 /** Pydantic schema for a serialized user record. */
@@ -417,8 +688,155 @@ export class OpenHackClient {
   }
 
   /**
+   * GET /api/admin/users — List Users
+   * List all users with optional search and filter (organizer only).
+   * 
+   * Behavior:
+   * 1. Verify the user is an organizer.
+   * 2. Query users via AdminService with filters.
+   * 3. Return paginated results.
+   * 
+   * Raises: HTTPException(403) if not organizer.
+   * Tags: admin
+   */
+  async listUsersApiAdminUsersGet(search?: string | null, role?: string | null, banned?: boolean | null, limit?: number, offset?: number): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (search != null) params.append('search', String(search));
+    if (role != null) params.append('role', String(role));
+    if (banned != null) params.append('banned', String(banned));
+    if (limit != null) params.append('limit', String(limit));
+    if (offset != null) params.append('offset', String(offset));
+    const url = `${this.baseUrl}/api/admin/users` + (params.toString() ? `?${params.toString()}` : '');
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/admin/users/{user_id}/activity — Get User Activity
+   * View user activity log (organizer only).
+   * 
+   * Behavior:
+   * 1. Verify organizer role.
+   * 2. Fetch activity summary via AdminService.
+   * 3. Return the activity dict.
+   * 
+   * Raises: HTTPException(403) if not organizer.
+   * Tags: admin
+   */
+  async getUserActivityApiAdminUsersUserIdActivityGet(user_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/admin/users/${user_id}/activity`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/admin/users/{user_id}/ban — Ban User
+   * Ban a user (organizer only).
+   * 
+   * Behavior:
+   * 1. Verify organizer role.
+   * 2. Ban the user via AdminService.
+   * 3. Return confirmation.
+   * 
+   * Raises: HTTPException(403) if not organizer, HTTPException(404) if user not found.
+   * Tags: admin
+   */
+  async banUserApiAdminUsersUserIdBanPost(user_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/admin/users/${user_id}/ban`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/admin/users/{user_id}/role — Change User Role
+   * Change a user's role (organizer only).
+   * 
+   * Behavior:
+   * 1. Verify organizer role.
+   * 2. Change role via AdminService.
+   * 3. Return confirmation.
+   * 
+   * Raises: HTTPException(403) if not organizer, HTTPException(400/404) on errors.
+   * Tags: admin
+   */
+  async changeUserRoleApiAdminUsersUserIdRolePost(user_id: string, body: { role: string }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/admin/users/${user_id}/role`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/admin/users/{user_id}/unban — Unban User
+   * Unban a user (organizer only).
+   * 
+   * Behavior:
+   * 1. Verify organizer role.
+   * 2. Unban the user via AdminService.
+   * 3. Return confirmation.
+   * 
+   * Raises: HTTPException(403) if not organizer, HTTPException(404) if user not found.
+   * Tags: admin
+   */
+  async unbanUserApiAdminUsersUserIdUnbanPost(user_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/admin/users/${user_id}/unban`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * POST /api/assistant/chat — Create Chat Message
    * Create a new chat message and start processing.
+   * 
+   * Deprecated: Replaced by client-side AgentLoop + POST /api/llm/chat.
+   * Kept for backward compatibility.
+   * 
+   * Behavior:
+   * 1. Get or create an AssistantConversation for the user.
+   * 2. Raise 404 if an existing conversation_id does not belong to the user.
+   * 3. Save the user message as an AssistantMessage.
+   * 4. Create a pending assistant response placeholder.
+   * 5. Commit and return the conversation and message ids with status.
+   * 
+   * Raises: HTTPException(404) if conversation not found or does not belong to user.
+   * Side Effects: Inserts AssistantConversation and AssistantMessage rows.
+   * Dependencies: app.models_assistant.AssistantConversation, app.models_assistant.AssistantMessage, app.models.Hackathon.
+   * Consumers: POST /api/chat, assistant chat (deprecated).
    * Tags: assistant, assistant
    */
   async createChatMessageApiAssistantChatPost(message: string, conversation_id?: string | null, hackathon_id?: string | null, model?: string): Promise<unknown> {
@@ -442,6 +860,18 @@ export class OpenHackClient {
   /**
    * POST /api/assistant/chat-log — Chat Log
    * Persist a conversation from the browser agent.
+   * 
+   * Behavior:
+   * 1. Create a new conversation if no conversation_id is provided.
+   * 2. Verify an existing conversation_id belongs to the current user.
+   * 3. Raise 404 if the conversation is not found.
+   * 4. Persist each message as an AssistantMessage row.
+   * 5. Commit and return the conversation_id with status "saved".
+   * 
+   * Raises: HTTPException(404) if conversation not found or does not belong to user.
+   * Side Effects: Inserts AssistantConversation and AssistantMessage rows.
+   * Dependencies: app.models_assistant.AssistantConversation, app.models_assistant.AssistantMessage.
+   * Consumers: POST /api/chat-log, assistant chat logging.
    * Tags: assistant, assistant
    */
   async chatLogApiAssistantChatLogPost(body: { messages: Record<string, unknown>[]; conversation_id?: string | null }): Promise<unknown> {
@@ -461,6 +891,14 @@ export class OpenHackClient {
   /**
    * POST /api/assistant/detect-intent — Detect Intent
    * Detect if user message indicates intent to build a project.
+   * 
+   * Behavior:
+   * 1. Call detect_build_intent on the raw message text.
+   * 2. Return the intent flag, confidence score, and original message.
+   * 
+   * Side Effects: None (read-only).
+   * Dependencies: app.assistant.context_builder.detect_build_intent.
+   * Consumers: POST /api/detect-intent, builder mode.
    * Tags: assistant, assistant
    */
   async detectIntentApiAssistantDetectIntentPost(message: string): Promise<unknown> {
@@ -481,6 +919,18 @@ export class OpenHackClient {
   /**
    * POST /api/assistant/execute-tool — Execute Tool
    * Execute a single tool. Auth and permission checked server-side.
+   * 
+   * Behavior:
+   * 1. Verify the user's role can use the requested tool.
+   * 2. Raise 403 if the tool is not allowed for the role.
+   * 3. Execute the tool via ToolExecutor.
+   * 4. Return the result under the "result" key.
+   * 5. Raise 500 if tool execution fails unexpectedly.
+   * 
+   * Raises: HTTPException(403) if tool not allowed for role. HTTPException(500) if tool execution fails.
+   * Side Effects: May mutate database state depending on the tool executed.
+   * Dependencies: app.assistant.permissions.can_use_tool, app.assistant.tools.ToolExecutor.
+   * Consumers: POST /api/execute-tool, assistant tool execution.
    * Tags: assistant, assistant
    */
   async executeToolApiAssistantExecuteToolPost(body: { tool_name: string; parameters?: Record<string, unknown> }): Promise<unknown> {
@@ -500,6 +950,17 @@ export class OpenHackClient {
   /**
    * POST /api/assistant/generate-plan — Generate Plan
    * Generate a project plan from user description.
+   * 
+   * Behavior:
+   * 1. Load optional hackathon context and associated tracks.
+   * 2. Build a plan generation prompt with description, hackathon name, and tracks.
+   * 3. Call the LLM and attempt to parse JSON from the response.
+   * 4. Add a generated UUID to the plan.
+   * 5. Return the plan with a success flag, or an error dict on failure.
+   * 
+   * Side Effects: None (read-only, LLM call only).
+   * Dependencies: app.assistant.context_builder.build_plan_generation_prompt, app.assistant.llm.llm_client, app.models.Hackathon, app.models.Track.
+   * Consumers: POST /api/generate-plan, builder mode.
    * Tags: assistant, assistant
    */
   async generatePlanApiAssistantGeneratePlanPost(description: string, hackathon_id?: string | null): Promise<unknown> {
@@ -521,6 +982,18 @@ export class OpenHackClient {
   /**
    * POST /api/assistant/generate-project — Generate Project
    * Generate project files from a plan.
+   * 
+   * Behavior:
+   * 1. Convert the request plan to a dict.
+   * 2. Build a project generation prompt with the plan and project type.
+   * 3. Call the LLM and attempt to parse JSON from the response.
+   * 4. Validate the response contains a files array.
+   * 5. Auto-generate a README if missing.
+   * 6. Return the files, README, and success flag, or an error dict on failure.
+   * 
+   * Side Effects: None (read-only, LLM call only).
+   * Dependencies: app.assistant.context_builder.build_project_generation_prompt, app.assistant.llm.llm_client, app.schemas.builder.GenerateProjectRequest.
+   * Consumers: POST /api/generate-project, builder mode.
    * Tags: assistant, assistant
    */
   async generateProjectApiAssistantGenerateProjectPost(body: { plan: { id: string; name: string; description: string; targetTrack: string; estimatedHours: number; techStack: string[]; tasks: { id: string; description: string; estimatedMinutes: number; completed?: boolean; dependencies?: string[] | null }[]; stretchGoals?: string[] | null }; projectType: string }): Promise<unknown> {
@@ -540,6 +1013,16 @@ export class OpenHackClient {
   /**
    * GET /api/assistant/history — List Conversations
    * List user's conversation history.
+   * 
+   * Behavior:
+   * 1. Query AssistantConversation rows for the current user.
+   * 2. Order by updated_at descending and apply pagination.
+   * 3. Serialize each conversation to a summary dict.
+   * 4. Return the list and total count.
+   * 
+   * Side Effects: None (read-only).
+   * Dependencies: app.models_assistant.AssistantConversation.
+   * Consumers: GET /api/history, assistant conversation list.
    * Tags: assistant, assistant
    */
   async listConversationsApiAssistantHistoryGet(limit?: number, offset?: number): Promise<unknown> {
@@ -561,6 +1044,17 @@ export class OpenHackClient {
   /**
    * GET /api/assistant/history/{conversation_id} — Get Conversation
    * Get a specific conversation with all messages.
+   * 
+   * Behavior:
+   * 1. Load the conversation by id and user_id.
+   * 2. Raise 404 if the conversation is not found or does not belong to the user.
+   * 3. Load all messages ordered by created_at.
+   * 4. Return the conversation metadata and message list.
+   * 
+   * Raises: HTTPException(404) if conversation not found or does not belong to user.
+   * Side Effects: None (read-only).
+   * Dependencies: app.models_assistant.AssistantConversation, app.models_assistant.AssistantMessage.
+   * Consumers: GET /api/history/{conversation_id}, assistant conversation detail.
    * Tags: assistant, assistant
    */
   async getConversationApiAssistantHistoryConversationIdGet(conversation_id: string): Promise<unknown> {
@@ -579,6 +1073,18 @@ export class OpenHackClient {
   /**
    * DELETE /api/assistant/history/{conversation_id} — Delete Conversation
    * Delete a conversation and all its messages.
+   * 
+   * Behavior:
+   * 1. Load the conversation by id and user_id.
+   * 2. Raise 404 if the conversation is not found or does not belong to the user.
+   * 3. Delete associated messages from the vector store.
+   * 4. Delete the conversation from the database and commit.
+   * 5. Return a success dict.
+   * 
+   * Raises: HTTPException(404) if conversation not found or does not belong to user.
+   * Side Effects: Deletes AssistantConversation row and vector store entries.
+   * Dependencies: app.models_assistant.AssistantConversation, app.assistant.vector_store.vector_store.
+   * Consumers: DELETE /api/history/{conversation_id}, assistant conversation management.
    * Tags: assistant, assistant
    */
   async deleteConversationApiAssistantHistoryConversationIdDelete(conversation_id: string): Promise<unknown> {
@@ -597,6 +1103,16 @@ export class OpenHackClient {
   /**
    * POST /api/assistant/rag-search — Rag Search
    * Search Qdrant for relevant hackathon documents.
+   * 
+   * Behavior:
+   * 1. Embed the query text.
+   * 2. Search the vector store for matching documents.
+   * 3. Apply role-based and hackathon-scoped filters.
+   * 4. Return the matching documents with relevance scores.
+   * 
+   * Side Effects: None (read-only).
+   * Dependencies: app.assistant.embedder.embedder, app.assistant.vector_store.vector_store.
+   * Consumers: POST /api/rag-search, assistant document search.
    * Tags: assistant, assistant
    */
   async ragSearchApiAssistantRagSearchPost(hackathon_id: string | null, body: { query: string }): Promise<unknown> {
@@ -618,6 +1134,23 @@ export class OpenHackClient {
   /**
    * GET /api/assistant/stream/{message_id} — Stream Response
    * Stream the assistant response for a message.
+   * 
+   * Deprecated: Replaced by client-side AgentLoop. Kept for backward compat.
+   * 
+   * Behavior:
+   * 1. Load the assistant message and verify ownership via conversation user_id.
+   * 2. Raise 404 if the message is not found or does not belong to the user.
+   * 3. Return the existing content if the message is already completed.
+   * 4. Build conversation context, history, and available tools.
+   * 5. Stream LLM response chunks via SSE.
+   * 6. Execute any tool calls and yield results.
+   * 7. Persist final content and index for semantic search.
+   * 8. Return a StreamingResponse.
+   * 
+   * Raises: HTTPException(404) if message not found or does not belong to user.
+   * Side Effects: Mutates AssistantMessage content, status, tool_results; indexes message in vector store.
+   * Dependencies: app.assistant.context_builder.ContextBuilder, app.assistant.llm.llm_client, app.assistant.tools.ToolExecutor, app.assistant.embedder.embedder, app.assistant.vector_store.vector_store.
+   * Consumers: GET /api/stream/{message_id}, assistant streaming (deprecated).
    * Tags: assistant, assistant
    */
   async streamResponseApiAssistantStreamMessageIdGet(message_id: string): Promise<unknown> {
@@ -636,6 +1169,14 @@ export class OpenHackClient {
   /**
    * GET /api/assistant/tools — List Available Tools
    * List tools available to the current user.
+   * 
+   * Behavior:
+   * 1. Get the tool definitions for the user's role.
+   * 2. Return the role and available tools.
+   * 
+   * Side Effects: None (read-only).
+   * Dependencies: app.assistant.permissions.get_tools_for_role.
+   * Consumers: GET /api/tools, assistant tool listing.
    * Tags: assistant, assistant
    */
   async listAvailableToolsApiAssistantToolsGet(): Promise<unknown> {
@@ -654,6 +1195,19 @@ export class OpenHackClient {
   /**
    * GET /api/auth/me — Get Me
    * Return the current authenticated user. Clerk-only with auto-create fallback.
+   * 
+   * Behavior:
+   * 1. Validate the Authorization header contains a Bearer token.
+   * 2. Verify the token is a Clerk JWT and decode it.
+   * 3. Extract the user ID and email from the Clerk payload.
+   * 4. Query the local database for the user by ID.
+   * 5. Auto-create the user from Clerk profile data if not found.
+   * 6. Return the user as a UserResponse.
+   * 
+   * Raises: HTTPException(401) if the token is missing, invalid, or the user cannot be resolved.
+   * Side Effects: May insert a User row (auto-create fallback).
+   * Dependencies: app.clerk_auth.decode_clerk_token, app.clerk_auth.is_clerk_token, app.clerk_auth.extract_clerk_user_id, app.models.User.
+   * Consumers: GET /me, frontend auth context.
    * Tags: auth
    */
   async getMeApiAuthMeGet(): Promise<{ id: string; email: string; name?: string | null; role?: string | null; created_at?: unknown | null }> {
@@ -672,6 +1226,15 @@ export class OpenHackClient {
   /**
    * POST /api/backup/restore — Restore Hackathon
    * Restore a hackathon from exported data.
+   * 
+   * Behavior:
+   * 1. Invoke BackupService.restore_hackathon with the user's sub as organizer.
+   * 2. Return the restored hackathon's id, name, and restored flag.
+   * 
+   * Raises: None
+   * Side Effects: Inserts hackathon and related rows into the database.
+   * Dependencies: app.services.backup_service.BackupService.
+   * Consumers: POST /api/backup/restore, organizer backup tool.
    * Tags: backup
    */
   async restoreHackathonApiBackupRestorePost(body: { data: Record<string, unknown> }): Promise<unknown> {
@@ -691,12 +1254,50 @@ export class OpenHackClient {
   /**
    * GET /api/backup/{hackathon_id} — Backup Hackathon
    * Export a hackathon and all related data.
+   * 
+   * Behavior:
+   * 1. Validate hackathon_id UUID and invoke BackupService.export_hackathon.
+   * 2. Return 404 if the hackathon is not found.
+   * 3. Return the full hackathon snapshot dict.
+   * 
+   * Raises: HTTPException(404) if the hackathon is not found.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.backup_service.BackupService.
+   * Consumers: GET /api/backup/{hackathon_id}, organizer backup tool.
    * Tags: backup
    */
   async backupHackathonApiBackupHackathonIdGet(hackathon_id: string): Promise<unknown> {
     const url = `${this.baseUrl}/api/backup/${hackathon_id}`;
     const res = await fetch(url, {
       method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/chat/{message_id}/read — Mark Message Read
+   * Mark a chat message as read.
+   * 
+   * Behavior:
+   * 1. Instantiate ChatService and attempt to mark the message as read.
+   * 2. Return 404 if the message does not exist.
+   * 3. Return the updated message with read_at timestamp.
+   * 
+   * Raises: HTTPException(404) if message not found.
+   * Side Effects: Updates the ChatMessage row.
+   * Dependencies: app.services.chat_service.ChatService.
+   * Consumers: POST /api/chat/{message_id}/read, messaging UI read receipts.
+   * Tags: chat
+   */
+  async markMessageReadApiChatMessageIdReadPost(message_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/chat/${message_id}/read`;
+    const res = await fetch(url, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -716,11 +1317,11 @@ export class OpenHackClient {
    * 3. Auto-link to the existing hackathon if none specified.
    * 4. Create a pending Submission with an anonymous access token.
    * 5. Persist the submission to the database.
-   * 6. Trigger background analysis via analyze_submission.
+   * 6. Trigger background analysis via SubmissionService.analyze_submission.
    * 
    * Raises: HTTPException(429) if rate limited, HTTPException(400) if URL invalid.
    * Side Effects: Inserts Submission row; spawns background asyncio task.
-   * Dependencies: app.analyzer.analyze_submission, app.auth.create_anonymous_token, app.scraper.is_devpost_url, app.scraper.is_github_url.
+   * Dependencies: app.services.submission_service.SubmissionService, app.scraper.is_devpost_url, app.scraper.is_github_url.
    * Consumers: POST /api/check, public submission form.
    * Tags: checks
    */
@@ -749,7 +1350,7 @@ export class OpenHackClient {
    * 
    * Raises: HTTPException(404) if submission not found.
    * Side Effects: None (read-only).
-   * Dependencies: app.models.Submission, sqlalchemy.orm.selectinload.
+   * Dependencies: app.services.submission_service.SubmissionService.
    * Consumers: GET /api/check/{submission_id}, status polling UI.
    * Tags: checks
    */
@@ -781,7 +1382,7 @@ export class OpenHackClient {
    * 
    * Raises: HTTPException(404) if submission not found, HTTPException(403) if access denied.
    * Side Effects: None (read-only).
-   * Dependencies: app.clerk_auth.is_clerk_token, app.clerk_auth.decode_clerk_token, app.models.Submission, app.models.User, app.checks.WEIGHTS.
+   * Dependencies: app.clerk_auth.is_clerk_token, app.clerk_auth.decode_clerk_token, app.models.Submission, app.models.User, app.services.submission_service.SubmissionService.
    * Consumers: GET /api/check/{submission_id}/report, report viewer.
    * Tags: checks
    */
@@ -813,7 +1414,7 @@ export class OpenHackClient {
    * 
    * Raises: HTTPException(404) if submission not found.
    * Side Effects: Deletes CheckResult rows; mutates Submission fields; spawns background asyncio task.
-   * Dependencies: app.analyzer.analyze_submission, app.models.Submission, app.models.SubmissionStatus, app.models.CheckResultModel.
+   * Dependencies: app.services.submission_service.SubmissionService.
    * Consumers: POST /api/check/{submission_id}/retry, organizer dashboard.
    * Tags: checks
    */
@@ -844,7 +1445,7 @@ export class OpenHackClient {
    * 
    * Raises: HTTPException(401) for invalid token, HTTPException(410) for missing or revoked registration, HTTPException(409) for already checked in or not active.
    * Side Effects: Mutates Registration.status and Registration.checked_in_at; commits to DB.
-   * Dependencies: app.auth.decode_qr_token, app.models.Registration, app.models.RegistrationStatus.
+   * Dependencies: app.services.scan_service.ScanService.
    * Consumers: POST /api/checkin/scan, check-in scanner UI.
    * Tags: checkin
    */
@@ -865,6 +1466,17 @@ export class OpenHackClient {
 
   /**
    * GET /api/config/ — Get All Config
+   * Get all config values, optionally filtered by category.
+   * 
+   * Behavior:
+   * 1. Validate the category against allowed set if provided; 400 if invalid.
+   * 2. Fetch all config values (optionally filtered) from the config service.
+   * 3. Return the config dict.
+   * 
+   * Raises: HTTPException(400) if an invalid category is provided.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.config_service.ConfigService.
+   * Consumers: GET /api/config/, frontend settings panel.
    * Tags: config
    */
   async getAllConfigApiConfigGet(category?: string | null): Promise<Record<string, string>> {
@@ -884,6 +1496,16 @@ export class OpenHackClient {
 
   /**
    * PUT /api/config/ — Update Config
+   * Update multiple config values (organizer only).
+   * 
+   * Behavior:
+   * 1. Validate and persist the key-value updates via config service; 400 if invalid.
+   * 2. Return the list of updated keys.
+   * 
+   * Raises: HTTPException(400) if any key or value is invalid.
+   * Side Effects: Mutates config store.
+   * Dependencies: app.services.config_service.ConfigService, app.clerk_auth.require_organizer.
+   * Consumers: PUT /api/config/, organizer settings panel.
    * Tags: config
    */
   async updateConfigApiConfigPut(body: Record<string, string>): Promise<{ updated: string[] }> {
@@ -902,6 +1524,17 @@ export class OpenHackClient {
 
   /**
    * POST /api/config/assets — Upload Asset
+   * Upload a file asset to storage (organizer only).
+   * 
+   * Behavior:
+   * 1. Receive uploaded file and optional key name.
+   * 2. Upload via storage service; 400 if file invalid, 502 if storage backend fails.
+   * 3. Return asset key and public URL.
+   * 
+   * Raises: HTTPException(400) if the file is invalid. HTTPException(502) if the storage backend fails.
+   * Side Effects: Writes file to storage backend.
+   * Dependencies: app.storage.StorageService, app.clerk_auth.require_organizer.
+   * Consumers: POST /api/config/assets, organizer asset manager.
    * Tags: config
    */
   async uploadAssetApiConfigAssetsPost(file: File | Blob, key?: string | null): Promise<{ key: string; url: string }> {
@@ -923,6 +1556,16 @@ export class OpenHackClient {
   /**
    * GET /api/config/branding — Get Branding
    * Backward-compat branding endpoint (deprecated).
+   * 
+   * Behavior:
+   * 1. Load all config values.
+   * 2. Parse the hackathon year integer (default 2025).
+   * 3. Return branding fields as a dict.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.config_service.ConfigService.
+   * Consumers: GET /api/config/branding, legacy frontend views.
    * Tags: config
    */
   async getBrandingApiConfigBrandingGet(): Promise<{ hackathon_name: string; hackathon_tagline: string; hackathon_email: string; hackathon_primary_color: string; hackathon_logo_url: string; hackathon_favicon_url: string; hackathon_year: number }> {
@@ -941,6 +1584,15 @@ export class OpenHackClient {
   /**
    * GET /api/config/custom.css — Get Custom Css
    * Return custom CSS if set.
+   * 
+   * Behavior:
+   * 1. Fetch custom CSS from config service.
+   * 2. Return empty PlainTextResponse if none is configured, otherwise return the CSS with nosniff header.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.config_service.ConfigService.
+   * Consumers: GET /api/config/custom.css, frontend theming.
    * Tags: config
    */
   async getCustomCssApiConfigCustomCssGet(): Promise<string> {
@@ -958,6 +1610,17 @@ export class OpenHackClient {
 
   /**
    * GET /api/config/keys/{key} — Get Single Key
+   * Get a single config value by key.
+   * 
+   * Behavior:
+   * 1. Look up the config key via config service.
+   * 2. Return 400 if the key is invalid or not found.
+   * 3. Return the key and its value.
+   * 
+   * Raises: HTTPException(400) if the key is invalid or not found.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.config_service.ConfigService.
+   * Consumers: GET /api/config/keys/{key}, frontend settings.
    * Tags: config
    */
   async getSingleKeyApiConfigKeysKeyGet(key: string): Promise<{ key: string; value: string }> {
@@ -976,6 +1639,16 @@ export class OpenHackClient {
   /**
    * GET /api/config/manifest.json — Get Manifest
    * Dynamic Web App Manifest from site config.
+   * 
+   * Behavior:
+   * 1. Load all config values from the config service.
+   * 2. Build a manifest dict with name, short_name, icons, and theme colors.
+   * 3. Return as a JSONResponse with no-cache headers.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.config_service.ConfigService.
+   * Consumers: GET /api/config/manifest.json, PWA support.
    * Tags: config
    */
   async getManifestApiConfigManifestJsonGet(): Promise<Record<string, unknown>> {
@@ -994,6 +1667,15 @@ export class OpenHackClient {
   /**
    * GET /api/config/theme.css — Get Theme Css
    * Generate CSS custom properties from theme config.
+   * 
+   * Behavior:
+   * 1. Fetch theme CSS from config service.
+   * 2. Return it as a PlainTextResponse with text/css media type.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.config_service.ConfigService.
+   * Consumers: GET /api/config/theme.css, frontend theming.
    * Tags: config
    */
   async getThemeCssApiConfigThemeCssGet(): Promise<string> {
@@ -1011,7 +1693,18 @@ export class OpenHackClient {
 
   /**
    * GET /api/content/pages — List Pages
-   * List content pages, optionally filtered by tab_group.
+   * List published content pages, optionally filtered by tab_group.
+   * 
+   * Behavior:
+   * 1. Query published ContentPage rows joined with author names.
+   * 2. Optionally filter by tab_group query parameter.
+   * 3. Order results by tab_group_order and sort_order.
+   * 4. Return serialized pages and the set of present tab_groups.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.models.ContentPage, app.models.User, app.cache.cached.
+   * Consumers: GET /api/content/pages, public page listing.
    * Tags: content
    */
   async listPagesApiContentPagesGet(tab_group?: string | null): Promise<unknown> {
@@ -1032,6 +1725,19 @@ export class OpenHackClient {
   /**
    * POST /api/content/pages — Create Page
    * Create a new content page (organizer only).
+   * 
+   * Behavior:
+   * 1. Validate the title is present; 422 if missing.
+   * 2. Generate or validate the slug (lowercase alphanumeric with hyphens); 422 if invalid.
+   * 3. Check for slug conflicts; 409 if duplicate.
+   * 4. Create and persist the ContentPage row.
+   * 5. Bust the content cache.
+   * 6. Return the created page's serialized details.
+   * 
+   * Raises: HTTPException(422) if title is missing or slug is invalid. HTTPException(409) if slug already exists.
+   * Side Effects: Inserts ContentPage row; clears content cache.
+   * Dependencies: app.models.ContentPage, app.cache.cache_delete_pattern.
+   * Consumers: POST /api/content/pages, organizer dashboard.
    * Tags: content
    */
   async createPageApiContentPagesPost(body: Record<string, unknown>): Promise<unknown> {
@@ -1050,7 +1756,17 @@ export class OpenHackClient {
 
   /**
    * GET /api/content/pages/{slug} — Get Page
-   * Get a single content page by slug.
+   * Get a single published content page by slug.
+   * 
+   * Behavior:
+   * 1. Query ContentPage by slug where is_published is True, joined with author name.
+   * 2. Return 404 if no matching page exists.
+   * 3. Return serialized page details.
+   * 
+   * Raises: HTTPException(404) if the page is not found or unpublished.
+   * Side Effects: None (read-only).
+   * Dependencies: app.models.ContentPage, app.models.User.
+   * Consumers: GET /api/content/pages/{slug}, public page viewer.
    * Tags: content
    */
   async getPageApiContentPagesSlugGet(slug: string): Promise<unknown> {
@@ -1069,6 +1785,18 @@ export class OpenHackClient {
   /**
    * PUT /api/content/pages/{slug} — Update Page
    * Update a content page (organizer only).
+   * 
+   * Behavior:
+   * 1. Look up the page by slug; 404 if not found.
+   * 2. Apply allowed field updates from the body (title, content, tab_group, sort_order, tab_group_order, is_published).
+   * 3. Update the updated_at timestamp.
+   * 4. Commit changes and bust the content cache.
+   * 5. Return the updated page's serialized details.
+   * 
+   * Raises: HTTPException(404) if the page is not found.
+   * Side Effects: Mutates ContentPage row; clears content cache.
+   * Dependencies: app.models.ContentPage.
+   * Consumers: PUT /api/content/pages/{slug}, organizer dashboard.
    * Tags: content
    */
   async updatePageApiContentPagesSlugPut(slug: string, body: Record<string, unknown>): Promise<unknown> {
@@ -1088,6 +1816,17 @@ export class OpenHackClient {
   /**
    * DELETE /api/content/pages/{slug} — Delete Page
    * Delete a content page (organizer only).
+   * 
+   * Behavior:
+   * 1. Look up the page by slug; 404 if not found.
+   * 2. Delete the page from the database and commit.
+   * 3. Bust the content cache.
+   * 4. Return confirmation dict.
+   * 
+   * Raises: HTTPException(404) if the page is not found.
+   * Side Effects: Deletes ContentPage row; clears content cache.
+   * Dependencies: app.models.ContentPage.
+   * Consumers: DELETE /api/content/pages/{slug}, organizer dashboard.
    * Tags: content
    */
   async deletePageApiContentPagesSlugDelete(slug: string): Promise<unknown> {
@@ -1115,7 +1854,7 @@ export class OpenHackClient {
    * 
    * Raises: None
    * Side Effects: None (read-only).
-   * Dependencies: app.models.CrawledHackathon, app.models.CrawledProject, sqlalchemy.func.count.
+   * Dependencies: app.services.crawler_service.CrawlerService.
    * Consumers: GET /hackathons, organizer crawler dashboard.
    * Tags: crawler
    */
@@ -1144,7 +1883,7 @@ export class OpenHackClient {
    * 
    * Raises: HTTPException(400) if date format is invalid.
    * Side Effects: Inserts CrawledHackathon row.
-   * Dependencies: app.models.CrawledHackathon.
+   * Dependencies: app.services.crawler_service.CrawlerService.
    * Consumers: POST /hackathons, admin/debug panel.
    * Tags: crawler
    */
@@ -1175,7 +1914,7 @@ export class OpenHackClient {
    * 
    * Raises: HTTPException(400) for invalid UUID, HTTPException(404) if hackathon not found.
    * Side Effects: None (read-only).
-   * Dependencies: app.models.CrawledHackathon, app.models.CrawledProject.
+   * Dependencies: app.services.crawler_service.CrawlerService.
    * Consumers: GET /hackathons/{hackathon_id}/projects, organizer project browser.
    * Tags: crawler
    */
@@ -1207,7 +1946,7 @@ export class OpenHackClient {
    * 
    * Raises: None
    * Side Effects: None (read-only).
-   * Dependencies: app.models.CrawledProject.
+   * Dependencies: app.services.crawler_service.CrawlerService.
    * Consumers: GET /projects, organizer project search.
    * Tags: crawler
    */
@@ -1261,6 +2000,18 @@ export class OpenHackClient {
   /**
    * GET /api/dashboard — Get Dashboard
    * Get paginated submissions list. Organizer only.
+   * 
+   * Behavior:
+   * 1. Build a filtered count query based on optional hackathon_id, status, and verdict.
+   * 2. Execute count to get total.
+   * 3. Build the submissions query with the same filters, ordered by risk_score descending.
+   * 4. Apply pagination offset and limit.
+   * 5. Return submissions list, page, per_page, and total count.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.models.Submission, app.clerk_auth.require_organizer.
+   * Consumers: GET /api/dashboard, organizer submissions review.
    * Tags: dashboard
    */
   async getDashboardApiDashboardGet(hackathon_id?: string | null, status?: string | null, verdict?: string | null, page?: number, per_page?: number): Promise<unknown> {
@@ -1285,6 +2036,16 @@ export class OpenHackClient {
   /**
    * GET /api/discord/bot-status — Bot Status
    * Check Discord bot connection state.
+   * 
+   * Behavior:
+   * 1. Import the global Discord bot instance.
+   * 2. Read connection readiness, bot user string, and guild list.
+   * 3. Return a dict with ready flag, user name, guild count, and guild summaries.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.discord_bot.bot.
+   * Consumers: GET /api/discord/bot-status, frontend admin dashboard.
    */
   async botStatusApiDiscordBotStatusGet(): Promise<unknown> {
     const url = `${this.baseUrl}/api/discord/bot-status`;
@@ -1302,6 +2063,15 @@ export class OpenHackClient {
   /**
    * GET /api/discord/invite-url — Discord Invite Url
    * Get the Discord bot invite URL.
+   * 
+   * Behavior:
+   * 1. Import and call get_bot_invite_url to compute the OAuth invite link.
+   * 2. Return the URL if the client ID is configured, otherwise return an error dict.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.discord_bot.get_bot_invite_url.
+   * Consumers: GET /api/discord/invite-url, frontend admin settings panel.
    */
   async discordInviteUrlApiDiscordInviteUrlGet(): Promise<unknown> {
     const url = `${this.baseUrl}/api/discord/invite-url`;
@@ -1377,6 +2147,56 @@ export class OpenHackClient {
   }
 
   /**
+   * POST /api/hackathons/surveys/{survey_id}/responses — Submit Response
+   * Submit a response to a survey.
+   * 
+   * Behavior:
+   * 1. Submit via SurveyService.
+   * 2. Return confirmation.
+   * 
+   * Raises: HTTPException(400) on validation errors.
+   * Tags: surveys
+   */
+  async submitResponseApiHackathonsSurveysSurveyIdResponsesPost(survey_id: string, body: { answers_json: Record<string, unknown> | unknown[]; nps_score?: number | null }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/surveys/${survey_id}/responses`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/hackathons/surveys/{survey_id}/results — Get Survey Results
+   * Get aggregated survey results (organizer only).
+   * 
+   * Behavior:
+   * 1. Verify organizer role.
+   * 2. Aggregate results via SurveyService.
+   * 3. Return metrics.
+   * 
+   * Raises: HTTPException(403) if not organizer, HTTPException(404) if survey not found.
+   * Tags: surveys
+   */
+  async getSurveyResultsApiHackathonsSurveysSurveyIdResultsGet(survey_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/surveys/${survey_id}/results`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * GET /api/hackathons/{hackathon_id} — Get Hackathon
    * Get a single hackathon by ID with caching.
    * 
@@ -1435,6 +2255,32 @@ export class OpenHackClient {
   }
 
   /**
+   * GET /api/hackathons/{hackathon_id}/analytics — Get Hackathon Analytics
+   * Get analytics metrics for a hackathon (organizer only).
+   * 
+   * Behavior:
+   * 1. Verify the user is an organizer.
+   * 2. Load the hackathon.
+   * 3. Aggregate all metrics via AnalyticsService.
+   * 4. Return the combined analytics payload.
+   * 
+   * Raises: HTTPException(403) if not organizer, HTTPException(404) if hackathon not found.
+   * Tags: hackathons
+   */
+  async getHackathonAnalyticsApiHackathonsHackathonIdAnalyticsGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/analytics`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * GET /api/hackathons/{hackathon_id}/announcements — List Announcements
    * List announcements for a hackathon with role-based filtering.
    * 
@@ -1480,6 +2326,92 @@ export class OpenHackClient {
    */
   async createAnnouncementApiHackathonsHackathonIdAnnouncementsPost(hackathon_id: string, body: Record<string, unknown>): Promise<unknown> {
     const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/announcements`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/hackathons/{hackathon_id}/audit-log — Get Hackathon Audit Log
+   * Get audit log entries for a hackathon (organizer only).
+   * 
+   * Behavior:
+   * 1. Verify the user is an organizer.
+   * 2. Query AuditLog rows for the hackathon, ordered by created_at desc.
+   * 3. Return paginated results.
+   * 
+   * Raises: HTTPException(403) if not organizer.
+   * Tags: hackathons
+   */
+  async getHackathonAuditLogApiHackathonsHackathonIdAuditLogGet(hackathon_id: string, limit?: number, offset?: number): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (limit != null) params.append('limit', String(limit));
+    if (offset != null) params.append('offset', String(offset));
+    const url = `${this.baseUrl}/api/hackathons/{hackathon_id}/audit-log` + (params.toString() ? `?${params.toString()}` : '');
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/hackathons/{hackathon_id}/chat — Get Chat History
+   * Get chat history for the current user within a hackathon.
+   * 
+   * Behavior:
+   * 1. Verify the hackathon exists.
+   * 2. Instantiate ChatService and load messages where the user is sender or recipient.
+   * 3. Return a serialized list of messages.
+   * 
+   * Raises: HTTPException(404) if hackathon not found.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.chat_service.ChatService.
+   * Consumers: GET /api/hackathons/{id}/chat, participant messaging UI.
+   * Tags: chat
+   */
+  async getChatHistoryApiHackathonsHackathonIdChatGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/chat`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/hackathons/{hackathon_id}/chat — Send Chat Message
+   * Send a chat message to organizers (or a specific recipient) within a hackathon.
+   * 
+   * Behavior:
+   * 1. Verify the hackathon exists.
+   * 2. Verify the sender is a participant (accepted/checked_in) or an organizer.
+   * 3. Instantiate ChatService and persist the message.
+   * 4. Return the serialized message with id, sender_id, message, and created_at.
+   * 
+   * Raises: HTTPException(404) if hackathon not found. HTTPException(403) if sender is not a participant or organizer.
+   * Side Effects: Inserts a ChatMessage row.
+   * Dependencies: app.services.chat_service.ChatService.
+   * Consumers: POST /api/hackathons/{id}/chat, participant messaging UI.
+   * Tags: chat
+   */
+  async sendChatMessageApiHackathonsHackathonIdChatPost(hackathon_id: string, body: { message: string; recipient_id?: string | null }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/chat`;
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -1581,10 +2513,48 @@ export class OpenHackClient {
   }
 
   /**
+   * POST /api/hackathons/{hackathon_id}/email-blast — Email Blast
+   * Send a bulk email to a registrant cohort (organizer only).
+   * 
+   * Behavior:
+   * 1. Load the hackathon and verify the caller is an organizer.
+   * 2. Instantiate EmailBlastService and dispatch to the correct cohort method.
+   * 3. Return the delivery summary with sent and failed counts.
+   * 
+   * Raises: HTTPException(404) if hackathon not found. HTTPException(403) if not organizer.
+   * Side Effects: Triggers outbound emails via EmailBlastService.
+   * Dependencies: app.services.email_blast_service.EmailBlastService.
+   * Consumers: POST /api/hackathons/{id}/email-blast, organizer communications panel.
+   * Tags: hackathons
+   */
+  async emailBlastApiHackathonsHackathonIdEmailBlastPost(hackathon_id: string, body: { subject: string; body: string; cohort?: string; track_id?: string | null }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/email-blast`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * GET /api/hackathons/{hackathon_id}/hacker-dashboard — Get Hacker Dashboard
    * Get the hacker dashboard for the current user's registration at a hackathon.
    * 
-   * Returns hackathon details (schedule, wifi, discord) + registration (QR, scan_count, scans).
+   * Behavior:
+   * 1. Load the hackathon by ID; 404 if not found.
+   * 2. Load the user's registration with scans and user details; 404 if not registered.
+   * 3. Count scans and build sorted scan history.
+   * 4. Return hackathon details and registration info including QR token and scans.
+   * 
+   * Raises: HTTPException(404) if the hackathon or user's registration is not found.
+   * Side Effects: None (read-only).
+   * Dependencies: app.models.Hackathon, app.models.Registration, sqlalchemy.orm.selectinload.
+   * Consumers: GET /api/hackathons/{hackathon_id}/hacker-dashboard, participant mobile view.
    * Tags: hacker-dashboard
    */
   async getHackerDashboardApiHackathonsHackathonIdHackerDashboardGet(hackathon_id: string): Promise<unknown> {
@@ -1635,19 +2605,6 @@ export class OpenHackClient {
   /**
    * POST /api/hackathons/{hackathon_id}/judging/activate — Activate Judging
    * Activate a judging session and auto-assign all judges to completed submissions.
-   * 
-   * Behavior:
-   * 1. Load the JudgingSession for the hackathon; 404 if missing.
-   * 2. Set session status to active.
-   * 3. Load all judge IDs and all completed submission IDs for the hackathon.
-   * 4. Ensure each judge has a JudgeRating record.
-   * 5. Create pending JudgeAssignment rows for every judge×submission pair not already assigned.
-   * 6. Commit and return activation summary.
-   * 
-   * Raises: HTTPException(404) if no judging session exists.
-   * Side Effects: Mutates JudgingSession.status; inserts JudgeAssignment and JudgeRating rows.
-   * Dependencies: _get_judging_session, app.models.User, app.models.Submission, app.models.JudgeAssignment, app.models.JudgeRating, app.models.JudgingSessionStatus.
-   * Consumers: POST /hackathons/{hackathon_id}/judging/activate, organizer judging setup.
    * Tags: judging
    */
   async activateJudgingApiHackathonsHackathonIdJudgingActivatePost(hackathon_id: string): Promise<unknown> {
@@ -1666,20 +2623,6 @@ export class OpenHackClient {
   /**
    * POST /api/hackathons/{hackathon_id}/judging/assign — Assign Judges
    * Assign judges to submissions for a hackathon judging session.
-   * 
-   * Behavior:
-   * 1. Load the JudgingSession for the hackathon; 404 if missing.
-   * 2. Parse judge_ids and submission_ids from the request body; 422 if either is empty.
-   * 3. Verify all submission IDs belong to this hackathon; 422 if any are invalid.
-   * 4. Mark existing assignments for this session as old (is_completed = -1).
-   * 5. Ensure each judge has a JudgeRating record, creating one if missing.
-   * 6. Create new JudgeAssignment rows for every judge×submission pair.
-   * 7. Commit and return the count of created assignments.
-   * 
-   * Raises: HTTPException(404, 422)
-   * Side Effects: Updates existing JudgeAssignment rows; inserts JudgeRating and JudgeAssignment rows.
-   * Dependencies: _get_judging_session, app.models.JudgeAssignment, app.models.JudgeRating, app.models.Submission.
-   * Consumers: POST /hackathons/{hackathon_id}/judging/assign, organizer judging setup.
    * Tags: judging
    */
   async assignJudgesApiHackathonsHackathonIdJudgingAssignPost(hackathon_id: string, body: Record<string, unknown>): Promise<unknown> {
@@ -1699,17 +2642,6 @@ export class OpenHackClient {
   /**
    * GET /api/hackathons/{hackathon_id}/judging/assignments — List Judge Assignments
    * List judge assignments for a hackathon judging session.
-   * 
-   * Behavior:
-   * 1. Load the JudgingSession for the hackathon; 404 if missing.
-   * 2. Build a query filtering by session, optionally by judge_id, and optionally excluding completed assignments.
-   * 3. Load related Submission details for each assignment.
-   * 4. Return serialized assignment list with project metadata.
-   * 
-   * Raises: HTTPException(404) if no judging session exists.
-   * Side Effects: None (read-only).
-   * Dependencies: _get_judging_session, app.models.JudgeAssignment, app.models.Submission.
-   * Consumers: GET /hackathons/{hackathon_id}/judging/assignments, judge and organizer dashboards.
    * Tags: judging
    */
   async listJudgeAssignmentsApiHackathonsHackathonIdJudgingAssignmentsGet(hackathon_id: string, judge_id?: string | null, include_completed?: boolean): Promise<unknown> {
@@ -1731,16 +2663,6 @@ export class OpenHackClient {
   /**
    * POST /api/hackathons/{hackathon_id}/judging/close — Close Judging
    * Manually close a judging session to prevent further scoring.
-   * 
-   * Behavior:
-   * 1. Load the JudgingSession for the hackathon; 404 if missing.
-   * 2. Set session status to closed.
-   * 3. Commit and return the closed state.
-   * 
-   * Raises: HTTPException(404) if no judging session exists.
-   * Side Effects: Mutates JudgingSession.status.
-   * Dependencies: _get_judging_session, app.models.JudgingSession, app.models.JudgingSessionStatus.
-   * Consumers: POST /hackathons/{hackathon_id}/judging/close, organizer judging setup.
    * Tags: judging
    */
   async closeJudgingApiHackathonsHackathonIdJudgingClosePost(hackathon_id: string): Promise<unknown> {
@@ -1759,20 +2681,6 @@ export class OpenHackClient {
   /**
    * GET /api/hackathons/{hackathon_id}/judging/queue — Get Judging Queue
    * Return a priority-ordered list of submissions that need more judging.
-   * 
-   * Behavior:
-   * 1. Load the JudgingSession for the hackathon; 404 if missing.
-   * 2. Parse judge_id from query param.
-   * 3. Load all completed assignments with scores and build submission coverage maps.
-   * 4. Identify pending assignments for the requesting judge.
-   * 5. Compute uncertainty metrics (variance, proximity, coverage) per submission.
-   * 6. Sort by uncertainty total descending (higher = needs judging more urgently).
-   * 7. Return the queue, count already scored by this judge, and a message if empty.
-   * 
-   * Raises: HTTPException(404) if no judging session exists.
-   * Side Effects: None (read-only).
-   * Dependencies: _get_judging_session, app.models.JudgeAssignment, app.models.Submission, app.models.Score, _compute_raw_score, _elo_update.
-   * Consumers: GET /hackathons/{hackathon_id}/judging/queue, frontend judge dashboard.
    * Tags: judging
    */
   async getJudgingQueueApiHackathonsHackathonIdJudgingQueueGet(hackathon_id: string, judge_id: string, min_judges?: number): Promise<unknown> {
@@ -1794,20 +2702,6 @@ export class OpenHackClient {
   /**
    * POST /api/hackathons/{hackathon_id}/judging/rerun — Rerun Judging
    * Create new assignments for projects flagged by the ELO uncertainty engine.
-   * 
-   * Behavior:
-   * 1. Load the JudgingSession for the hackathon; 404 if missing.
-   * 2. Load all judge IDs with role=judge.
-   * 3. Load all completed submission IDs for the hackathon.
-   * 4. Load completed assignments and build a map of who scored what.
-   * 5. For each submission with fewer than min_judges scores, create new JudgeAssignments for judges who haven't scored it.
-   * 6. Also flag submissions with high score variance (>15% CV) among existing judges.
-   * 7. Commit and return the count of newly created assignments.
-   * 
-   * Raises: HTTPException(404) if no judging session exists.
-   * Side Effects: Inserts new JudgeAssignment rows.
-   * Dependencies: _get_judging_session, app.models.User, app.models.Submission, app.models.JudgeAssignment, app.models.JudgeRating.
-   * Consumers: POST /hackathons/{hackathon_id}/judging/rerun, organizer judging panel.
    * Tags: judging
    */
   async rerunJudgingApiHackathonsHackathonIdJudgingRerunPost(hackathon_id: string): Promise<unknown> {
@@ -1826,20 +2720,6 @@ export class OpenHackClient {
   /**
    * GET /api/hackathons/{hackathon_id}/judging/results — Get Judging Results
    * Compute and return ELO rankings for a hackathon.
-   * 
-   * Behavior:
-   * 1. Load the JudgingSession for the hackathon; 404 if missing.
-   * 2. Load all completed assignments with eager-loaded scores.
-   * 3. Compute raw weighted scores per (judge, submission) using rubric criteria weights.
-   * 4. Z-score normalize within each judge to correct for severity bias.
-   * 5. Run within-judge pairwise ELO updates.
-   * 6. Bridge across judges via submissions scored by multiple judges.
-   * 7. Return final ELO rankings sorted by score descending.
-   * 
-   * Raises: HTTPException(404) if no judging session exists.
-   * Side Effects: None (read-only).
-   * Dependencies: _get_judging_session, _expected_score, _elo_update, app.models.JudgeAssignment, app.models.Submission.
-   * Consumers: GET /hackathons/{hackathon_id}/judging/results, leaderboard page.
    * Tags: judging
    */
   async getJudgingResultsApiHackathonsHackathonIdJudgingResultsGet(hackathon_id: string): Promise<unknown> {
@@ -1858,15 +2738,6 @@ export class OpenHackClient {
   /**
    * GET /api/hackathons/{hackathon_id}/judging/session — Get Judging Session Route
    * Get the judging session configuration for a hackathon.
-   * 
-   * Behavior:
-   * 1. Load the JudgingSession for the hackathon via _get_judging_session.
-   * 2. Return the full session detail including rubric and criteria.
-   * 
-   * Raises: HTTPException(404) if no judging session exists.
-   * Side Effects: None (read-only).
-   * Dependencies: _get_judging_session, _session_detail.
-   * Consumers: GET /api/hackathons/{hackathon_id}/judging/session, judging config UI.
    * Tags: judging
    */
   async getJudgingSessionRouteApiHackathonsHackathonIdJudgingSessionGet(hackathon_id: string): Promise<unknown> {
@@ -1884,20 +2755,7 @@ export class OpenHackClient {
 
   /**
    * POST /api/hackathons/{hackathon_id}/judging/session — Create Judging Session
-   * Create or replace a judging session with rubric criteria for a hackathon (organizer only).
-   * 
-   * Behavior:
-   * 1. Verify the hackathon exists.
-   * 2. Validate that criteria weights sum to exactly 100.
-   * 3. Delete any existing JudgingSession (cascade deletes rubric, criteria, assignments).
-   * 4. Create a new JudgingSession with timing and leaderboard settings.
-   * 5. Create a Rubric and linked RubricCriterion rows.
-   * 6. Commit and return the full session configuration.
-   * 
-   * Raises: HTTPException(404) if hackathon not found, HTTPException(422) if weights do not sum to 100.
-   * Side Effects: Deletes old session cascade; inserts JudgingSession, Rubric, and RubricCriterion rows.
-   * Dependencies: app.models.Hackathon, app.models.JudgingSession, app.models.Rubric, app.models.RubricCriterion, app.schemas.JudgingSessionCreate.
-   * Consumers: POST /api/hackathons/{hackathon_id}/judging/session, organizer judging setup.
+   * Create or replace a judging session with rubric criteria (organizer only).
    * Tags: judging
    */
   async createJudgingSessionApiHackathonsHackathonIdJudgingSessionPost(hackathon_id: string, body: { start_time: string; end_time: string; per_project_seconds?: number; leaderboard_public?: boolean; criteria?: { name: string; description?: string; max_score?: number; weight?: number; sort_order?: number }[] }): Promise<unknown> {
@@ -1909,6 +2767,118 @@ export class OpenHackClient {
         'Accept': 'application/json',
       },
       body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/hackathons/{hackathon_id}/mentorship/request — Request Mentor
+   * Request a mentor for a hackathon.
+   * 
+   * Behavior:
+   * 1. Create the mentorship request via MentorshipService.
+   * 2. Return serialized request details.
+   * 
+   * Raises: None
+   * Side Effects: Inserts MentorshipRequest row.
+   * Dependencies: app.services.mentorship_service.MentorshipService, app.clerk_auth.require_clerk_user.
+   * Consumers: POST /api/hackathons/{id}/mentorship/request.
+   * Tags: mentorship
+   */
+  async requestMentorApiHackathonsHackathonIdMentorshipRequestPost(hackathon_id: string, body: { topic: string }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/mentorship/request`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/hackathons/{hackathon_id}/mentorship/requests — List Mentorship Requests
+   * List mentorship requests for the current user at a hackathon.
+   * 
+   * Behavior:
+   * 1. Fetch requests where the user is the requester or mentor via MentorshipService.
+   * 2. Return serialized list with requester and mentor names.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.mentorship_service.MentorshipService.
+   * Consumers: GET /api/hackathons/{id}/mentorship/requests.
+   * Tags: mentorship
+   */
+  async listMentorshipRequestsApiHackathonsHackathonIdMentorshipRequestsGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/mentorship/requests`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/hackathons/{hackathon_id}/notifications/broadcast — Broadcast To Hackathon
+   * Broadcast a notification to all accepted registrants of a hackathon.
+   * 
+   * Behavior:
+   * 1. Instantiate NotificationService and broadcast to all accepted registrants.
+   * 2. Return the number of notifications created.
+   * 
+   * Raises: HTTPException(403) if the user is not an organizer for the hackathon.
+   * Side Effects: Inserts many Notification rows.
+   * Dependencies: app.services.notification_service.NotificationService, app.clerk_auth.require_hackathon_organizer.
+   * Consumers: POST /api/hackathons/{id}/notifications/broadcast, organizer broadcast panel.
+   * Tags: hackathons
+   */
+  async broadcastToHackathonApiHackathonsHackathonIdNotificationsBroadcastPost(hackathon_id: string, body: { title: string; message: string; type?: string; action_url?: string | null; action_text?: string | null }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/notifications/broadcast`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/hackathons/{hackathon_id}/organizer-chat — Get Organizer Chat
+   * Get all chat messages for a hackathon (organizer view).
+   * 
+   * Behavior:
+   * 1. Verify the hackathon exists.
+   * 2. Verify the caller is an organizer or co-organizer.
+   * 3. Instantiate ChatService and load all messages scoped to the hackathon.
+   * 4. Return a serialized list of messages.
+   * 
+   * Raises: HTTPException(404) if hackathon not found. HTTPException(403) if not organizer.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.chat_service.ChatService, app.models.HackathonOrganizer.
+   * Consumers: GET /api/hackathons/{id}/organizer-chat, organizer messaging dashboard.
+   * Tags: chat
+   */
+  async getOrganizerChatApiHackathonsHackathonIdOrganizerChatGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/organizer-chat`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     return res.json();
@@ -2005,11 +2975,164 @@ export class OpenHackClient {
   }
 
   /**
+   * GET /api/hackathons/{hackathon_id}/participants — List Participants
+   * List public participant profiles for a hackathon.
+   * 
+   * Behavior:
+   * 1. Fetch accepted registrations via ProfileService.
+   * 2. Return serialized list of public profile fields.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.profile_service.ProfileService.
+   * Consumers: GET /api/hackathons/{id}/participants, participant directory.
+   * Tags: profiles
+   */
+  async listParticipantsApiHackathonsHackathonIdParticipantsGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/participants`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/hackathons/{hackathon_id}/prizes/awarded — List Awarded Prizes
+   * List all awarded prizes for a hackathon.
+   * 
+   * Behavior:
+   * 1. Fetch awarded prizes via PrizeService.list_awarded_prizes.
+   * 2. Return serialized list with prize and team details.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.prize_service.PrizeService.
+   * Consumers: GET /api/hackathons/{hackathon_id}/prizes/awarded.
+   * Tags: hackathons
+   */
+  async listAwardedPrizesApiHackathonsHackathonIdPrizesAwardedGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/prizes/awarded`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/hackathons/{hackathon_id}/project-expo — List Project Expo Submissions
+   * List all submissions with public details for a hackathon.
+   * 
+   * Behavior:
+   * 1. Fetch submissions via ProjectExpoService.
+   * 2. Return serialized list of public submission details.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.project_expo_service.ProjectExpoService.
+   * Consumers: GET /api/hackathons/{id}/project-expo, project expo page.
+   * Tags: project-expo
+   */
+  async listProjectExpoSubmissionsApiHackathonsHackathonIdProjectExpoGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/project-expo`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/hackathons/{hackathon_id}/project-expo/results — Get Project Expo Results
+   * Get vote counts per submission for a hackathon (organizer only).
+   * 
+   * Behavior:
+   * 1. Fetch results via ProjectExpoService.
+   * 2. Return serialized vote tally.
+   * 
+   * Raises: HTTPException(403) if the user is not an organizer.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.project_expo_service.ProjectExpoService.
+   * Consumers: GET /api/hackathons/{id}/project-expo/results, organizer dashboard.
+   * Tags: project-expo
+   */
+  async getProjectExpoResultsApiHackathonsHackathonIdProjectExpoResultsGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/project-expo/results`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/hackathons/{hackathon_id}/project-expo/{submission_id}/vote — Cast Project Expo Vote
+   * Cast a people's choice vote for a submission.
+   * 
+   * Behavior:
+   * 1. Cast the vote via ProjectExpoService.
+   * 2. Return 400 if the user has already voted in this hackathon.
+   * 3. Return confirmation.
+   * 
+   * Raises: HTTPException(400) if the user has already voted.
+   * Side Effects: Inserts PublicVote row.
+   * Dependencies: app.services.project_expo_service.ProjectExpoService.
+   * Consumers: POST /api/hackathons/{id}/project-expo/{submission_id}/vote.
+   * Tags: project-expo
+   */
+  async castProjectExpoVoteApiHackathonsHackathonIdProjectExpoSubmissionIdVotePost(hackathon_id: string, submission_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/project-expo/${submission_id}/vote`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * POST /api/hackathons/{hackathon_id}/register — Register For Hackathon
    * Register current user for a hackathon.
+   * 
+   * Behavior:
+   * 1. Load the user and hackathon in parallel.
+   * 2. Raise 401 if the user is not found.
+   * 3. Raise 404 if the hackathon is not found.
+   * 4. Raise 400 if the application deadline has passed.
+   * 5. Raise 409 if the user is already registered.
+   * 6. Determine if auto-waitlist is needed based on capacity.
+   * 7. Create a Registration with the appropriate initial status.
+   * 8. Commit and send a Discord notification via background task.
+   * 9. Publish a registration.created event.
+   * 10. Return the registration details with optional waitlist info.
+   * 
+   * Raises: HTTPException(401) if user not found. HTTPException(404) if hackathon not found. HTTPException(400) if deadline passed or at capacity without waitlist. HTTPException(409) if already registered.
+   * Side Effects: Inserts Registration row; increments Hackathon.current_participants if waitlisted; spawns background task; publishes event.
+   * Dependencies: app.models.Registration, app.models.Hackathon, app.models.User, app.discord_bot.post_application_to_discord, app.services.event_service.publish_event.
+   * Consumers: POST /api/hackathons/{hackathon_id}/register, participant registration form.
    * Tags: registrations
    */
-  async registerForHackathonApiHackathonsHackathonIdRegisterPost(hackathon_id: string, body: Record<string, unknown>): Promise<unknown> {
+  async registerForHackathonApiHackathonsHackathonIdRegisterPost(hackathon_id: string, body: { team_name?: string | null; team_members?: string[] | null; linkedin_url?: string | null; github_url?: string | null; resume_url?: string | null; experience_level?: string | null; t_shirt_size?: string | null; phone?: string | null; dietary_restrictions?: string | null; what_build?: string | null; why_participate?: string | null; age?: number | null; school?: string | null; major?: string | null; pronouns?: string | null; skills?: string[] | null; emergency_contact_name?: string | null; emergency_contact_phone?: string | null; answers?: unknown[] | null }): Promise<unknown> {
     const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/register`;
     const res = await fetch(url, {
       method: 'POST',
@@ -2024,11 +3147,97 @@ export class OpenHackClient {
   }
 
   /**
+   * GET /api/hackathons/{hackathon_id}/registration-questions — List Questions
+   * List custom registration questions for a hackathon. Logged-in users only.
+   * Tags: registration-questions
+   */
+  async listQuestionsApiHackathonsHackathonIdRegistrationQuestionsGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/registration-questions`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/hackathons/{hackathon_id}/registration-questions — Create Question
+   * Create a custom registration question. Organizer only.
+   * Tags: registration-questions
+   */
+  async createQuestionApiHackathonsHackathonIdRegistrationQuestionsPost(hackathon_id: string, body: { question_text: string; question_type: string; options?: string[] | null; is_required?: boolean; sort_order?: number }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/registration-questions`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * PUT /api/hackathons/{hackathon_id}/registration-questions/{question_id} — Update Question
+   * Update a custom registration question. Organizer only.
+   * Tags: registration-questions
+   */
+  async updateQuestionApiHackathonsHackathonIdRegistrationQuestionsQuestionIdPut(hackathon_id: string, question_id: string, body: { question_text?: string | null; question_type?: string | null; options?: string[] | null; is_required?: boolean | null; sort_order?: number | null }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/registration-questions/${question_id}`;
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * DELETE /api/hackathons/{hackathon_id}/registration-questions/{question_id} — Delete Question
+   * Delete a custom registration question. Organizer only.
+   * Tags: registration-questions
+   */
+  async deleteQuestionApiHackathonsHackathonIdRegistrationQuestionsQuestionIdDelete(hackathon_id: string, question_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/registration-questions/${question_id}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return;
+  }
+
+  /**
    * GET /api/hackathons/{hackathon_id}/registrations — List Hackathon Registrations
    * List registrations for a hackathon. Organizer only, RLS: own hackathons only.
+   * 
+   * Behavior:
+   * 1. Verify the organizer owns the hackathon.
+   * 2. Build filtered count and list queries by hackathon_id and optional status.
+   * 3. Fetch registrations with pagination.
+   * 4. Load associated users for name/email enrichment.
+   * 5. Return the registration list with pagination metadata.
+   * 
+   * Raises: HTTPException(404) if hackathon not found or not owned.
+   * Side Effects: None (read-only).
+   * Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_organizer.
+   * Consumers: GET /api/hackathons/{hackathon_id}/registrations, organizer dashboard.
    * Tags: organizer-registrations
    */
-  async listHackathonRegistrationsApiHackathonsHackathonIdRegistrationsGet(hackathon_id: string, status?: string | null, offset?: number, limit?: number): Promise<unknown> {
+  async organizerListHackathonRegistrations(hackathon_id: string, status?: string | null, offset?: number, limit?: number): Promise<unknown> {
     const params = new URLSearchParams();
     if (status != null) params.append('status', String(status));
     if (offset != null) params.append('offset', String(offset));
@@ -2084,13 +3293,12 @@ export class OpenHackClient {
    * 
    * Behavior:
    * 1. Verify the hackathon exists and the user is an organizer.
-   * 2. For each registration ID, skip if not pending or waitlisted.
-   * 3. Set status to rejected for matching registrations.
-   * 4. Commit and return the rejected count.
+   * 2. Delegate to RegistrationService.bulk_reject.
+   * 3. Return the rejected count.
    * 
    * Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer.
    * Side Effects: Mutates Registration.status.
-   * Dependencies: app.models.Hackathon, app.models.Registration, app.models.RegistrationStatus.
+   * Dependencies: app.services.registration_service.RegistrationService.
    * Consumers: POST /api/hackathons/{hackathon_id}/registrations/bulk-reject, organizer registration panel.
    * Tags: hackathons
    */
@@ -2114,14 +3322,12 @@ export class OpenHackClient {
    * 
    * Behavior:
    * 1. Verify the hackathon exists and the user is an organizer.
-   * 2. Reject if waitlist is not enabled for the hackathon.
-   * 3. For each pending registration ID, skip if not pending.
-   * 4. Set status to waitlisted.
-   * 5. Commit and return the waitlisted count.
+   * 2. Delegate to RegistrationService.bulk_waitlist.
+   * 3. Return the waitlisted count.
    * 
    * Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer, HTTPException(400) if waitlist disabled.
    * Side Effects: Mutates Registration.status.
-   * Dependencies: app.models.Hackathon, app.models.Registration, app.models.RegistrationStatus.
+   * Dependencies: app.services.registration_service.RegistrationService.
    * Consumers: POST /api/hackathons/{hackathon_id}/registrations/bulk-waitlist, organizer registration panel.
    * Tags: hackathons
    */
@@ -2140,18 +3346,74 @@ export class OpenHackClient {
   }
 
   /**
+   * GET /api/hackathons/{hackathon_id}/registrations/dietary-report — Get Dietary Report
+   * Return aggregated dietary restrictions for accepted registrations. Organizer only.
+   * 
+   * Behavior:
+   * 1. Verify the organizer owns the hackathon.
+   * 2. Query accepted registrations with their users.
+   * 3. Aggregate counts by dietary restriction value.
+   * 4. Return both summary and individual entries.
+   * 
+   * Raises: HTTPException(404) if hackathon not found or not owned.
+   * Side Effects: None (read-only).
+   * Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_organizer.
+   * Consumers: GET /api/hackathons/{hackathon_id}/registrations/dietary-report, organizer dashboard.
+   * Tags: organizer-registrations
+   */
+  async getDietaryReportApiHackathonsHackathonIdRegistrationsDietaryReportGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/registrations/dietary-report`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/hackathons/{hackathon_id}/registrations/emergency-contacts — Get Emergency Contacts
+   * Return emergency contact info for all accepted participants. Organizer only.
+   * 
+   * Behavior:
+   * 1. Verify the organizer owns the hackathon.
+   * 2. Query accepted registrations with their users.
+   * 3. Return name, phone, emergency contact name and phone for each.
+   * 
+   * Raises: HTTPException(404) if hackathon not found or not owned.
+   * Side Effects: None (read-only).
+   * Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_organizer.
+   * Consumers: GET /api/hackathons/{hackathon_id}/registrations/emergency-contacts, organizer dashboard.
+   * Tags: organizer-registrations
+   */
+  async getEmergencyContactsApiHackathonsHackathonIdRegistrationsEmergencyContactsGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/registrations/emergency-contacts`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * GET /api/hackathons/{hackathon_id}/registrations/export — Export Registrations Csv
    * Export all hackathon registrations to CSV (organizer only).
    * 
    * Behavior:
    * 1. Verify the hackathon exists and the user is an organizer.
-   * 2. Query all registrations joined with user info, ordered by registration date.
-   * 3. Write CSV rows with full registration and user fields.
-   * 4. Return the CSV as a StreamingResponse download.
+   * 2. Delegate to RegistrationService.export_registrations_csv.
+   * 3. Return the CSV as a StreamingResponse download.
    * 
    * Raises: HTTPException(404) if hackathon not found, HTTPException(403) if not organizer.
    * Side Effects: None (read-only, generates CSV in memory).
-   * Dependencies: app.models.Hackathon, app.models.Registration, app.models.User, fastapi.responses.StreamingResponse.
+   * Dependencies: app.services.registration_service.RegistrationService, fastapi.responses.StreamingResponse.
    * Consumers: GET /api/hackathons/{hackathon_id}/registrations/export, organizer data export.
    * Tags: hackathons
    */
@@ -2171,9 +3433,23 @@ export class OpenHackClient {
   /**
    * POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/accept — Accept Registration
    * Approve a registration and generate QR token. Organizer only.
+   * 
+   * Behavior:
+   * 1. Verify the organizer owns the hackathon.
+   * 2. Load the registration by id and hackathon_id.
+   * 3. Raise 404 if the registration is not found.
+   * 4. Raise 409 if the registration is not pending.
+   * 5. Generate a QR token and update status to accepted.
+   * 6. Commit and publish a registration.accepted event.
+   * 7. Return the updated registration details.
+   * 
+   * Raises: HTTPException(404) if hackathon or registration not found. HTTPException(409) if registration not pending.
+   * Side Effects: Mutates Registration status, qr_token, accepted_at; publishes event.
+   * Dependencies: app.auth.create_qr_token, app.models.Registration, app.services.event_service.publish_event.
+   * Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/accept, organizer dashboard.
    * Tags: organizer-registrations
    */
-  async acceptRegistrationApiHackathonsHackathonIdRegistrationsRegistrationIdAcceptPost(hackathon_id: string, registration_id: string): Promise<unknown> {
+  async organizerAcceptRegistration(hackathon_id: string, registration_id: string): Promise<unknown> {
     const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/registrations/${registration_id}/accept`;
     const res = await fetch(url, {
       method: 'POST',
@@ -2189,9 +3465,23 @@ export class OpenHackClient {
   /**
    * POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/checkin — Checkin Registration
    * Check in a registration. Organizer only.
+   * 
+   * Behavior:
+   * 1. Verify the organizer owns the hackathon.
+   * 2. Load the registration by id and hackathon_id.
+   * 3. Raise 404 if the registration is not found.
+   * 4. Raise 409 if the registration is not accepted.
+   * 5. Update status to checked_in and set checked_in_at.
+   * 6. Commit and publish a registration.checked_in event.
+   * 7. Return the updated registration details.
+   * 
+   * Raises: HTTPException(404) if hackathon or registration not found. HTTPException(409) if registration not accepted.
+   * Side Effects: Mutates Registration status and checked_in_at; publishes event.
+   * Dependencies: app.services.scan_service.ScanService, app.services.event_service.publish_event.
+   * Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/checkin, organizer dashboard.
    * Tags: organizer-registrations
    */
-  async checkinRegistrationApiHackathonsHackathonIdRegistrationsRegistrationIdCheckinPost(hackathon_id: string, registration_id: string): Promise<unknown> {
+  async organizerCheckinRegistration(hackathon_id: string, registration_id: string): Promise<unknown> {
     const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/registrations/${registration_id}/checkin`;
     const res = await fetch(url, {
       method: 'POST',
@@ -2205,11 +3495,99 @@ export class OpenHackClient {
   }
 
   /**
+   * GET /api/hackathons/{hackathon_id}/registrations/{registration_id}/notes — List Notes
+   * List review notes for a registration. Organizer only.
+   * Tags: registration-notes
+   */
+  async listNotesApiHackathonsHackathonIdRegistrationsRegistrationIdNotesGet(hackathon_id: string, registration_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/registrations/${registration_id}/notes`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/notes — Create Note
+   * Add a review note to a registration. Organizer only.
+   * Tags: registration-notes
+   */
+  async createNoteApiHackathonsHackathonIdRegistrationsRegistrationIdNotesPost(hackathon_id: string, registration_id: string, body: { note_text: string; rating?: number | null }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/registrations/${registration_id}/notes`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * PUT /api/hackathons/{hackathon_id}/registrations/{registration_id}/notes/{note_id} — Update Note
+   * Update a review note. Only the original author can edit.
+   * Tags: registration-notes
+   */
+  async updateNoteApiHackathonsHackathonIdRegistrationsRegistrationIdNotesNoteIdPut(hackathon_id: string, registration_id: string, note_id: string, body: { note_text?: string | null; rating?: number | null }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/registrations/${registration_id}/notes/${note_id}`;
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * DELETE /api/hackathons/{hackathon_id}/registrations/{registration_id}/notes/{note_id} — Delete Note
+   * Delete a review note. Only the original author can delete.
+   * Tags: registration-notes
+   */
+  async deleteNoteApiHackathonsHackathonIdRegistrationsRegistrationIdNotesNoteIdDelete(hackathon_id: string, registration_id: string, note_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/registrations/${registration_id}/notes/${note_id}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return;
+  }
+
+  /**
    * POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/reject — Reject Registration
    * Reject a registration. Organizer only.
+   * 
+   * Behavior:
+   * 1. Verify the organizer owns the hackathon.
+   * 2. Load the registration by id and hackathon_id.
+   * 3. Raise 404 if the registration is not found.
+   * 4. Raise 409 if the registration is not pending or accepted.
+   * 5. Update status to rejected and invalidate the QR token.
+   * 6. If the registration was accepted, promote from waitlist.
+   * 7. Commit and return the updated registration details.
+   * 
+   * Raises: HTTPException(404) if hackathon or registration not found. HTTPException(409) if registration not rejectable.
+   * Side Effects: Mutates Registration status and qr_token; may trigger waitlist promotion.
+   * Dependencies: app.models.Registration, app.waitlist.promote_from_waitlist.
+   * Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/reject, organizer dashboard.
    * Tags: organizer-registrations
    */
-  async rejectRegistrationApiHackathonsHackathonIdRegistrationsRegistrationIdRejectPost(hackathon_id: string, registration_id: string): Promise<unknown> {
+  async organizerRejectRegistration(hackathon_id: string, registration_id: string): Promise<unknown> {
     const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/registrations/${registration_id}/reject`;
     const res = await fetch(url, {
       method: 'POST',
@@ -2225,6 +3603,16 @@ export class OpenHackClient {
   /**
    * POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/unwaitlist — Remove From Waitlist
    * Move a waitlisted registration back to pending. Organizer only.
+   * 
+   * Behavior:
+   * 1. Verify the organizer owns the hackathon.
+   * 2. Delegate to RegistrationService.unwaitlist_registration.
+   * 3. Return the updated registration details.
+   * 
+   * Raises: HTTPException(404) if hackathon or registration not found. HTTPException(409) if registration not waitlisted.
+   * Side Effects: Mutates Registration status and declined_count.
+   * Dependencies: app.services.registration_service.RegistrationService.
+   * Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/unwaitlist, organizer dashboard.
    * Tags: organizer-registrations
    */
   async removeFromWaitlistApiHackathonsHackathonIdRegistrationsRegistrationIdUnwaitlistPost(hackathon_id: string, registration_id: string): Promise<unknown> {
@@ -2243,6 +3631,19 @@ export class OpenHackClient {
   /**
    * POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/waitlist — Move To Waitlist
    * Move a pending registration to waitlist. Organizer only.
+   * 
+   * Behavior:
+   * 1. Verify the organizer owns the hackathon.
+   * 2. Load the registration by id and hackathon_id.
+   * 3. Raise 404 if the registration is not found.
+   * 4. Raise 409 if the registration is not pending.
+   * 5. Update status to waitlisted.
+   * 6. Commit and return the updated registration details.
+   * 
+   * Raises: HTTPException(404) if hackathon or registration not found. HTTPException(409) if registration not pending.
+   * Side Effects: Mutates Registration status.
+   * Dependencies: app.models.Registration.
+   * Consumers: POST /api/hackathons/{hackathon_id}/registrations/{registration_id}/waitlist, organizer dashboard.
    * Tags: organizer-registrations
    */
   async moveToWaitlistApiHackathonsHackathonIdRegistrationsRegistrationIdWaitlistPost(hackathon_id: string, registration_id: string): Promise<unknown> {
@@ -2343,6 +3744,56 @@ export class OpenHackClient {
   }
 
   /**
+   * GET /api/hackathons/{hackathon_id}/surveys — List Surveys
+   * List active surveys for a hackathon.
+   * 
+   * Behavior:
+   * 1. Query active surveys via SurveyService.
+   * 2. Return serialized list.
+   * 
+   * Raises: None
+   * Tags: surveys
+   */
+  async listSurveysApiHackathonsHackathonIdSurveysGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/surveys`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/hackathons/{hackathon_id}/surveys — Create Survey
+   * Create a survey for a hackathon (organizer only).
+   * 
+   * Behavior:
+   * 1. Verify the user is an organizer.
+   * 2. Create the survey via SurveyService.
+   * 3. Return the created survey.
+   * 
+   * Raises: HTTPException(403) if not organizer.
+   * Tags: surveys
+   */
+  async createSurveyApiHackathonsHackathonIdSurveysPost(hackathon_id: string, body: { title: string; questions_json: Record<string, unknown> | unknown[] }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/surveys`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * GET /api/hackathons/{hackathon_id}/swag-counts — Get Swag Counts
    * Get meal and swag planning counts for accepted participants (organizer only).
    * 
@@ -2372,7 +3823,101 @@ export class OpenHackClient {
   }
 
   /**
+   * GET /api/hackathons/{hackathon_id}/team-finder — List Team Finder Posts
+   * List active team finder posts for a hackathon.
+   * 
+   * Behavior:
+   * 1. Fetch active posts via TeamFinderService.
+   * 2. Return serialized list with owner names.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.team_finder_service.TeamFinderService.
+   * Consumers: GET /api/hackathons/{id}/team-finder, team finder page.
+   * Tags: team-finder
+   */
+  async listTeamFinderPostsApiHackathonsHackathonIdTeamFinderGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/team-finder`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/hackathons/{hackathon_id}/team-finder — Create Team Finder Post
+   * Create a team finder post for a hackathon.
+   * 
+   * Behavior:
+   * 1. Validate post_type is either 'looking_for_team' or 'looking_for_members'.
+   * 2. Create the post via TeamFinderService.
+   * 3. Return serialized post details.
+   * 
+   * Raises: HTTPException(400) if post_type is invalid.
+   * Side Effects: Inserts TeamFinderPost row.
+   * Dependencies: app.services.team_finder_service.TeamFinderService, app.clerk_auth.require_clerk_user.
+   * Consumers: POST /api/hackathons/{id}/team-finder, team finder form.
+   * Tags: team-finder
+   */
+  async createTeamFinderPostApiHackathonsHackathonIdTeamFinderPost(hackathon_id: string, body: { post_type: string; skills_needed?: string[] | null; description?: string | null }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/team-finder`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * DELETE /api/hackathons/{hackathon_id}/team-finder/{post_id} — Deactivate Team Finder Post
+   * Deactivate a team finder post (owner only).
+   * 
+   * Behavior:
+   * 1. Deactivate the post via TeamFinderService.
+   * 2. Return 404 if the post is not found, 403 if not the owner.
+   * 3. Return confirmation.
+   * 
+   * Raises: HTTPException(404) if the post is not found. HTTPException(403) if the requester is not the owner.
+   * Side Effects: Updates TeamFinderPost.is_active to False.
+   * Dependencies: app.services.team_finder_service.TeamFinderService, app.clerk_auth.require_clerk_user.
+   * Consumers: DELETE /api/hackathons/{id}/team-finder/{post_id}.
+   * Tags: team-finder
+   */
+  async deactivateTeamFinderPostApiHackathonsHackathonIdTeamFinderPostIdDelete(hackathon_id: string, post_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/team-finder/${post_id}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * GET /api/hackathons/{hackathon_id}/tracks — List Tracks
+   * List all tracks for a hackathon.
+   * 
+   * Behavior:
+   * 1. Query Track rows filtered by hackathon_id, ordered by created_at.
+   * 2. Serialize each track using _track_to_response.
+   * 3. Return a dict with hackathon_id and the tracks list.
+   * 
+   * Side Effects: None (read-only).
+   * Dependencies: app.models.Track.
+   * Consumers: GET /api/hackathons/{hackathon_id}/tracks, hackathon details.
    * Tags: tracks
    */
   async listTracksApiHackathonsHackathonIdTracksGet(hackathon_id: string): Promise<unknown> {
@@ -2390,6 +3935,19 @@ export class OpenHackClient {
 
   /**
    * POST /api/hackathons/{hackathon_id}/tracks — Create Track
+   * Create a new track for a hackathon (organizer only).
+   * 
+   * Behavior:
+   * 1. Verify the user is an organizer for the hackathon.
+   * 2. Create a Track ORM instance from the request body.
+   * 3. Persist the track to the database.
+   * 4. Reindex hackathon data and bust the tracks cache.
+   * 5. Return the created track details.
+   * 
+   * Raises: HTTPException(403) if user is not an organizer. HTTPException(404) if hackathon not found.
+   * Side Effects: Inserts Track row; reindexes hackathon; busts cache.
+   * Dependencies: app.models.Track, app.assistant.indexer.DocumentIndexer, app.cache.cache_delete_pattern.
+   * Consumers: POST /api/hackathons/{hackathon_id}/tracks, organizer dashboard.
    * Tags: tracks
    */
   async createTrackApiHackathonsHackathonIdTracksPost(hackathon_id: string, body: Record<string, unknown>): Promise<unknown> {
@@ -2408,6 +3966,21 @@ export class OpenHackClient {
 
   /**
    * PUT /api/hackathons/{hackathon_id}/tracks/{track_id} — Update Track
+   * Update a track (organizer only).
+   * 
+   * Behavior:
+   * 1. Verify the user is an organizer for the hackathon.
+   * 2. Load the track by id and hackathon_id.
+   * 3. Raise 404 if the track is not found.
+   * 4. Update allowed fields from the request body.
+   * 5. Commit changes.
+   * 6. Reindex hackathon data and bust the tracks cache.
+   * 7. Return the updated track details.
+   * 
+   * Raises: HTTPException(403) if user is not an organizer. HTTPException(404) if track not found.
+   * Side Effects: Mutates Track row; reindexes hackathon; busts cache.
+   * Dependencies: app.models.Track, app.assistant.indexer.DocumentIndexer, app.cache.cache_delete_pattern.
+   * Consumers: PUT /api/hackathons/{hackathon_id}/tracks/{track_id}, organizer dashboard.
    * Tags: tracks
    */
   async updateTrackApiHackathonsHackathonIdTracksTrackIdPut(hackathon_id: string, track_id: string, body: Record<string, unknown>): Promise<unknown> {
@@ -2426,6 +3999,20 @@ export class OpenHackClient {
 
   /**
    * DELETE /api/hackathons/{hackathon_id}/tracks/{track_id} — Delete Track
+   * Delete a track (organizer only).
+   * 
+   * Behavior:
+   * 1. Verify the user is an organizer for the hackathon.
+   * 2. Load the track by id and hackathon_id.
+   * 3. Raise 404 if the track is not found.
+   * 4. Delete the track and commit.
+   * 5. Reindex hackathon data and bust the tracks cache.
+   * 6. Return a confirmation dict.
+   * 
+   * Raises: HTTPException(403) if user is not an organizer. HTTPException(404) if track not found.
+   * Side Effects: Deletes Track row; reindexes hackathon; busts cache.
+   * Dependencies: app.models.Track, app.assistant.indexer.DocumentIndexer, app.cache.cache_delete_pattern.
+   * Consumers: DELETE /api/hackathons/{hackathon_id}/tracks/{track_id}, organizer dashboard.
    * Tags: tracks
    */
   async deleteTrackApiHackathonsHackathonIdTracksTrackIdDelete(hackathon_id: string, track_id: string): Promise<unknown> {
@@ -2442,8 +4029,38 @@ export class OpenHackClient {
   }
 
   /**
+   * POST /api/hackathons/{hackathon_id}/upload — Upload File
+   * Upload a file for registration answers (MinIO/S3).
+   * Tags: registration-questions
+   */
+  async uploadFileApiHackathonsHackathonIdUploadPost(hackathon_id: string, file: File | Blob): Promise<unknown> {
+    const formData = new FormData();
+    if (file != null) formData.append('file', file);
+    const url = `${this.baseUrl}/api/hackathons/${hackathon_id}/upload`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+      },
+      body: formData,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * GET /api/hackathons/{hackathon_id}/waitlist — List Waitlist
    * List waitlisted registrations with position. Organizer only.
+   * 
+   * Behavior:
+   * 1. Verify the organizer owns the hackathon.
+   * 2. Delegate to RegistrationService.list_waitlist.
+   * 3. Return the waitlist with pagination metadata.
+   * 
+   * Raises: HTTPException(404) if hackathon not found or not owned.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.registration_service.RegistrationService, app.clerk_auth.require_organizer.
+   * Consumers: GET /api/hackathons/{hackathon_id}/waitlist, organizer dashboard.
    * Tags: organizer-registrations
    */
   async listWaitlistApiHackathonsHackathonIdWaitlistGet(hackathon_id: string, offset?: number, limit?: number): Promise<unknown> {
@@ -2465,6 +4082,16 @@ export class OpenHackClient {
   /**
    * POST /api/hackathons/{hackathon_id}/waitlist/promote — Manual Promote Waitlist
    * Manually promote top waitlisted person to offered. Organizer only.
+   * 
+   * Behavior:
+   * 1. Verify the organizer owns the hackathon.
+   * 2. Delegate to RegistrationService.manual_promote_waitlist.
+   * 3. Return the promoted registration details.
+   * 
+   * Raises: HTTPException(404) if hackathon not found. HTTPException(409) if no one to promote or at capacity.
+   * Side Effects: Mutates Registration status and offer_expires_at via waitlist promotion.
+   * Dependencies: app.services.registration_service.RegistrationService.
+   * Consumers: POST /api/hackathons/{hackathon_id}/waitlist/promote, organizer dashboard.
    * Tags: organizer-registrations
    */
   async manualPromoteWaitlistApiHackathonsHackathonIdWaitlistPromotePost(hackathon_id: string): Promise<unknown> {
@@ -2482,6 +4109,15 @@ export class OpenHackClient {
 
   /**
    * GET /api/health — Health
+   * Return a simple health check response.
+   * 
+   * Behavior:
+   * 1. Return a static JSON payload indicating the API is alive.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: None.
+   * Consumers: GET /api/health, load balancers and uptime monitors.
    */
   async healthApiHealthGet(): Promise<unknown> {
     const url = `${this.baseUrl}/api/health`;
@@ -2499,6 +4135,15 @@ export class OpenHackClient {
   /**
    * GET /api/help-requests — List Open Help Requests
    * List open help requests for a hackathon.
+   * 
+   * Behavior:
+   * 1. Fetch open help requests for the hackathon via HelpRequestService.
+   * 2. Return serialized list of request dicts.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.help_request_service.HelpRequestService.
+   * Consumers: GET /api/help-requests, mentor queue view.
    * Tags: help-requests
    */
   async listOpenHelpRequestsApiHelpRequestsGet(hackathon_id: string): Promise<unknown> {
@@ -2519,6 +4164,15 @@ export class OpenHackClient {
   /**
    * POST /api/help-requests — Create Help Request
    * Create a new help request.
+   * 
+   * Behavior:
+   * 1. Create the help request via HelpRequestService using the authenticated user's sub as requester_id.
+   * 2. Return serialized request details.
+   * 
+   * Raises: None
+   * Side Effects: Inserts help request row.
+   * Dependencies: app.services.help_request_service.HelpRequestService, app.clerk_auth.require_clerk_user.
+   * Consumers: POST /api/help-requests, hacker support form.
    * Tags: help-requests
    */
   async createHelpRequestApiHelpRequestsPost(body: { hackathon_id: string; title: string; description?: string | null }): Promise<unknown> {
@@ -2537,7 +4191,17 @@ export class OpenHackClient {
 
   /**
    * GET /api/help-requests/{request_id} — Get Help Request
-   * Get a single help request.
+   * Get a single help request by ID.
+   * 
+   * Behavior:
+   * 1. Fetch the help request via HelpRequestService.
+   * 2. Return 404 if not found.
+   * 3. Return serialized request details including claimed_at and resolved_at.
+   * 
+   * Raises: HTTPException(404) if the help request is not found.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.help_request_service.HelpRequestService.
+   * Consumers: GET /api/help-requests/{request_id}, request detail view.
    * Tags: help-requests
    */
   async getHelpRequestApiHelpRequestsRequestIdGet(request_id: string): Promise<unknown> {
@@ -2556,6 +4220,15 @@ export class OpenHackClient {
   /**
    * DELETE /api/help-requests/{request_id} — Delete Help Request
    * Delete a help request.
+   * 
+   * Behavior:
+   * 1. Delete the request via HelpRequestService; 404 if not found.
+   * 2. Return empty 204 response.
+   * 
+   * Raises: HTTPException(404) if the help request is not found.
+   * Side Effects: Deletes help request row.
+   * Dependencies: app.services.help_request_service.HelpRequestService.
+   * Consumers: DELETE /api/help-requests/{request_id}, request management.
    * Tags: help-requests
    */
   async deleteHelpRequestApiHelpRequestsRequestIdDelete(request_id: string): Promise<unknown> {
@@ -2574,6 +4247,16 @@ export class OpenHackClient {
   /**
    * POST /api/help-requests/{request_id}/claim — Claim Help Request
    * Claim an open help request.
+   * 
+   * Behavior:
+   * 1. Claim the request via HelpRequestService using the user's sub as mentor_id.
+   * 2. Return 400 if the request is not claimable (e.g., already claimed).
+   * 3. Return serialized request with claimed flag.
+   * 
+   * Raises: HTTPException(400) if the request is not claimable.
+   * Side Effects: Mutates help request status and mentor_id.
+   * Dependencies: app.services.help_request_service.HelpRequestService, app.clerk_auth.require_clerk_user.
+   * Consumers: POST /api/help-requests/{request_id}/claim, mentor actions.
    * Tags: help-requests
    */
   async claimHelpRequestApiHelpRequestsRequestIdClaimPost(request_id: string): Promise<unknown> {
@@ -2592,6 +4275,16 @@ export class OpenHackClient {
   /**
    * POST /api/help-requests/{request_id}/resolve — Resolve Help Request
    * Mark a help request as resolved.
+   * 
+   * Behavior:
+   * 1. Resolve the request via HelpRequestService.
+   * 2. Return 400 if the request cannot be resolved.
+   * 3. Return serialized request with resolved flag.
+   * 
+   * Raises: HTTPException(400) if the request cannot be resolved.
+   * Side Effects: Mutates help request status and resolved_at.
+   * Dependencies: app.services.help_request_service.HelpRequestService.
+   * Consumers: POST /api/help-requests/{request_id}/resolve, mentor actions.
    * Tags: help-requests
    */
   async resolveHelpRequestApiHelpRequestsRequestIdResolvePost(request_id: string): Promise<unknown> {
@@ -2610,20 +4303,6 @@ export class OpenHackClient {
   /**
    * GET /api/judging/assignments/{assignment_id} — Get Assignment Detail
    * Get full assignment detail including submission info, rubric criteria, and existing scores.
-   * 
-   * Behavior:
-   * 1. Load the JudgeAssignment by ID with eager-loaded session, rubric, and criteria.
-   * 2. Return 404 if assignment not found.
-   * 3. Enforce the judging time window.
-   * 4. Load the related Submission.
-   * 5. Load existing Score rows and map them by criterion_id.
-   * 6. Build the criteria list with current scores.
-   * 7. Return the complete assignment payload.
-   * 
-   * Raises: HTTPException(404) if assignment not found, HTTPException(403) if outside time window.
-   * Side Effects: None (read-only).
-   * Dependencies: app.models.JudgeAssignment, app.models.JudgingSession, app.models.Rubric, app.models.RubricCriterion, app.models.Score, app.models.Submission, _enforce_time_window.
-   * Consumers: GET /judging/assignments/{assignment_id}, frontend judging form.
    * Tags: judging
    */
   async getAssignmentDetailApiJudgingAssignmentsAssignmentIdGet(assignment_id: string): Promise<unknown> {
@@ -2642,18 +4321,6 @@ export class OpenHackClient {
   /**
    * POST /api/judging/assignments/{assignment_id}/open — Open Assignment
    * Mark a judge assignment as opened and initialize blank score records.
-   * 
-   * Behavior:
-   * 1. Load the JudgeAssignment by ID; 404 if not found.
-   * 2. Load the parent JudgingSession and enforce the time window.
-   * 3. Set opened_at to now if not already set.
-   * 4. Create blank Score rows for each rubric criterion if not already present.
-   * 5. Commit and return the opened state.
-   * 
-   * Raises: HTTPException(404) if assignment not found, HTTPException(403) if outside time window.
-   * Side Effects: Mutates JudgeAssignment.opened_at; inserts Score rows.
-   * Dependencies: app.models.JudgeAssignment, app.models.JudgingSession, app.models.Rubric, app.models.RubricCriterion, app.models.Score, _enforce_time_window.
-   * Consumers: POST /judging/assignments/{assignment_id}/open, frontend judging flow.
    * Tags: judging
    */
   async openAssignmentApiJudgingAssignmentsAssignmentIdOpenPost(assignment_id: string): Promise<unknown> {
@@ -2672,21 +4339,6 @@ export class OpenHackClient {
   /**
    * POST /api/judging/assignments/{assignment_id}/score — Submit Scores
    * Submit or update scores for a judge assignment.
-   * 
-   * Behavior:
-   * 1. Load the JudgeAssignment by ID; 404 if not found.
-   * 2. Reject if the assignment is already completed (400).
-   * 3. Load the parent JudgingSession and enforce its time window.
-   * 4. Flag as late if elapsed time exceeds per_project_seconds.
-   * 5. Load the Rubric and validate each criterion ID and score range (0–max_score).
-   * 6. Upsert Score rows for each criterion.
-   * 7. If all criteria now have scores, mark the assignment completed and update submitted_at.
-   * 8. Commit and return the updated assignment state.
-   * 
-   * Raises: HTTPException(404, 400, 422)
-   * Side Effects: Inserts or updates Score rows; may mutate JudgeAssignment.is_completed, submitted_at, and auto-submit null scores as 0 when late.
-   * Dependencies: app.models.JudgeAssignment, app.models.JudgingSession, app.models.Rubric, app.models.RubricCriterion, app.models.Score, _enforce_time_window.
-   * Consumers: POST /judging/assignments/{assignment_id}/score, frontend judging form.
    * Tags: judging
    */
   async submitScoresApiJudgingAssignmentsAssignmentIdScorePost(assignment_id: string, body: { scores?: { criterion_id: string; score: number }[] }): Promise<unknown> {
@@ -2707,8 +4359,20 @@ export class OpenHackClient {
    * POST /api/llm/chat — Llm Chat Proxy
    * Proxy LLM chat requests to Poolside.
    * 
-   * Strips client tool defs, injects server-authorized ones.
-   * Validates Clerk JWT.
+   * Strips client tool definitions and injects server-authorized ones based
+   * on the user's role. Validates Clerk JWT.
+   * 
+   * Behavior:
+   * 1. Get server-authorized tools for the user's role.
+   * 2. Determine the model based on the request model selector.
+   * 3. Call the LLM with messages and authorized tools.
+   * 4. Return the LLM response content.
+   * 5. Raise 502 if the LLM service returns an error.
+   * 
+   * Raises: HTTPException(502) if LLM service returns an error.
+   * Side Effects: None (read-only proxy).
+   * Dependencies: app.assistant.permissions.get_tools_for_role, app.assistant.llm.llm_client.
+   * Consumers: POST /api/llm/chat (mounted in main.py), LLM proxy.
    * Tags: llm
    */
   async llmChatProxyApiLlmChatPost(body: { messages: Record<string, unknown>[]; model?: string }): Promise<unknown> {
@@ -2726,8 +4390,77 @@ export class OpenHackClient {
   }
 
   /**
+   * POST /api/mentorship/{request_id}/accept — Accept Mentorship Request
+   * Accept a pending mentorship request.
+   * 
+   * Behavior:
+   * 1. Accept the request via MentorshipService.
+   * 2. Return 404 if the request is not found, 400 if not pending.
+   * 3. Return updated request details.
+   * 
+   * Raises: HTTPException(404) if the request is not found. HTTPException(400) if the request is not pending.
+   * Side Effects: Updates MentorshipRequest status and mentor_id.
+   * Dependencies: app.services.mentorship_service.MentorshipService.
+   * Consumers: POST /api/mentorship/{id}/accept.
+   * Tags: mentorship
+   */
+  async acceptMentorshipRequestApiMentorshipRequestIdAcceptPost(request_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/mentorship/${request_id}/accept`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/mentorship/{request_id}/complete — Complete Mentorship Request
+   * Mark a mentorship request as completed.
+   * 
+   * Behavior:
+   * 1. Complete the request via MentorshipService.
+   * 2. Return 404 if the request is not found, 403 if unauthorized, 400 if not accepted.
+   * 3. Return updated request details.
+   * 
+   * Raises: HTTPException(404) if not found. HTTPException(403) if unauthorized. HTTPException(400) if not accepted.
+   * Side Effects: Updates MentorshipRequest status to completed.
+   * Dependencies: app.services.mentorship_service.MentorshipService.
+   * Consumers: POST /api/mentorship/{id}/complete.
+   * Tags: mentorship
+   */
+  async completeMentorshipRequestApiMentorshipRequestIdCompletePost(request_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/mentorship/${request_id}/complete`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * GET /api/monitoring/diagnostics — Diagnostics
    * Extended diagnostics for all subsystems.
+   * 
+   * Behavior:
+   * 1. Ping the database and record status.
+   * 2. Ping Redis and record version info if available.
+   * 3. Check Discord bot readiness and guild count.
+   * 4. Check background job scheduler status and job count.
+   * 5. Check disk usage on /tmp.
+   * 6. Aggregate statuses and return overall state with timestamp.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only probes).
+   * Dependencies: app.database.async_session, app.cache.get_redis, app.discord_bot.bot, app.background_jobs.scheduler.
+   * Consumers: GET /api/monitoring/diagnostics, admin health panel.
    * Tags: monitoring
    */
   async diagnosticsApiMonitoringDiagnosticsGet(): Promise<unknown> {
@@ -2746,6 +4479,18 @@ export class OpenHackClient {
   /**
    * GET /api/monitoring/health — Health Check
    * Comprehensive health check including database and Redis.
+   * 
+   * Behavior:
+   * 1. Ping the database via async SQLAlchemy session.
+   * 2. Ping Redis if configured.
+   * 3. Check disk usage on /tmp.
+   * 4. Aggregate subsystem statuses and determine overall healthy/degraded state.
+   * 5. Return HealthStatus with timestamp and per-subsystem checks.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only probes).
+   * Dependencies: app.database.async_session, app.cache.get_redis.
+   * Consumers: GET /api/monitoring/health, load balancer and uptime checks.
    * Tags: monitoring
    */
   async healthCheckApiMonitoringHealthGet(): Promise<{ status: string; timestamp: string; version?: string; checks: Record<string, unknown> }> {
@@ -2764,6 +4509,14 @@ export class OpenHackClient {
   /**
    * GET /api/monitoring/live — Liveness Check
    * Kubernetes-style liveness probe.
+   * 
+   * Behavior:
+   * 1. Return {"alive": True} immediately.
+   * 
+   * Raises: None
+   * Side Effects: None.
+   * Dependencies: None.
+   * Consumers: GET /api/monitoring/live, Kubernetes liveness probe.
    * Tags: monitoring
    */
   async livenessCheckApiMonitoringLiveGet(): Promise<unknown> {
@@ -2782,6 +4535,16 @@ export class OpenHackClient {
   /**
    * GET /api/monitoring/metrics — Get Metrics
    * Application metrics (Prometheus-compatible format).
+   * 
+   * Behavior:
+   * 1. Compute uptime from process start time.
+   * 2. Calculate requests per minute, average response time, and error rate from in-memory counters.
+   * 3. Return MetricsResponse with computed metrics.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: None.
+   * Consumers: GET /api/monitoring/metrics, internal metrics dashboard.
    * Tags: monitoring
    */
   async getMetricsApiMonitoringMetricsGet(): Promise<unknown> {
@@ -2800,6 +4563,17 @@ export class OpenHackClient {
   /**
    * GET /api/monitoring/metrics/prometheus — Prometheus Metrics
    * Prometheus-formatted metrics endpoint.
+   * 
+   * Behavior:
+   * 1. Compute uptime from process start time.
+   * 2. Build Prometheus exposition lines for uptime, requests, errors, and active connections.
+   * 3. Append per-endpoint request count metrics.
+   * 4. Return plain-text Prometheus exposition format.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: None.
+   * Consumers: GET /api/monitoring/metrics/prometheus, Prometheus scraper.
    * Tags: monitoring
    */
   async prometheusMetricsApiMonitoringMetricsPrometheusGet(): Promise<unknown> {
@@ -2818,6 +4592,15 @@ export class OpenHackClient {
   /**
    * GET /api/monitoring/ready — Readiness Check
    * Kubernetes-style readiness probe.
+   * 
+   * Behavior:
+   * 1. Ping the database via async SQLAlchemy session.
+   * 2. Return {"ready": True} on success, {"ready": False} on failure.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only probe).
+   * Dependencies: app.database.async_session.
+   * Consumers: GET /api/monitoring/ready, Kubernetes readiness probe.
    * Tags: monitoring
    */
   async readinessCheckApiMonitoringReadyGet(): Promise<unknown> {
@@ -2836,6 +4619,14 @@ export class OpenHackClient {
   /**
    * GET /api/monitoring/version — Version
    * Get application version and build info.
+   * 
+   * Behavior:
+   * 1. Return static version metadata including app version, Python version, FastAPI version, and placeholder build metadata.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: None.
+   * Consumers: GET /api/monitoring/version, deployment info.
    * Tags: monitoring
    */
   async versionApiMonitoringVersionGet(): Promise<unknown> {
@@ -2852,8 +4643,166 @@ export class OpenHackClient {
   }
 
   /**
+   * GET /api/notifications — List Notifications
+   * List notifications for the current user.
+   * 
+   * Behavior:
+   * 1. Instantiate NotificationService and list notifications for the authenticated user.
+   * 2. Optionally filter by hackathon_id or unread_only.
+   * 3. Return a paginated list of serialized notification dicts.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.notification_service.NotificationService.
+   * Consumers: GET /api/notifications, notification inbox UI.
+   * Tags: notifications
+   */
+  async listNotificationsApiNotificationsGet(hackathon_id?: string | null, unread_only?: boolean, limit?: number, offset?: number): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (hackathon_id != null) params.append('hackathon_id', String(hackathon_id));
+    if (unread_only != null) params.append('unread_only', String(unread_only));
+    if (limit != null) params.append('limit', String(limit));
+    if (offset != null) params.append('offset', String(offset));
+    const url = `${this.baseUrl}/api/notifications` + (params.toString() ? `?${params.toString()}` : '');
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/notifications/read-all — Mark All As Read
+   * Mark all notifications for the current user as read.
+   * 
+   * Behavior:
+   * 1. Instantiate NotificationService and mark all unread notifications as read.
+   * 2. Optionally restrict to a specific hackathon.
+   * 3. Return the number of notifications marked as read.
+   * 
+   * Raises: None
+   * Side Effects: Updates Notification.read_at for matching rows.
+   * Dependencies: app.services.notification_service.NotificationService.
+   * Consumers: POST /api/notifications/read-all, mark-all-read button.
+   * Tags: notifications
+   */
+  async markAllAsReadApiNotificationsReadAllPost(hackathon_id?: string | null): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (hackathon_id != null) params.append('hackathon_id', String(hackathon_id));
+    const url = `${this.baseUrl}/api/notifications/read-all` + (params.toString() ? `?${params.toString()}` : '');
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/notifications/unread-count — Get Unread Count
+   * Get the number of unread notifications for the current user.
+   * 
+   * Behavior:
+   * 1. Instantiate NotificationService and count unread notifications.
+   * 2. Optionally restrict to a specific hackathon.
+   * 3. Return the count.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.notification_service.NotificationService.
+   * Consumers: GET /api/notifications/unread-count, notification badge.
+   * Tags: notifications
+   */
+  async getUnreadCountApiNotificationsUnreadCountGet(hackathon_id?: string | null): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (hackathon_id != null) params.append('hackathon_id', String(hackathon_id));
+    const url = `${this.baseUrl}/api/notifications/unread-count` + (params.toString() ? `?${params.toString()}` : '');
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * DELETE /api/notifications/{notification_id} — Delete Notification
+   * Delete a notification.
+   * 
+   * Behavior:
+   * 1. Instantiate NotificationService and delete the notification.
+   * 2. Return 404 if the notification does not exist or is not owned by the user.
+   * 3. Return empty 204 response on success.
+   * 
+   * Raises: HTTPException(404) if the notification is not found or not owned.
+   * Side Effects: Deletes a Notification row.
+   * Dependencies: app.services.notification_service.NotificationService.
+   * Consumers: DELETE /api/notifications/{id}, notification dismissal.
+   * Tags: notifications
+   */
+  async deleteNotificationApiNotificationsNotificationIdDelete(notification_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/notifications/${notification_id}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return;
+  }
+
+  /**
+   * POST /api/notifications/{notification_id}/read — Mark As Read
+   * Mark a notification as read.
+   * 
+   * Behavior:
+   * 1. Instantiate NotificationService and mark the notification as read.
+   * 2. Return 404 if the notification does not exist or is not owned by the user.
+   * 3. Return the serialized notification with read_at set.
+   * 
+   * Raises: HTTPException(404) if the notification is not found or not owned.
+   * Side Effects: Updates Notification.read_at.
+   * Dependencies: app.services.notification_service.NotificationService.
+   * Consumers: POST /api/notifications/{id}/read, notification click handler.
+   * Tags: notifications
+   */
+  async markAsReadApiNotificationsNotificationIdReadPost(notification_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/notifications/${notification_id}/read`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * GET /api/plugins — List Plugins
    * List all registered plugins.
+   * 
+   * Behavior:
+   * 1. Query all registered plugins via PluginService.
+   * 2. Serialize each plugin to a dict with full details.
+   * 3. Return the list.
+   * 
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.plugin_service.PluginService.
+   * Consumers: GET /api/plugins, plugin registry.
    * Tags: plugins
    */
   async listPluginsApiPluginsGet(): Promise<unknown> {
@@ -2872,6 +4821,16 @@ export class OpenHackClient {
   /**
    * POST /api/plugins — Register Plugin
    * Register a new plugin.
+   * 
+   * Behavior:
+   * 1. Call PluginService to register the plugin with the given fields.
+   * 2. Catch ValueError and raise 400 for duplicate names.
+   * 3. Return the created plugin details.
+   * 
+   * Raises: HTTPException(400) if registration fails (e.g. duplicate name).
+   * Side Effects: Inserts Plugin row via PluginService.
+   * Dependencies: app.services.plugin_service.PluginService, app.clerk_auth.require_clerk_user.
+   * Consumers: POST /api/plugins, plugin registry.
    * Tags: plugins
    */
   async registerPluginApiPluginsPost(body: { name: string; version?: string; description?: string | null; enabled?: boolean; config?: Record<string, unknown> | null }): Promise<unknown> {
@@ -2890,7 +4849,17 @@ export class OpenHackClient {
 
   /**
    * GET /api/plugins/{plugin_id} — Get Plugin
-   * Get a single plugin.
+   * Get a single plugin by ID.
+   * 
+   * Behavior:
+   * 1. Load the plugin via PluginService.
+   * 2. Raise 404 if the plugin does not exist.
+   * 3. Return the plugin details.
+   * 
+   * Raises: HTTPException(404) if plugin not found.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.plugin_service.PluginService.
+   * Consumers: GET /api/plugins/{plugin_id}, plugin registry.
    * Tags: plugins
    */
   async getPluginApiPluginsPluginIdGet(plugin_id: string): Promise<unknown> {
@@ -2909,6 +4878,16 @@ export class OpenHackClient {
   /**
    * PUT /api/plugins/{plugin_id} — Update Plugin
    * Update a plugin.
+   * 
+   * Behavior:
+   * 1. Call PluginService to update the plugin by UUID with the given fields.
+   * 2. Catch ValueError and raise 404 if the plugin is not found.
+   * 3. Return the updated plugin id, name, enabled flag, and updated flag.
+   * 
+   * Raises: HTTPException(404) if plugin not found.
+   * Side Effects: Mutates Plugin row via PluginService.
+   * Dependencies: app.services.plugin_service.PluginService, app.clerk_auth.require_clerk_user.
+   * Consumers: PUT /api/plugins/{plugin_id}, plugin registry.
    * Tags: plugins
    */
   async updatePluginApiPluginsPluginIdPut(plugin_id: string, body: { version?: string | null; description?: string | null; enabled?: boolean | null; config?: Record<string, unknown> | null }): Promise<unknown> {
@@ -2928,6 +4907,16 @@ export class OpenHackClient {
   /**
    * DELETE /api/plugins/{plugin_id} — Delete Plugin
    * Unregister a plugin.
+   * 
+   * Behavior:
+   * 1. Call PluginService to delete the plugin by UUID.
+   * 2. Catch ValueError and raise 404 if the plugin is not found.
+   * 3. Return None (204 response).
+   * 
+   * Raises: HTTPException(404) if plugin not found.
+   * Side Effects: Deletes Plugin row via PluginService.
+   * Dependencies: app.services.plugin_service.PluginService, app.clerk_auth.require_clerk_user.
+   * Consumers: DELETE /api/plugins/{plugin_id}, plugin registry.
    * Tags: plugins
    */
   async deletePluginApiPluginsPluginIdDelete(plugin_id: string): Promise<unknown> {
@@ -2946,6 +4935,15 @@ export class OpenHackClient {
   /**
    * GET /api/prizes — List Prizes
    * List prizes for a hackathon.
+   * 
+   * Behavior:
+   * 1. Fetch prizes for the hackathon via PrizeService.
+   * 2. Return serialized list of prize dicts.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.prize_service.PrizeService.
+   * Consumers: GET /api/prizes, public prize listing.
    * Tags: prizes
    */
   async listPrizesApiPrizesGet(hackathon_id: string): Promise<unknown> {
@@ -2966,6 +4964,15 @@ export class OpenHackClient {
   /**
    * POST /api/prizes — Create Prize
    * Create a new prize.
+   * 
+   * Behavior:
+   * 1. Create the prize via PrizeService using the provided payload fields.
+   * 2. Return serialized prize details.
+   * 
+   * Raises: None
+   * Side Effects: Inserts prize row.
+   * Dependencies: app.services.prize_service.PrizeService, app.clerk_auth.require_clerk_user.
+   * Consumers: POST /api/prizes, prize management.
    * Tags: prizes
    */
   async createPrizeApiPrizesPost(body: { hackathon_id: string; name: string; description?: string | null; amount?: string | null; currency?: string; track_id?: string | null }): Promise<unknown> {
@@ -2984,7 +4991,17 @@ export class OpenHackClient {
 
   /**
    * GET /api/prizes/{prize_id} — Get Prize
-   * Get a single prize.
+   * Get a single prize by ID.
+   * 
+   * Behavior:
+   * 1. Fetch the prize via PrizeService.
+   * 2. Return 404 if not found.
+   * 3. Return serialized prize details.
+   * 
+   * Raises: HTTPException(404) if the prize is not found.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.prize_service.PrizeService.
+   * Consumers: GET /api/prizes/{prize_id}, prize detail view.
    * Tags: prizes
    */
   async getPrizeApiPrizesPrizeIdGet(prize_id: string): Promise<unknown> {
@@ -3003,6 +5020,15 @@ export class OpenHackClient {
   /**
    * PUT /api/prizes/{prize_id} — Update Prize
    * Update a prize.
+   * 
+   * Behavior:
+   * 1. Apply updates via PrizeService; 404 if prize not found.
+   * 2. Return updated prize id, name, and updated flag.
+   * 
+   * Raises: HTTPException(404) if the prize is not found.
+   * Side Effects: Mutates prize row.
+   * Dependencies: app.services.prize_service.PrizeService.
+   * Consumers: PUT /api/prizes/{prize_id}, prize management.
    * Tags: prizes
    */
   async updatePrizeApiPrizesPrizeIdPut(prize_id: string, body: { name?: string | null; description?: string | null; amount?: string | null; currency?: string | null; track_id?: string | null }): Promise<unknown> {
@@ -3022,6 +5048,15 @@ export class OpenHackClient {
   /**
    * DELETE /api/prizes/{prize_id} — Delete Prize
    * Delete a prize.
+   * 
+   * Behavior:
+   * 1. Delete the prize via PrizeService; 404 if not found.
+   * 2. Return empty 204 response.
+   * 
+   * Raises: HTTPException(404) if the prize is not found.
+   * Side Effects: Deletes prize row.
+   * Dependencies: app.services.prize_service.PrizeService.
+   * Consumers: DELETE /api/prizes/{prize_id}, prize management.
    * Tags: prizes
    */
   async deletePrizeApiPrizesPrizeIdDelete(prize_id: string): Promise<unknown> {
@@ -3038,8 +5073,73 @@ export class OpenHackClient {
   }
 
   /**
+   * DELETE /api/prizes/{prize_id}/award — Revoke Award
+   * Revoke a prize award.
+   * 
+   * Behavior:
+   * 1. Call PrizeService.revoke_award.
+   * 2. Translate ValueError to HTTPException(404).
+   * 3. Return empty 204 response.
+   * 
+   * Raises: HTTPException(404) if award not found.
+   * Side Effects: Deletes PrizeAward row.
+   * Dependencies: app.services.prize_service.PrizeService.
+   * Consumers: DELETE /api/prizes/{prize_id}/award.
+   * Tags: prizes
+   */
+  async revokeAwardApiPrizesPrizeIdAwardDelete(prize_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/prizes/${prize_id}/award`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return;
+  }
+
+  /**
+   * POST /api/prizes/{prize_id}/award/{team_id} — Award Prize
+   * Award a prize to a team.
+   * 
+   * Behavior:
+   * 1. Call PrizeService.award_prize.
+   * 2. Translate ValueError to HTTPException(400 or 404).
+   * 3. Return serialized award details.
+   * 
+   * Raises: HTTPException(404) if prize not found; HTTPException(400) if already awarded or hackathon mismatch.
+   * Side Effects: Inserts PrizeAward row.
+   * Dependencies: app.services.prize_service.PrizeService.
+   * Consumers: POST /api/prizes/{prize_id}/award/{team_id}.
+   * Tags: prizes
+   */
+  async awardPrizeApiPrizesPrizeIdAwardTeamIdPost(prize_id: string, team_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/prizes/${prize_id}/award/${team_id}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * GET /api/qr — Get Qr Image
    * Serve a QR code PNG image for the given data.
+   * 
+   * Behavior:
+   * 1. Generate a PNG QR code from the provided data string.
+   * 2. Return it as a FastAPI Response with image/png content type.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only, CPU-bound image generation).
+   * Dependencies: app.qr_generator.generate_qr_png.
+   * Consumers: GET /api/qr, badge/QR display.
    * Tags: qr
    */
   async getQrImageApiQrGet(data: string): Promise<unknown> {
@@ -3060,6 +5160,18 @@ export class OpenHackClient {
   /**
    * GET /api/registrations — List My Registrations
    * List registrations for the current user. RLS: own registrations only.
+   * 
+   * Behavior:
+   * 1. Load the current user.
+   * 2. Raise 401 if the user is not found.
+   * 3. Count and query registrations filtered by user_id.
+   * 4. Fetch registrations with eager-loaded users.
+   * 5. Return the registration list with pagination metadata.
+   * 
+   * Raises: HTTPException(401) if user not found.
+   * Side Effects: None (read-only).
+   * Dependencies: app.models.Registration, app.models.User, app.clerk_auth.require_clerk_user.
+   * Consumers: GET /api/registrations, participant profile.
    * Tags: registrations
    */
   async listMyRegistrationsApiRegistrationsGet(offset?: number, limit?: number): Promise<unknown> {
@@ -3081,6 +5193,17 @@ export class OpenHackClient {
   /**
    * GET /api/registrations/{registration_id} — Get Registration
    * Get a single registration. RLS: own only.
+   * 
+   * Behavior:
+   * 1. Load the current user.
+   * 2. Raise 401 if the user is not found.
+   * 3. Delegate to RegistrationService.get_registration.
+   * 4. Return the full registration details.
+   * 
+   * Raises: HTTPException(401) if user not found. HTTPException(404) if registration not found or does not belong to user.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.registration_service.RegistrationService, app.clerk_auth.require_clerk_user.
+   * Consumers: GET /api/registrations/{registration_id}, participant profile.
    * Tags: registrations
    */
   async getRegistrationApiRegistrationsRegistrationIdGet(registration_id: string): Promise<unknown> {
@@ -3097,8 +5220,36 @@ export class OpenHackClient {
   }
 
   /**
+   * PUT /api/registrations/{registration_id} — Update Registration
+   * Update a pending registration and its answers.
+   * Tags: registrations
+   */
+  async updateRegistrationApiRegistrationsRegistrationIdPut(registration_id: string, body: { team_name?: string | null; team_members?: string[] | null; linkedin_url?: string | null; github_url?: string | null; resume_url?: string | null; experience_level?: string | null; t_shirt_size?: string | null; phone?: string | null; dietary_restrictions?: string | null; what_build?: string | null; why_participate?: string | null; age?: number | null; school?: string | null; major?: string | null; pronouns?: string | null; skills?: string[] | null; emergency_contact_name?: string | null; emergency_contact_phone?: string | null; answers?: unknown[] | null }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/registrations/${registration_id}`;
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * GET /api/sponsors — List Sponsors
    * List sponsors for a hackathon.
+   * 
+   * Behavior:
+   * 1. Fetch sponsors for the hackathon via SponsorService.
+   * 2. Return serialized list of sponsor dicts.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.sponsor_service.SponsorService.
+   * Consumers: GET /api/sponsors, public sponsor listing.
    * Tags: sponsors
    */
   async listSponsorsApiSponsorsGet(hackathon_id: string): Promise<unknown> {
@@ -3119,6 +5270,15 @@ export class OpenHackClient {
   /**
    * POST /api/sponsors — Create Sponsor
    * Create a new sponsor.
+   * 
+   * Behavior:
+   * 1. Create the sponsor via SponsorService using the provided payload fields.
+   * 2. Return serialized sponsor details.
+   * 
+   * Raises: None
+   * Side Effects: Inserts sponsor row.
+   * Dependencies: app.services.sponsor_service.SponsorService, app.clerk_auth.require_clerk_user.
+   * Consumers: POST /api/sponsors, sponsor management.
    * Tags: sponsors
    */
   async createSponsorApiSponsorsPost(body: { hackathon_id: string; name: string; tier?: string; logo_url?: string | null; website_url?: string | null; description?: string | null }): Promise<unknown> {
@@ -3137,7 +5297,17 @@ export class OpenHackClient {
 
   /**
    * GET /api/sponsors/{sponsor_id} — Get Sponsor
-   * Get a single sponsor.
+   * Get a single sponsor by ID.
+   * 
+   * Behavior:
+   * 1. Fetch the sponsor via SponsorService.
+   * 2. Return 404 if not found.
+   * 3. Return serialized sponsor details.
+   * 
+   * Raises: HTTPException(404) if the sponsor is not found.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.sponsor_service.SponsorService.
+   * Consumers: GET /api/sponsors/{sponsor_id}, sponsor detail view.
    * Tags: sponsors
    */
   async getSponsorApiSponsorsSponsorIdGet(sponsor_id: string): Promise<unknown> {
@@ -3156,6 +5326,15 @@ export class OpenHackClient {
   /**
    * PUT /api/sponsors/{sponsor_id} — Update Sponsor
    * Update a sponsor.
+   * 
+   * Behavior:
+   * 1. Apply updates via SponsorService; 404 if sponsor not found.
+   * 2. Return updated sponsor id, name, and updated flag.
+   * 
+   * Raises: HTTPException(404) if the sponsor is not found.
+   * Side Effects: Mutates sponsor row.
+   * Dependencies: app.services.sponsor_service.SponsorService.
+   * Consumers: PUT /api/sponsors/{sponsor_id}, sponsor management.
    * Tags: sponsors
    */
   async updateSponsorApiSponsorsSponsorIdPut(sponsor_id: string, body: { name?: string | null; tier?: string | null; logo_url?: string | null; website_url?: string | null; description?: string | null }): Promise<unknown> {
@@ -3175,6 +5354,15 @@ export class OpenHackClient {
   /**
    * DELETE /api/sponsors/{sponsor_id} — Delete Sponsor
    * Delete a sponsor.
+   * 
+   * Behavior:
+   * 1. Delete the sponsor via SponsorService; 404 if not found.
+   * 2. Return empty 204 response.
+   * 
+   * Raises: HTTPException(404) if the sponsor is not found.
+   * Side Effects: Deletes sponsor row.
+   * Dependencies: app.services.sponsor_service.SponsorService.
+   * Consumers: DELETE /api/sponsors/{sponsor_id}, sponsor management.
    * Tags: sponsors
    */
   async deleteSponsorApiSponsorsSponsorIdDelete(sponsor_id: string): Promise<unknown> {
@@ -3193,6 +5381,16 @@ export class OpenHackClient {
   /**
    * POST /api/teams — Create Team
    * Create a new team for a hackathon (requires accepted registration).
+   * 
+   * Behavior:
+   * 1. Instantiate TeamService and attempt to create a team via the service.
+   * 2. Catch ValueError and translate to HTTPException(400).
+   * 3. Return the serialized team with id, name, join_code, captain_id, hackathon_id, and created_at.
+   * 
+   * Raises: HTTPException(400) if the user cannot create a team (no accepted registration or team already exists).
+   * Side Effects: Inserts Team row via TeamService.
+   * Dependencies: app.services.team_service.TeamService.
+   * Consumers: POST /api/teams, team creation form.
    * Tags: teams
    */
   async createTeamApiTeamsPost(body: { hackathon_id: string; name: string }): Promise<unknown> {
@@ -3212,6 +5410,17 @@ export class OpenHackClient {
   /**
    * GET /api/teams/{team_id} — Get Team
    * Get team details with member list.
+   * 
+   * Behavior:
+   * 1. Instantiate TeamService and fetch the team by UUID.
+   * 2. Return 404 if the team is not found.
+   * 3. Build the members list from the team's member relationships.
+   * 4. Return the serialized team with id, name, join_code, captain_id, hackathon_id, created_at, and members.
+   * 
+   * Raises: HTTPException(404) if the team does not exist.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.team_service.TeamService.
+   * Consumers: GET /api/teams/{team_id}, team detail page.
    * Tags: teams
    */
   async getTeamApiTeamsTeamIdGet(team_id: string): Promise<unknown> {
@@ -3230,6 +5439,16 @@ export class OpenHackClient {
   /**
    * PUT /api/teams/{team_id} — Update Team
    * Update team name (captain only).
+   * 
+   * Behavior:
+   * 1. Instantiate TeamService and attempt to update the team name.
+   * 2. Catch ValueError as 404 and PermissionError as 403.
+   * 3. Return the serialized team with id, name, and updated flag.
+   * 
+   * Raises: HTTPException(404) if the team is not found. HTTPException(403) if the requesting user is not the captain.
+   * Side Effects: Mutates Team.name via TeamService.
+   * Dependencies: app.services.team_service.TeamService.
+   * Consumers: PUT /api/teams/{team_id}, team settings form.
    * Tags: teams
    */
   async updateTeamApiTeamsTeamIdPut(team_id: string, body: { name: string }): Promise<unknown> {
@@ -3249,6 +5468,16 @@ export class OpenHackClient {
   /**
    * POST /api/teams/{team_id}/join — Join Team
    * Join a team by its join code.
+   * 
+   * Behavior:
+   * 1. Instantiate TeamService and attempt to join the team by code.
+   * 2. Catch ValueError and translate to HTTPException(400).
+   * 3. Return the serialized team with id, name, and joined flag.
+   * 
+   * Raises: HTTPException(400) if the join code is invalid or the user is already on the team.
+   * Side Effects: Mutates team membership via TeamService.
+   * Dependencies: app.services.team_service.TeamService.
+   * Consumers: POST /api/teams/{team_id}/join, team join form.
    * Tags: teams
    */
   async joinTeamApiTeamsTeamIdJoinPost(team_id: string, body: { join_code: string }): Promise<unknown> {
@@ -3268,6 +5497,16 @@ export class OpenHackClient {
   /**
    * DELETE /api/teams/{team_id}/members/{user_id} — Remove Team Member
    * Remove a member from the team (captain only).
+   * 
+   * Behavior:
+   * 1. Instantiate TeamService and attempt to remove the member.
+   * 2. Catch ValueError as 400 and PermissionError as 403.
+   * 3. Return a confirmation dict with the removed user_id.
+   * 
+   * Raises: HTTPException(400) if the operation is invalid (e.g. removing self). HTTPException(403) if the requesting user is not the captain.
+   * Side Effects: Deletes team membership via TeamService.
+   * Dependencies: app.services.team_service.TeamService.
+   * Consumers: DELETE /api/teams/{team_id}/members/{user_id}, team management panel.
    * Tags: teams
    */
   async removeTeamMemberApiTeamsTeamIdMembersUserIdDelete(team_id: string, user_id: string): Promise<unknown> {
@@ -3284,8 +5523,74 @@ export class OpenHackClient {
   }
 
   /**
+   * GET /api/users/me/profile — Get My Profile
+   * Get the current user's public profile.
+   * 
+   * Behavior:
+   * 1. Load the user profile via ProfileService.
+   * 2. Return 404 if the user is not found.
+   * 3. Return serialized profile fields.
+   * 
+   * Raises: HTTPException(404) if the user is not found.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.profile_service.ProfileService, app.clerk_auth.require_clerk_user.
+   * Consumers: GET /api/users/me/profile, profile page.
+   * Tags: profiles
+   */
+  async getMyProfileApiUsersMeProfileGet(): Promise<unknown> {
+    const url = `${this.baseUrl}/api/users/me/profile`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * PUT /api/users/me/profile — Update My Profile
+   * Update the current user's public profile.
+   * 
+   * Behavior:
+   * 1. Apply updates via ProfileService.
+   * 2. Return 404 if the user is not found.
+   * 3. Return serialized updated profile fields.
+   * 
+   * Raises: HTTPException(404) if the user is not found.
+   * Side Effects: Mutates User profile fields.
+   * Dependencies: app.services.profile_service.ProfileService, app.clerk_auth.require_clerk_user.
+   * Consumers: PUT /api/users/me/profile, profile edit form.
+   * Tags: profiles
+   */
+  async updateMyProfileApiUsersMeProfilePut(body: { bio?: string | null; skills?: unknown[] | null; links?: Record<string, unknown> | null; availability?: string | null; looking_for_team?: boolean | null }): Promise<unknown> {
+    const url = `${this.baseUrl}/api/users/me/profile`;
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * POST /api/webhooks/subscribe — Subscribe
    * Create a new webhook subscription (organizer only).
+   * 
+   * Behavior:
+   * 1. Build a WebhookSubscription from the request body.
+   * 2. Persist the subscription to the database.
+   * 3. Refresh and return the created subscription.
+   * 
+   * Side Effects: Inserts WebhookSubscription row.
+   * Dependencies: app.models.WebhookSubscription, app.clerk_auth.require_organizer.
+   * Consumers: POST /api/webhooks/subscribe, organizer dashboard.
    * Tags: webhooks
    */
   async subscribeApiWebhooksSubscribePost(body: { url: string; secret: string; events: string[] }): Promise<{ id: string; url: string; events: string[]; active: boolean; created_at: string }> {
@@ -3305,6 +5610,15 @@ export class OpenHackClient {
   /**
    * GET /api/webhooks/subscriptions — List Subscriptions
    * List all webhook subscriptions (organizer only).
+   * 
+   * Behavior:
+   * 1. Query all WebhookSubscription rows from the database.
+   * 2. Serialize each row to a SubscriptionResponse dict.
+   * 3. Return the full list.
+   * 
+   * Side Effects: None (read-only).
+   * Dependencies: app.models.WebhookSubscription, app.clerk_auth.require_organizer.
+   * Consumers: GET /api/webhooks/subscriptions, organizer dashboard.
    * Tags: webhooks
    */
   async listSubscriptionsApiWebhooksSubscriptionsGet(): Promise<{ id: string; url: string; events: string[]; active: boolean; created_at: string }[]> {
@@ -3323,6 +5637,16 @@ export class OpenHackClient {
   /**
    * DELETE /api/webhooks/subscriptions/{subscription_id} — Delete Subscription
    * Delete a webhook subscription (organizer only).
+   * 
+   * Behavior:
+   * 1. Load the subscription by UUID.
+   * 2. Raise 404 if the subscription does not exist.
+   * 3. Delete the row and commit.
+   * 
+   * Raises: HTTPException(404) if subscription not found.
+   * Side Effects: Deletes WebhookSubscription row.
+   * Dependencies: app.models.WebhookSubscription, app.clerk_auth.require_organizer.
+   * Consumers: DELETE /api/webhooks/subscriptions/{subscription_id}, organizer dashboard.
    * Tags: webhooks
    */
   async deleteSubscriptionApiWebhooksSubscriptionsSubscriptionIdDelete(subscription_id: string): Promise<unknown> {
@@ -3341,6 +5665,15 @@ export class OpenHackClient {
   /**
    * GET /api/workshops — List Workshops
    * List workshops for a hackathon.
+   * 
+   * Behavior:
+   * 1. Fetch workshops for the given hackathon via WorkshopService.
+   * 2. Return serialized list of workshop dicts.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.workshop_service.WorkshopService.
+   * Consumers: GET /api/workshops, public schedule view.
    * Tags: workshops
    */
   async listWorkshopsApiWorkshopsGet(hackathon_id: string): Promise<unknown> {
@@ -3361,9 +5694,19 @@ export class OpenHackClient {
   /**
    * POST /api/workshops — Create Workshop
    * Create a new workshop (any authenticated user).
+   * 
+   * Behavior:
+   * 1. Parse start_time and end_time from ISO strings.
+   * 2. Create the workshop via WorkshopService.
+   * 3. Return serialized workshop details.
+   * 
+   * Raises: None
+   * Side Effects: Inserts workshop row.
+   * Dependencies: app.services.workshop_service.WorkshopService.
+   * Consumers: POST /api/workshops, schedule management.
    * Tags: workshops
    */
-  async createWorkshopApiWorkshopsPost(body: { hackathon_id: string; title: string; description?: string | null; start_time: string; end_time: string; location?: string | null; speaker_name?: string | null }): Promise<unknown> {
+  async createWorkshopApiWorkshopsPost(body: { hackathon_id: string; title: string; description?: string | null; start_time: string; end_time: string; location?: string | null; speaker_name?: string | null; max_capacity?: number | null }): Promise<unknown> {
     const url = `${this.baseUrl}/api/workshops`;
     const res = await fetch(url, {
       method: 'POST',
@@ -3378,8 +5721,45 @@ export class OpenHackClient {
   }
 
   /**
+   * GET /api/workshops/hackathons/{hackathon_id}/my-rsvps — List My Rsvps For Hackathon
+   * List the current user's RSVPs for a hackathon.
+   * 
+   * Behavior:
+   * 1. Call WorkshopService.list_rsvps_for_user.
+   * 2. Return serialized list of RSVP dicts.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.workshop_service.WorkshopService.
+   * Consumers: GET /api/hackathons/{hackathon_id}/my-rsvps.
+   * Tags: workshops
+   */
+  async listMyRsvpsForHackathonApiWorkshopsHackathonsHackathonIdMyRsvpsGet(hackathon_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/workshops/hackathons/${hackathon_id}/my-rsvps`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * GET /api/workshops/{workshop_id} — Get Workshop
-   * Get a single workshop.
+   * Get a single workshop by ID.
+   * 
+   * Behavior:
+   * 1. Fetch the workshop via WorkshopService.
+   * 2. Return 404 if not found.
+   * 3. Return serialized workshop details.
+   * 
+   * Raises: HTTPException(404) if the workshop is not found.
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.workshop_service.WorkshopService.
+   * Consumers: GET /api/workshops/{workshop_id}, schedule detail view.
    * Tags: workshops
    */
   async getWorkshopApiWorkshopsWorkshopIdGet(workshop_id: string): Promise<unknown> {
@@ -3398,9 +5778,19 @@ export class OpenHackClient {
   /**
    * PUT /api/workshops/{workshop_id} — Update Workshop
    * Update a workshop.
+   * 
+   * Behavior:
+   * 1. Parse optional start_time and end_time from ISO strings.
+   * 2. Apply updates via WorkshopService; 404 if workshop not found.
+   * 3. Return updated workshop id, title, and updated flag.
+   * 
+   * Raises: HTTPException(404) if the workshop is not found.
+   * Side Effects: Mutates workshop row.
+   * Dependencies: app.services.workshop_service.WorkshopService.
+   * Consumers: PUT /api/workshops/{workshop_id}, schedule management.
    * Tags: workshops
    */
-  async updateWorkshopApiWorkshopsWorkshopIdPut(workshop_id: string, body: { title?: string | null; description?: string | null; start_time?: string | null; end_time?: string | null; location?: string | null; speaker_name?: string | null }): Promise<unknown> {
+  async updateWorkshopApiWorkshopsWorkshopIdPut(workshop_id: string, body: { title?: string | null; description?: string | null; start_time?: string | null; end_time?: string | null; location?: string | null; speaker_name?: string | null; max_capacity?: number | null }): Promise<unknown> {
     const url = `${this.baseUrl}/api/workshops/${workshop_id}`;
     const res = await fetch(url, {
       method: 'PUT',
@@ -3417,6 +5807,15 @@ export class OpenHackClient {
   /**
    * DELETE /api/workshops/{workshop_id} — Delete Workshop
    * Delete a workshop.
+   * 
+   * Behavior:
+   * 1. Delete the workshop via WorkshopService; 404 if not found.
+   * 2. Return empty 204 response.
+   * 
+   * Raises: HTTPException(404) if the workshop is not found.
+   * Side Effects: Deletes workshop row.
+   * Dependencies: app.services.workshop_service.WorkshopService.
+   * Consumers: DELETE /api/workshops/{workshop_id}, schedule management.
    * Tags: workshops
    */
   async deleteWorkshopApiWorkshopsWorkshopIdDelete(workshop_id: string): Promise<unknown> {
@@ -3433,8 +5832,138 @@ export class OpenHackClient {
   }
 
   /**
+   * POST /api/workshops/{workshop_id}/rsvp — Register For Workshop
+   * Register the current user for a workshop.
+   * 
+   * Behavior:
+   * 1. Call WorkshopService.register_for_workshop.
+   * 2. Translate ValueError to HTTPException(400 or 404).
+   * 3. Return serialized RSVP details.
+   * 
+   * Raises: HTTPException(400) if already registered or at capacity; HTTPException(404) if workshop not found.
+   * Side Effects: Inserts WorkshopRSVP row.
+   * Dependencies: app.services.workshop_service.WorkshopService.
+   * Consumers: POST /api/workshops/{workshop_id}/rsvp.
+   * Tags: workshops
+   */
+  async registerForWorkshopApiWorkshopsWorkshopIdRsvpPost(workshop_id: string, hackathon_id: string): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (hackathon_id != null) params.append('hackathon_id', String(hackathon_id));
+    const url = `${this.baseUrl}/api/workshops/{workshop_id}/rsvp` + (params.toString() ? `?${params.toString()}` : '');
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * DELETE /api/workshops/{workshop_id}/rsvp — Cancel Rsvp
+   * Cancel the current user's RSVP for a workshop.
+   * 
+   * Behavior:
+   * 1. Call WorkshopService.cancel_rsvp.
+   * 2. Translate ValueError to HTTPException(404).
+   * 3. Return serialized RSVP with cancelled status.
+   * 
+   * Raises: HTTPException(404) if RSVP not found.
+   * Side Effects: Updates WorkshopRSVP row.
+   * Dependencies: app.services.workshop_service.WorkshopService.
+   * Consumers: DELETE /api/workshops/{workshop_id}/rsvp.
+   * Tags: workshops
+   */
+  async cancelRsvpApiWorkshopsWorkshopIdRsvpDelete(workshop_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/workshops/${workshop_id}/rsvp`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * POST /api/workshops/{workshop_id}/rsvp/{user_id}/attended — Mark Attended
+   * Mark a participant as attended (organizer only).
+   * 
+   * Behavior:
+   * 1. Call WorkshopService.mark_attended.
+   * 2. Translate ValueError to HTTPException(404).
+   * 3. Return serialized RSVP with attended status.
+   * 
+   * Raises: HTTPException(404) if RSVP not found.
+   * Side Effects: Updates WorkshopRSVP row.
+   * Dependencies: app.services.workshop_service.WorkshopService.
+   * Consumers: POST /api/workshops/{workshop_id}/rsvp/{user_id}/attended.
+   * Tags: workshops
+   */
+  async markAttendedApiWorkshopsWorkshopIdRsvpUserIdAttendedPost(workshop_id: string, user_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/workshops/${workshop_id}/rsvp/${user_id}/attended`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
+   * GET /api/workshops/{workshop_id}/rsvps — List Workshop Rsvps
+   * List all RSVPs for a workshop (organizer only).
+   * 
+   * Behavior:
+   * 1. Call WorkshopService.list_rsvps_for_workshop.
+   * 2. Return serialized list of RSVP dicts.
+   * 
+   * Raises: None
+   * Side Effects: None (read-only).
+   * Dependencies: app.services.workshop_service.WorkshopService.
+   * Consumers: GET /api/workshops/{workshop_id}/rsvps.
+   * Tags: workshops
+   */
+  async listWorkshopRsvpsApiWorkshopsWorkshopIdRsvpsGet(workshop_id: string): Promise<unknown> {
+    const url = `${this.baseUrl}/api/workshops/${workshop_id}/rsvps`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    return res.json();
+  }
+
+  /**
    * POST /api/{registration_id}/accept-offer — Accept Offer
    * Participant accepts an offered spot from waitlist promotion.
+   * 
+   * Behavior:
+   * 1. Authenticate from the Authorization header.
+   * 2. Raise 401 if authentication is missing or invalid.
+   * 3. Lock and load the registration by id and user_id.
+   * 4. Raise 404 if the registration is not found.
+   * 5. Raise 409 if the registration is not in offered status.
+   * 6. Raise 410 if the offer has expired.
+   * 7. Check capacity one more time; revert to waitlist if the spot is taken.
+   * 8. Update status to accepted, set accepted_at, and generate a QR token.
+   * 9. Commit and send a confirmation email.
+   * 10. Return the updated registration details.
+   * 
+   * Raises: HTTPException(401) if authentication missing or invalid. HTTPException(404) if registration not found. HTTPException(409) if registration not offered or spot taken. HTTPException(410) if offer expired.
+   * Side Effects: Mutates Registration status, accepted_at, offer_expires_at, qr_token; sends email.
+   * Dependencies: app.auth.decode_token, app.auth.create_qr_token, app.models.Registration, app.models.Hackathon, app.email_service.send_email.
+   * Consumers: POST /api/{registration_id}/accept-offer, participant waitlist action.
    * Tags: registrations
    */
   async acceptOfferApiRegistrationIdAcceptOfferPost(registration_id: string): Promise<unknown> {
@@ -3453,6 +5982,16 @@ export class OpenHackClient {
   /**
    * POST /api/{registration_id}/decline-offer — Decline Offer
    * Participant declines an offered spot. Returns to waitlist with lower priority.
+   * 
+   * Behavior:
+   * 1. Authenticate from the Authorization header.
+   * 2. Delegate to RegistrationService.decline_offer.
+   * 3. Return the updated registration details.
+   * 
+   * Raises: HTTPException(401) if authentication missing or invalid. HTTPException(404) if registration not found. HTTPException(409) if registration not offered.
+   * Side Effects: Mutates Registration status, offer_expires_at, declined_count; triggers waitlist promotion.
+   * Dependencies: app.auth.decode_token, app.services.registration_service.RegistrationService.
+   * Consumers: POST /api/{registration_id}/decline-offer, participant waitlist action.
    * Tags: registrations
    */
   async declineOfferApiRegistrationIdDeclineOfferPost(registration_id: string): Promise<unknown> {

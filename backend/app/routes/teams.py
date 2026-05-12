@@ -14,15 +14,21 @@ router = APIRouter(prefix="/api/teams", tags=["teams"])
 
 
 class CreateTeamRequest(BaseModel):
+    """Request body for creating a new team within a hackathon."""
+
     hackathon_id: str
     name: str
 
 
 class JoinTeamRequest(BaseModel):
+    """Request body for joining an existing team by its join code."""
+
     join_code: str
 
 
 class UpdateTeamRequest(BaseModel):
+    """Request body for updating a team's name."""
+
     name: str
 
 
@@ -32,7 +38,18 @@ async def create_team(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new team for a hackathon (requires accepted registration)."""
+    """Create a new team for a hackathon (requires accepted registration).
+
+    Behavior:
+    1. Instantiate TeamService and attempt to create a team via the service.
+    2. Catch ValueError and translate to HTTPException(400).
+    3. Return the serialized team with id, name, join_code, captain_id, hackathon_id, and created_at.
+
+    Raises: HTTPException(400) if the user cannot create a team (no accepted registration or team already exists).
+    Side Effects: Inserts Team row via TeamService.
+    Dependencies: app.services.team_service.TeamService.
+    Consumers: POST /api/teams, team creation form.
+    """
     service = TeamService()
     try:
         team = await service.create_team(
@@ -61,7 +78,18 @@ async def join_team(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Join a team by its join code."""
+    """Join a team by its join code.
+
+    Behavior:
+    1. Instantiate TeamService and attempt to join the team by code.
+    2. Catch ValueError and translate to HTTPException(400).
+    3. Return the serialized team with id, name, and joined flag.
+
+    Raises: HTTPException(400) if the join code is invalid or the user is already on the team.
+    Side Effects: Mutates team membership via TeamService.
+    Dependencies: app.services.team_service.TeamService.
+    Consumers: POST /api/teams/{team_id}/join, team join form.
+    """
     service = TeamService()
     try:
         team = await service.join_team_by_code(db, body.join_code, user_payload["sub"])
@@ -80,7 +108,19 @@ async def get_team(
     team_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get team details with member list."""
+    """Get team details with member list.
+
+    Behavior:
+    1. Instantiate TeamService and fetch the team by UUID.
+    2. Return 404 if the team is not found.
+    3. Build the members list from the team's member relationships.
+    4. Return the serialized team with id, name, join_code, captain_id, hackathon_id, created_at, and members.
+
+    Raises: HTTPException(404) if the team does not exist.
+    Side Effects: None (read-only).
+    Dependencies: app.services.team_service.TeamService.
+    Consumers: GET /api/teams/{team_id}, team detail page.
+    """
     from uuid import UUID
 
     service = TeamService()
@@ -115,7 +155,18 @@ async def update_team(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update team name (captain only)."""
+    """Update team name (captain only).
+
+    Behavior:
+    1. Instantiate TeamService and attempt to update the team name.
+    2. Catch ValueError as 404 and PermissionError as 403.
+    3. Return the serialized team with id, name, and updated flag.
+
+    Raises: HTTPException(404) if the team is not found. HTTPException(403) if the requesting user is not the captain.
+    Side Effects: Mutates Team.name via TeamService.
+    Dependencies: app.services.team_service.TeamService.
+    Consumers: PUT /api/teams/{team_id}, team settings form.
+    """
     from uuid import UUID
 
     service = TeamService()
@@ -140,7 +191,18 @@ async def remove_team_member(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Remove a member from the team (captain only)."""
+    """Remove a member from the team (captain only).
+
+    Behavior:
+    1. Instantiate TeamService and attempt to remove the member.
+    2. Catch ValueError as 400 and PermissionError as 403.
+    3. Return a confirmation dict with the removed user_id.
+
+    Raises: HTTPException(400) if the operation is invalid (e.g. removing self). HTTPException(403) if the requesting user is not the captain.
+    Side Effects: Deletes team membership via TeamService.
+    Dependencies: app.services.team_service.TeamService.
+    Consumers: DELETE /api/teams/{team_id}/members/{user_id}, team management panel.
+    """
     from uuid import UUID
 
     service = TeamService()

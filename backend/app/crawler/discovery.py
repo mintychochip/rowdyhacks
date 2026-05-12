@@ -51,9 +51,20 @@ _EXTRACT_CARDS_JS = r"""() => {
 
 
 async def discover_hackathons() -> list[str]:
-    """Load the JS-rendered Devpost listing, extract hackathon cards, insert new rows.
+    """Scrape Devpost's hackathon listing and persist newly discovered events.
 
-    Returns list of crawled_hackathon IDs that are new.
+    Behavior:
+    1. Query the database for already-known Devpost URLs.
+    2. Launch a headless Playwright browser with anti-automation flags.
+    3. Navigate to the Devpost hackathons page and scroll through the infinite-scroll gallery.
+    4. Extract card data (name, URL, dates, participant count) via injected JavaScript.
+    5. Parse date ranges and insert new ``CrawledHackathon`` rows.
+    6. Commit and return the list of newly created hackathon ID strings.
+
+    Raises: None
+    Side Effects: Inserts new ``CrawledHackathon`` rows into PostgreSQL.
+    Dependencies: playwright.async_api.async_playwright, sqlalchemy.select, app.models.CrawledHackathon.
+    Consumers: Crawl scheduler, manual discovery triggers.
     """
     new_ids: list[str] = []
 

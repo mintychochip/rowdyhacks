@@ -1,3 +1,5 @@
+import uuid
+
 """Tests for prize routes."""
 
 import pytest
@@ -9,10 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import Hackathon, Track, User, UserRole
+from app.routes.hackathons import router as hackathons_router
 from app.routes.prizes import router as prizes_router
 
 app = FastAPI()
 app.include_router(prizes_router)
+app.include_router(hackathons_router)
 
 
 async def _override_require_clerk_user():
@@ -150,3 +154,74 @@ async def test_delete_prize(prize_client, hackathon_and_track):
 
     get_resp = await prize_client.get(f"/api/prizes/{pid}")
     assert get_resp.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_award_prize(prize_client, hackathon_and_track, db_session):
+    from app.models import Team
+
+    hackathon, _ = hackathon_and_track
+    create_resp = await prize_client.post(
+        "/api/prizes",
+        json={"hackathon_id": str(hackathon.id), "name": "Award Me"},
+    )
+    prize_id = create_resp.json()["id"]
+
+    team = Team(hackathon_id=hackathon.id, name="Team Alpha", join_code=uuid.uuid4().hex[:8], captain_id="test-user-id")
+    db_session.add(team)
+    await db_session.commit()
+    await db_session.refresh(team)
+
+    resp = await prize_client.post(f"/api/prizes/{prize_id}/award/{team.id}")
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["prize_id"] == prize_id
+    assert data["team_id"] == str(team.id)
+
+
+@pytest.mark.anyio
+async def test_revoke_award(prize_client, hackathon_and_track, db_session):
+    from app.models import Team
+
+    hackathon, _ = hackathon_and_track
+    create_resp = await prize_client.post(
+        "/api/prizes",
+        json={"hackathon_id": str(hackathon.id), "name": "Revoke Me"},
+    )
+    prize_id = create_resp.json()["id"]
+
+    team = Team(hackathon_id=hackathon.id, name="Team Beta", join_code=uuid.uuid4().hex[:8], captain_id="test-user-id")
+    db_session.add(team)
+    await db_session.commit()
+    await db_session.refresh(team)
+
+    await prize_client.post(f"/api/prizes/{prize_id}/award/{team.id}")
+
+    resp = await prize_client.delete(f"/api/prizes/{prize_id}/award")
+    assert resp.status_code == 204
+
+
+@pytest.mark.anyio
+async def test_list_awarded_prizes(prize_client, hackathon_and_track, db_session):
+    from app.models import Team
+
+    hackathon, _ = hackathon_and_track
+    create_resp = await prize_client.post(
+        "/api/prizes",
+        json={"hackathon_id": str(hackathon.id), "name": "Listed"},
+    )
+    prize_id = create_resp.json()["id"]
+
+    team = Team(hackathon_id=hackathon.id, name="Team Gamma", join_code=uuid.uuid4().hex[:8], captain_id="test-user-id")
+    db_session.add(team)
+    await db_session.commit()
+    await db_session.refresh(team)
+
+    await prize_client.post(f"/api/prizes/{prize_id}/award/{team.id}")
+
+    resp = await prize_client.get(f"/api/hackathons/{hackathon.id}/prizes/awarded")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["prize_id"] == prize_id
+    assert data[0]["team_id"] == str(team.id)

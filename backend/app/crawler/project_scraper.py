@@ -15,13 +15,20 @@ logger = logging.getLogger(__name__)
 
 
 async def scrape_projects(batch_size: int = 50, concurrency: int = 5) -> int:
-    """Scrape all uncrawled projects (last_crawled_at IS NULL, retry_count < 3).
+    """Scrape metadata for uncrawled Devpost projects.
 
-    Args:
-        batch_size: Max number of projects to scrape in one call
-        concurrency: Max concurrent scrape requests
+    Behavior:
+    1. Query the database for projects where ``last_crawled_at`` is ``NULL`` and ``retry_count < 3``.
+    2. For each project, concurrently scrape its Devpost page (up to ``concurrency`` at a time).
+    3. Fetch title, description, tech stack, team members, GitHub URL, and (when available) the HEAD commit hash.
+    4. Update the ``CrawledProject`` row with the scraped metadata and set ``last_crawled_at``.
+    5. On failure, increment ``retry_count``.
+    6. Return the count of successfully scraped projects.
 
-    Returns count of successfully scraped projects.
+    Raises: None
+    Side Effects: Updates ``CrawledProject`` rows in PostgreSQL.
+    Dependencies: app.scraper.scrape_devpost, app.checks.similarity._get_head_commit, sqlalchemy.select/update.
+    Consumers: Crawl scheduler, manual scrape triggers.
     """
     async with async_session() as db:
         result = await db.execute(
@@ -39,6 +46,20 @@ async def scrape_projects(batch_size: int = 50, concurrency: int = 5) -> int:
     scraped_count = 0
 
     async def scrape_one(project: CrawledProject):
+        """Scrape a single project and update its metadata.
+
+        Behavior:
+        1. Acquire the concurrency semaphore.
+        2. Scrape the project's Devpost page.
+        3. If a GitHub URL is present, fetch the HEAD commit hash.
+        4. Update the ``CrawledProject`` row in the database with the scraped metadata.
+        5. On failure, increment the project's ``retry_count``.
+
+        Raises: None
+        Side Effects: Updates ``CrawledProject`` rows in PostgreSQL.
+        Dependencies: app.scraper.scrape_devpost, app.checks.similarity._get_head_commit, sqlalchemy.update.
+        Consumers: scrape_projects coroutine.
+        """
         nonlocal scraped_count
         async with semaphore:
             try:

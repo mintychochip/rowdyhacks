@@ -60,7 +60,22 @@ Every evidence entry MUST be a full GitHub URL. No bare file paths allowed."""
 
 
 async def check_alignment_ai(context: CheckContext) -> CheckResult:
-    """RAG pipeline: chunk repo -> TF-IDF retrieve -> LLM verify with citations."""
+    """RAG pipeline that chunks a repo, retrieves relevant code, and verifies Devpost claims via LLM.
+
+    Behavior:
+    1. Return early if no repo path is available.
+    2. Return early if the LLM API is not configured.
+    3. Extract claims from scraped tech stack and project description.
+    4. Chunk all source files into overlapping segments with line metadata.
+    5. Retrieve top-k relevant chunks using hybrid TF-IDF and embedding search.
+    6. Call the LLM with a structured prompt to verify each claim.
+    7. Parse the LLM response, post-process evidence into GitHub URLs, and return a CheckResult.
+
+    Raises: None
+    Side Effects: None (read-only filesystem scan and external LLM API call).
+    Dependencies: app.checks.interface.CheckContext, app.checks.interface.CheckResult, app.config.settings, httpx, numpy, sklearn.feature_extraction.text.TfidfVectorizer, sklearn.metrics.pairwise.cosine_similarity.
+    Consumers: Internal check used by the analyzer pipeline.
+    """
     repos = [context.repo_path] if context.repo_path else []
     if not repos:
         return CheckResult(
@@ -179,6 +194,7 @@ async def check_alignment_ai(context: CheckContext) -> CheckResult:
     blob_base = f"{gh_url}/blob/main" if gh_url else ""
 
     def _make_links(claims_list: list) -> list:
+        """Convert bare file paths in claim evidence to full GitHub blob URLs."""
         for c in claims_list:
             linked = []
             for e in c.get("evidence") or []:
@@ -323,7 +339,20 @@ MAX_FILE_BYTES = 100_000  # skip files larger than 100KB
 
 
 def _chunk_repo(repo: Path) -> list[dict]:
-    """Split source files into overlapping chunks with file:line metadata."""
+    """Split source files into overlapping chunks with file and line metadata.
+
+    Behavior:
+    1. Walk the repository recursively and skip irrelevant directories and binary files.
+    2. Skip files larger than MAX_FILE_BYTES or outside known source extensions.
+    3. Read each eligible file and split it into 30-line chunks with 50 percent overlap.
+    4. Enforce a maximum chunk count to limit retrieval size.
+    5. Return a list of chunk dicts containing file path, start line, end line, and content.
+
+    Raises: None
+    Side Effects: None (read-only filesystem scan).
+    Dependencies: pathlib.Path.
+    Consumers: Internal helper used by check_alignment_ai.
+    """
     chunks = []
 
     for path in repo.rglob("*"):
@@ -386,7 +415,18 @@ _embed_model = None
 
 
 def _get_embed_model():
-    """Lazy-load E5-small model — 130MB, 14x faster than large models, strong retrieval."""
+    """Lazy-load the E5-small sentence-transformer model for embedding retrieval.
+
+    Behavior:
+    1. Return the cached model instance if already loaded.
+    2. Import and instantiate SentenceTransformer with the E5-small-v2 model.
+    3. Cache the model globally and return it.
+
+    Raises: None
+    Side Effects: Mutates the module-level _embed_model cache.
+    Dependencies: sentence_transformers.SentenceTransformer.
+    Consumers: Internal helper used by _embed_chunks_bge and _embed_chunks_bge_static.
+    """
     global _embed_model
     if _embed_model is None:
         from sentence_transformers import SentenceTransformer
@@ -396,7 +436,19 @@ def _get_embed_model():
 
 
 def _embed_chunks_bge(chunks: list[dict]) -> np.ndarray | None:
-    """Embed chunks using local E5-small model. Returns (n_chunks, dim) array or None."""
+    """Embed document chunks using the local E5-small model.
+
+    Behavior:
+    1. Load the E5-small model via _get_embed_model.
+    2. Prefix each chunk with the passage format required by E5 models.
+    3. Encode chunks with normalized embeddings and no progress bar.
+    4. Return the embedding matrix or None if encoding fails.
+
+    Raises: None
+    Side Effects: None (read-only model inference).
+    Dependencies: _get_embed_model, numpy.
+    Consumers: Internal helper used by _retrieve_chunks_async.
+    """
     try:
         model = _get_embed_model()
         # E5 models need "passage: " prefix for documents
@@ -407,7 +459,19 @@ def _embed_chunks_bge(chunks: list[dict]) -> np.ndarray | None:
 
 
 def _embed_chunks_bge_static(texts: list[str], _existing_matrix: np.ndarray | None = None) -> np.ndarray | None:
-    """Embed text claims using already-loaded E5-small model."""
+    """Embed text claims using the already-loaded E5-small model.
+
+    Behavior:
+    1. Load the E5-small model via _get_embed_model.
+    2. Prefix each text with the query format required by E5 models.
+    3. Encode texts with normalized embeddings and no progress bar.
+    4. Return the embedding matrix or None if encoding fails.
+
+    Raises: None
+    Side Effects: None (read-only model inference).
+    Dependencies: _get_embed_model, numpy.
+    Consumers: Internal helper used by _retrieve_chunks_async.
+    """
     try:
         model = _get_embed_model()
         # E5 models need "query: " prefix for queries
@@ -418,7 +482,20 @@ def _embed_chunks_bge_static(texts: list[str], _existing_matrix: np.ndarray | No
 
 
 def _retrieve_chunks(claims: list[str], chunks: list[dict]) -> list[dict]:
-    """Hybrid retrieval: TF-IDF (exact terms) + Jina embeddings (semantic)."""
+    """Retrieve the most relevant code chunks for a set of claims using TF-IDF.
+
+    Behavior:
+    1. Return an empty list if no chunks are provided.
+    2. Build a TF-IDF matrix over chunk texts and claim texts combined.
+    3. Compute cosine similarity between each claim vector and all chunk vectors.
+    4. Select the top-k chunks per claim and deduplicate across claims.
+    5. Return the selected chunk dicts.
+
+    Raises: None
+    Side Effects: None (read-only computation).
+    Dependencies: numpy, sklearn.feature_extraction.text.TfidfVectorizer, sklearn.metrics.pairwise.cosine_similarity.
+    Consumers: Internal helper used by _retrieve_chunks_async.
+    """
     if not chunks:
         return []
 
@@ -449,7 +526,20 @@ def _retrieve_chunks(claims: list[str], chunks: list[dict]) -> list[dict]:
 
 
 async def _retrieve_chunks_async(claims: list[str], chunks: list[dict]) -> list[dict]:
-    """Async wrapper that adds BGE-M3 embedding retrieval on top of TF-IDF."""
+    """Async wrapper that adds BGE embedding retrieval on top of TF-IDF results.
+
+    Behavior:
+    1. Run the synchronous TF-IDF retrieval to get an initial chunk set.
+    2. Run embedding inference for all chunks in a thread pool to avoid blocking.
+    3. Embed the claims using the same model in a thread pool.
+    4. Compute cosine similarity between claim embeddings and chunk embeddings.
+    5. Merge the top-k embedding-based chunks with the TF-IDF results and return.
+
+    Raises: None
+    Side Effects: None (read-only model inference and computation).
+    Dependencies: _retrieve_chunks, _embed_chunks_bge, _embed_chunks_bge_static, numpy.
+    Consumers: Internal helper used by check_alignment_ai.
+    """
     import asyncio
 
     tfidf_results = _retrieve_chunks(claims, chunks)
@@ -484,7 +574,19 @@ async def _retrieve_chunks_async(claims: list[str], chunks: list[dict]) -> list[
 
 
 def _extract_feature_claims(description: str) -> list[str]:
-    """Extract feature-like claims from a project description using simple heuristics."""
+    """Extract feature-like claims from a project description using simple heuristics.
+
+    Behavior:
+    1. Split the description on common sentence and list separators.
+    2. Keep sentences that contain action or technology keywords.
+    3. Filter by length to avoid noise, keeping only medium-length statements.
+    4. Return up to five extracted claims.
+
+    Raises: None
+    Side Effects: None (read-only text processing).
+    Dependencies: re.
+    Consumers: Internal helper used by check_alignment_ai.
+    """
     claims = []
     # Split on common separators
     sentences = re.split(r"[.;•\n]", description)
@@ -515,7 +617,19 @@ def _extract_feature_claims(description: str) -> list[str]:
 
 
 def _linkify_evidence(text: str, blob_base: str) -> str:
-    """Convert bare file paths with line numbers to full GitHub URLs."""
+    """Convert bare file paths with line numbers to full GitHub blob URLs.
+
+    Behavior:
+    1. Return the text unchanged if it is already a full GitHub URL.
+    2. Return the text unchanged if no blob base URL is available.
+    3. Match file path and line range patterns using regex.
+    4. Reconstruct a GitHub blob URL with line anchors.
+
+    Raises: None
+    Side Effects: None (read-only string processing).
+    Dependencies: re.
+    Consumers: Internal helper used by check_alignment_ai.
+    """
     import re
 
     # If already a full URL, return as-is
@@ -546,7 +660,20 @@ def _linkify_evidence(text: str, blob_base: str) -> str:
 
 
 def _parse_json(content: str) -> dict | None:
-    """Extract and parse JSON from LLM response, repairing truncation."""
+    """Extract and parse JSON from an LLM response, repairing common truncation issues.
+
+    Behavior:
+    1. Strip markdown code fences if present.
+    2. Attempt to parse the remaining content as JSON.
+    3. If parsing fails, repair unclosed braces, brackets, and strings.
+    4. Attempt progressive line trimming as a last resort.
+    5. Return the parsed dict or None if all repair attempts fail.
+
+    Raises: None
+    Side Effects: None (read-only string processing).
+    Dependencies: json.
+    Consumers: Internal helper used by check_alignment_ai.
+    """
     try:
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0]
@@ -570,8 +697,8 @@ def _parse_json(content: str) -> dict | None:
     # If we're inside a string, close it
     if in_string:
         repaired += '"'
-    # Close unterminated objects/arrays
-    repaired += "}" * open_braces + "]" * open_brackets
+    # Close unterminated arrays first, then objects
+    repaired += "]" * open_brackets + "}" * open_braces
     try:
         return json.loads(repaired)
     except json.JSONDecodeError:

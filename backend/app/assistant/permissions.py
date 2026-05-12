@@ -7,7 +7,10 @@ from fastapi import HTTPException
 
 
 class UserRole(str, Enum):
-    """User roles in the system."""
+    """Enumeration of user roles in the hackathon platform.
+
+    Each role determines which assistant tools and data the user can access.
+    """
 
     PARTICIPANT = "participant"
     JUDGE = "judge"
@@ -228,7 +231,19 @@ ROLE_TOOLS: dict[UserRole, set[str]] = {
 
 
 def get_tools_for_role(role: str) -> list[dict]:
-    """Get tool definitions available to a role in OpenAI format."""
+    """Return tool definitions available to a role in OpenAI function format.
+
+    Behavior:
+    1. Validate the role string against UserRole enum.
+    2. Look up the allowed tool names for the role.
+    3. Wrap each tool definition in OpenAI function-calling format.
+    4. Return the list.
+
+    Raises: HTTPException(400) if the role string is not a valid UserRole.
+    Side Effects: None (read-only).
+    Dependencies: app.assistant.permissions.UserRole, app.assistant.permissions.TOOL_DEFINITIONS.
+    Consumers: Assistant context builder, tool authorization.
+    """
     try:
         user_role = UserRole(role)
     except ValueError:
@@ -254,7 +269,17 @@ def get_tools_for_role(role: str) -> list[dict]:
 
 
 def can_use_tool(role: str, tool_name: str) -> bool:
-    """Check if a role can use a specific tool."""
+    """Check whether a role is permitted to invoke a specific tool.
+
+    Behavior:
+    1. Parse the role string into a UserRole enum.
+    2. Return whether the tool_name is in the role's allowed tool set.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: app.assistant.permissions.UserRole, app.assistant.permissions.ROLE_TOOLS.
+    Consumers: Assistant tool dispatch, permission checks.
+    """
     try:
         user_role = UserRole(role)
     except ValueError:
@@ -264,22 +289,47 @@ def can_use_tool(role: str, tool_name: str) -> bool:
 
 
 def get_all_tools() -> list[str]:
-    """Get all available tool names."""
+    """Return every registered tool name.
+
+    Behavior:
+    1. Extract and return all keys from TOOL_DEFINITIONS.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: app.assistant.permissions.TOOL_DEFINITIONS.
+    Consumers: Tool enumeration endpoints.
+    """
     return list(TOOL_DEFINITIONS.keys())
 
 
 def get_tool_definition(tool_name: str) -> Optional[dict]:
-    """Get definition for a specific tool."""
+    """Retrieve the raw definition dict for a single tool.
+
+    Behavior:
+    1. Look up ``tool_name`` in ``TOOL_DEFINITIONS``.
+    2. Return the matching dict, or ``None`` if not found.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: app.assistant.permissions.TOOL_DEFINITIONS.
+    Consumers: Tool metadata endpoints, assistant debugging.
+    """
     return TOOL_DEFINITIONS.get(tool_name)
 
 
 def tools_to_flat_format(tools: list) -> list:
-    """Return tools as flat dicts {name, description, parameters}.
+    """Unwrap OpenAI-format tool definitions into flat dicts.
 
-    get_tools_for_role() returns OpenAI format:
-      {"type": "function", "function": {"name": ..., "description": ..., "parameters": ...}}
-    This unwraps to:
-      {"name": ..., "description": ..., "parameters": ...}
+    Behavior:
+    1. Iterate over the provided tool dicts.
+    2. If a dict contains a ``function`` key, extract the nested dict.
+    3. Otherwise keep the dict as-is.
+    4. Return the collected flat definitions.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: None
+    Consumers: Tool formatting helpers, LLM prompt builders.
     """
     result = []
     for t in tools:

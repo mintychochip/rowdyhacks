@@ -15,7 +15,17 @@ from app.models import CrawledProject, Submission, Verdict
 async def _resolve_session(
     db: AsyncSession | None,
 ) -> AsyncIterator[AsyncSession]:
-    """Yield the provided session, or create one from the default pool."""
+    """Yield the provided database session, or create one from the default pool.
+
+    Behavior:
+    1. If a session is provided, yield it directly.
+    2. Otherwise, open a new async session from the global pool and yield it.
+
+    Raises: None
+    Side Effects: None (session creation is scoped to the async context manager).
+    Dependencies: app.database.async_session.
+    Consumers: Internal helper used by check_repeat_offender.
+    """
     if db is not None:
         yield db
     else:
@@ -29,13 +39,18 @@ async def check_repeat_offender(
 ) -> CheckResult:
     """Check if any team member has been flagged in prior hackathons.
 
-    Parameters
-    ----------
-    context : CheckContext
-        The analysis context containing scraped submission data.
-    db : AsyncSession | None
-        Optional database session for testing. When None (the default),
-        a session is created from the application's connection pool.
+    Behavior:
+    1. Return early if no team member data is present.
+    2. Extract GitHub usernames from team member profiles.
+    3. Open a database session and query for previously flagged submissions.
+    4. Cross-reference team members against flagged projects in the crawled index.
+    5. Detect suspicious patterns such as one Devpost profile linked to multiple GitHub accounts.
+    6. Compute a capped score and return a CheckResult with prior flags and evidence.
+
+    Raises: None
+    Side Effects: None (read-only database queries).
+    Dependencies: app.checks.interface.CheckContext, app.checks.interface.CheckResult, app.database.async_session, app.models.CrawledProject, app.models.Submission, app.models.Verdict.
+    Consumers: Internal check used by the analyzer pipeline.
     """
     score = 0
     details: dict = {"prior_flags": [], "suspicious_patterns": []}

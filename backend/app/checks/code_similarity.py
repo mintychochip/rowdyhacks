@@ -12,7 +12,18 @@ WINDOW_SIZE = 4  # k-gram size for shingles
 
 
 def _get_shingles(text: str, k: int = WINDOW_SIZE) -> list[str]:
-    """Generate k-gram shingles from text."""
+    """Generate k-gram shingles from text for SimHash fingerprinting.
+
+    Behavior:
+    1. Extract words from the input text using regex.
+    2. If the word count is below k, return an empty list.
+    3. Build and return k-gram shingles as joined word strings.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: re.
+    Consumers: Internal helper used by _extract_code_features and _compute_simhash.
+    """
     words = re.findall(r"\b\w+\b", text.lower())
     if len(words) < k:
         return []
@@ -20,12 +31,35 @@ def _get_shingles(text: str, k: int = WINDOW_SIZE) -> list[str]:
 
 
 def _hash_shingle(shingle: str) -> int:
-    """Hash a shingle to a fixed-size integer."""
+    """Hash a shingle to a fixed-size integer for SimHash computation.
+
+    Behavior:
+    1. Encode the shingle string to bytes.
+    2. Compute an MD5 digest and convert the hex string to an integer.
+    3. Reduce the integer modulo 2^HASH_SIZE to fit the fingerprint width.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: hashlib.
+    Consumers: Internal helper used by _compute_simhash.
+    """
     return int(hashlib.md5(shingle.encode()).hexdigest(), 16) % (2**HASH_SIZE)
 
 
 def _compute_simhash(shingles: list[str]) -> int:
-    """Compute SimHash fingerprint from shingles."""
+    """Compute SimHash fingerprint from a list of shingles.
+
+    Behavior:
+    1. Return 0 if no shingles are provided.
+    2. Initialize bit counts array to zero.
+    3. For each shingle, hash it and increment or decrement bit counts based on bit values.
+    4. Build the final fingerprint by setting bits where the net count is positive.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: hashlib.
+    Consumers: Internal helper used by check_code_similarity.
+    """
     if not shingles:
         return 0
 
@@ -50,13 +84,37 @@ def _compute_simhash(shingles: list[str]) -> int:
 
 
 def _hamming_distance(a: int, b: int) -> int:
-    """Calculate Hamming distance between two SimHash fingerprints."""
+    """Calculate Hamming distance between two SimHash fingerprints.
+
+    Behavior:
+    1. XOR the two integer fingerprints.
+    2. Count and return the number of 1 bits in the result.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: None.
+    Consumers: Internal helper used by code similarity checks.
+    """
     x = a ^ b
     return bin(x).count("1")
 
 
 def _extract_code_features(repo: Path) -> tuple[list[str], int]:
-    """Extract code shingles and total lines from a repo."""
+    """Extract code shingles and total lines from a repository for similarity analysis.
+
+    Behavior:
+    1. Walk the repository recursively and skip irrelevant directories and binary files.
+    2. Read source files up to a 1MB total byte limit.
+    3. Strip comments and string literals to normalize code.
+    4. Generate shingles from cleaned content using k-gram sliding window.
+    5. Accumulate total line counts across all scanned files.
+    6. Return the combined shingles list and total line count.
+
+    Raises: None
+    Side Effects: None (read-only filesystem scan).
+    Dependencies: pathlib.Path, re.
+    Consumers: Internal helper used by check_code_similarity.
+    """
     all_shingles = []
     total_lines = 0
 
@@ -183,7 +241,21 @@ def _extract_code_features(repo: Path) -> tuple[list[str], int]:
 
 
 async def check_code_similarity(context: CheckContext) -> CheckResult:
-    """Check for code similarity with common boilerplate and template patterns."""
+    """Check for code similarity with common boilerplate and template patterns.
+
+    Behavior:
+    1. Return early if no repo path is available.
+    2. Extract code shingles and line counts from the repository.
+    3. Compute a SimHash fingerprint for the repo.
+    4. Evaluate uniqueness ratio and flag highly repetitive code.
+    5. Score based on low line counts, repetitive patterns, and large file sizes.
+    6. Return a CheckResult with similarity score and evidence.
+
+    Raises: None
+    Side Effects: None (read-only filesystem scan).
+    Dependencies: app.checks.interface.CheckContext, app.checks.interface.CheckResult.
+    Consumers: Internal check used by the analyzer pipeline.
+    """
     if not context.repo_path:
         return CheckResult(
             check_name="code-similarity",

@@ -1,3 +1,10 @@
+"""FastAPI application entrypoint and lifespan management.
+
+Configures the web server, registers all API routers, initializes
+services (scheduler, Discord bot, vector store) on startup, and
+tears them down gracefully on shutdown.
+"""
+
 from contextlib import asynccontextmanager
 
 import sentry_sdk
@@ -27,6 +34,8 @@ from app.routes.monitoring import track_request
 from app.routes.qr import router as qr_router
 from app.routes.registrations import router as registrations_router
 from app.routes.registrations_organizer import router as registrations_org_router
+from app.routes.registration_questions import router as registration_questions_router
+from app.routes.registration_notes import router as registration_notes_router
 from app.routes.teams import router as teams_router
 from app.routes.tracks import router as tracks_router
 from app.routes.workshops import router as workshops_router
@@ -36,6 +45,16 @@ from app.routes.sponsors import router as sponsors_router
 from app.routes.plugins import router as plugins_router
 from app.routes.webhooks import router as webhooks_router
 from app.routes.websocket import router as websocket_router
+from app.routes.notifications import router as notifications_router
+from app.routes.notifications import hackathon_router as hackathon_notifications_router
+from app.routes.profiles import router as profiles_router, public_router as profiles_public_router
+from app.routes.team_finder import router as team_finder_router
+from app.routes.chat import router as chat_router
+from app.routes.mentorship import router as mentorship_router
+from app.routes.project_expo import router as project_expo_router
+from app.routes.surveys import router as surveys_router
+from app.routes.admin import router as admin_router
+
 
 # Configure structured logging
 configure_logging(log_level=settings.log_level, json_logs=settings.json_logs)
@@ -51,7 +70,24 @@ if settings.sentry_dsn:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Start the crawler scheduler and initialize services."""
+    """Initialize and tear down application-wide services.
+
+    Behavior:
+    1. Seed demo user accounts if they don't exist.
+    2. Seed default content pages into the database.
+    3. Seed default site configuration values.
+    4. Initialize the Qdrant vector store for the assistant.
+    5. Index static site pages into the vector store.
+    6. Start the Discord bot (if token configured).
+    7. Start the APScheduler background job scheduler.
+    8. Yield control to the application runtime.
+    9. On shutdown, stop the Discord bot, shutdown the scheduler, and close Redis.
+
+    Raises: None (exceptions are caught and logged).
+    Side Effects: Creates database rows, spawns background tasks, initializes external clients.
+    Dependencies: app.background_jobs.start_scheduler, app.background_jobs.shutdown_scheduler, app.discord_bot.start_bot, app.seed_content.seed_default_content, app.services.config_service.ConfigService.
+    Consumers: FastAPI app factory (main.py app instantiation).
+    """
     # Note: Tables are created via alembic migrations, not here
 
     try:
@@ -131,8 +167,17 @@ async def lifespan(app: FastAPI):
 async def _seed_demo_data():
     """Create demo accounts on startup if they don't exist.
 
-    Note: With Auth0, demo accounts need to be created in Auth0 first,
-    then linked here. This function only creates local DB records.
+    Behavior:
+    1. Open an async database session.
+    2. For each demo account (alice, bob, carol, dave), query by email.
+    3. If the user exists, update their name and role.
+    4. If the user does not exist, insert a new User record.
+    5. Commit the transaction.
+
+    Raises: None (exceptions are caught and logged by the caller).
+    Side Effects: Inserts or updates User rows in the database.
+    Dependencies: app.database.async_session, app.models.User, app.models.UserRole, sqlalchemy.select.
+    Consumers: lifespan startup sequence.
     """
     from sqlalchemy import select
 
@@ -207,6 +252,8 @@ app.include_router(tracks_router)
 app.include_router(hacker_dashboard_router)
 app.include_router(registrations_router)
 app.include_router(registrations_org_router)
+app.include_router(registration_questions_router)
+app.include_router(registration_notes_router)
 app.include_router(teams_router)
 app.include_router(workshops_router)
 app.include_router(sponsors_router)
@@ -223,22 +270,63 @@ app.include_router(monitoring_router)
 app.include_router(content_router)
 app.include_router(config_router)
 app.include_router(plugins_router)
+app.include_router(notifications_router)
+app.include_router(hackathon_notifications_router)
+app.include_router(profiles_router)
+app.include_router(profiles_public_router)
+app.include_router(team_finder_router)
+app.include_router(mentorship_router)
+app.include_router(project_expo_router)
+app.include_router(chat_router)
+app.include_router(surveys_router)
+app.include_router(admin_router)
 
 
 # Add request tracking middleware
 @app.middleware("http")
 async def metrics_middleware(request, call_next):
+    """Track request metrics for monitoring.
+
+    Behavior:
+    1. Delegate to app.routes.monitoring.track_request to record latency and status.
+    2. Return the downstream handler's response unchanged.
+
+    Raises: None
+    Side Effects: Increments Prometheus-style request counters (via track_request).
+    Dependencies: app.routes.monitoring.track_request.
+    Consumers: FastAPI middleware registration on the app instance.
+    """
     return await track_request(request, call_next)
 
 
 @app.get("/api/health")
 async def health():
+    """Return a simple health check response.
+
+    Behavior:
+    1. Return a static JSON payload indicating the API is alive.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: None.
+    Consumers: GET /api/health, load balancers and uptime monitors.
+    """
     return {"status": "ok"}
 
 
 @app.get("/api/discord/invite-url")
 async def discord_invite_url():
-    """Get the Discord bot invite URL."""
+    """Get the Discord bot invite URL.
+
+    Behavior:
+    1. Import and call get_bot_invite_url to compute the OAuth invite link.
+    2. Return the URL if the client ID is configured, otherwise return an error dict.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: app.discord_bot.get_bot_invite_url.
+    Consumers: GET /api/discord/invite-url, frontend admin settings panel.
+    """
     from app.discord_bot import get_bot_invite_url
 
     url = get_bot_invite_url()
@@ -249,7 +337,18 @@ async def discord_invite_url():
 
 @app.get("/api/discord/bot-status")
 async def bot_status():
-    """Check Discord bot connection state."""
+    """Check Discord bot connection state.
+
+    Behavior:
+    1. Import the global Discord bot instance.
+    2. Read connection readiness, bot user string, and guild list.
+    3. Return a dict with ready flag, user name, guild count, and guild summaries.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: app.discord_bot.bot.
+    Consumers: GET /api/discord/bot-status, frontend admin dashboard.
+    """
     from app.discord_bot import bot
 
     return {

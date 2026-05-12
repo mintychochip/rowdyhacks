@@ -14,12 +14,27 @@ router = APIRouter(prefix="/api/help-requests", tags=["help-requests"])
 
 
 class CreateHelpRequestRequest(BaseModel):
+    """Request body for creating a help request.
+
+    Attributes:
+        hackathon_id: UUID of the hackathon where help is needed.
+        title: Short summary of the request.
+        description: Optional detailed description of the problem.
+    """
+
     hackathon_id: str
     title: str
     description: str | None = None
 
 
 class UpdateHelpRequestRequest(BaseModel):
+    """Request body for updating a help request.
+
+    Attributes:
+        title: Optional new title.
+        description: Optional new description.
+    """
+
     title: str | None = None
     description: str | None = None
 
@@ -30,7 +45,17 @@ async def create_help_request(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new help request."""
+    """Create a new help request.
+
+    Behavior:
+    1. Create the help request via HelpRequestService using the authenticated user's sub as requester_id.
+    2. Return serialized request details.
+
+    Raises: None
+    Side Effects: Inserts help request row.
+    Dependencies: app.services.help_request_service.HelpRequestService, app.clerk_auth.require_clerk_user.
+    Consumers: POST /api/help-requests, hacker support form.
+    """
     service = HelpRequestService()
     req = await service.create_help_request(
         db,
@@ -55,7 +80,17 @@ async def list_open_help_requests(
     hackathon_id: str = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
-    """List open help requests for a hackathon."""
+    """List open help requests for a hackathon.
+
+    Behavior:
+    1. Fetch open help requests for the hackathon via HelpRequestService.
+    2. Return serialized list of request dicts.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: app.services.help_request_service.HelpRequestService.
+    Consumers: GET /api/help-requests, mentor queue view.
+    """
     service = HelpRequestService()
     requests = await service.list_open_requests(db, UUID(hackathon_id))
     return [
@@ -78,7 +113,18 @@ async def get_help_request(
     request_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get a single help request."""
+    """Get a single help request by ID.
+
+    Behavior:
+    1. Fetch the help request via HelpRequestService.
+    2. Return 404 if not found.
+    3. Return serialized request details including claimed_at and resolved_at.
+
+    Raises: HTTPException(404) if the help request is not found.
+    Side Effects: None (read-only).
+    Dependencies: app.services.help_request_service.HelpRequestService.
+    Consumers: GET /api/help-requests/{request_id}, request detail view.
+    """
     service = HelpRequestService()
     req = await service.get_help_request(db, UUID(request_id))
     if not req:
@@ -103,7 +149,18 @@ async def claim_help_request(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Claim an open help request."""
+    """Claim an open help request.
+
+    Behavior:
+    1. Claim the request via HelpRequestService using the user's sub as mentor_id.
+    2. Return 400 if the request is not claimable (e.g., already claimed).
+    3. Return serialized request with claimed flag.
+
+    Raises: HTTPException(400) if the request is not claimable.
+    Side Effects: Mutates help request status and mentor_id.
+    Dependencies: app.services.help_request_service.HelpRequestService, app.clerk_auth.require_clerk_user.
+    Consumers: POST /api/help-requests/{request_id}/claim, mentor actions.
+    """
     service = HelpRequestService()
     try:
         req = await service.claim_help_request(db, UUID(request_id), user_payload["sub"])
@@ -123,7 +180,18 @@ async def resolve_help_request(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Mark a help request as resolved."""
+    """Mark a help request as resolved.
+
+    Behavior:
+    1. Resolve the request via HelpRequestService.
+    2. Return 400 if the request cannot be resolved.
+    3. Return serialized request with resolved flag.
+
+    Raises: HTTPException(400) if the request cannot be resolved.
+    Side Effects: Mutates help request status and resolved_at.
+    Dependencies: app.services.help_request_service.HelpRequestService.
+    Consumers: POST /api/help-requests/{request_id}/resolve, mentor actions.
+    """
     service = HelpRequestService()
     try:
         req = await service.resolve_help_request(db, UUID(request_id))
@@ -142,7 +210,17 @@ async def delete_help_request(
     user_payload: dict = Depends(require_clerk_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete a help request."""
+    """Delete a help request.
+
+    Behavior:
+    1. Delete the request via HelpRequestService; 404 if not found.
+    2. Return empty 204 response.
+
+    Raises: HTTPException(404) if the help request is not found.
+    Side Effects: Deletes help request row.
+    Dependencies: app.services.help_request_service.HelpRequestService.
+    Consumers: DELETE /api/help-requests/{request_id}, request management.
+    """
     service = HelpRequestService()
     try:
         await service.delete_help_request(db, UUID(request_id))

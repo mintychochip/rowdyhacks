@@ -22,7 +22,16 @@ async def get_hacker_dashboard(
 ):
     """Get the hacker dashboard for the current user's registration at a hackathon.
 
-    Returns hackathon details (schedule, wifi, discord) + registration (QR, scan_count, scans).
+    Behavior:
+    1. Load the hackathon by ID; 404 if not found.
+    2. Load the user's registration with scans and user details; 404 if not registered.
+    3. Count scans and build sorted scan history.
+    4. Return hackathon details and registration info including QR token and scans.
+
+    Raises: HTTPException(404) if the hackathon or user's registration is not found.
+    Side Effects: None (read-only).
+    Dependencies: app.models.Hackathon, app.models.Registration, sqlalchemy.orm.selectinload.
+    Consumers: GET /api/hackathons/{hackathon_id}/hacker-dashboard, participant mobile view.
     """
     # Load hackathon
     result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))

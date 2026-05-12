@@ -17,7 +17,11 @@ MAX_RETRIES = 3
 
 
 class WebhookService:
-    """Deliver events to webhook subscriptions with HMAC-SHA256 signatures."""
+    """Deliver events to webhook subscriptions with HMAC-SHA256 signatures.
+
+    Each delivery is persisted to the database with retry logic. Failed
+    deliveries can be retried later via retry_failed.
+    """
 
     async def deliver(
         self,
@@ -27,7 +31,17 @@ class WebhookService:
     ) -> WebhookDeliveryLog:
         """POST event payload to subscription URL with HMAC signature.
 
-        Creates a delivery log entry and attempts up to MAX_RETRIES on failure.
+        Behavior:
+        1. Serialize the event payload to JSON.
+        2. Generate an HMAC-SHA256 signature using the subscription secret.
+        3. Create a retrying delivery log entry.
+        4. Attempt POST up to MAX_RETRIES, updating log status each time.
+        5. Commit the final log state.
+
+        Raises: None
+        Side Effects: Inserts/updates WebhookDeliveryLog row; makes outbound HTTP POST.
+        Dependencies: httpx.AsyncClient.
+        Consumers: Event subscriber dispatch.
         """
         payload = {
             "event_type": event.type,
@@ -83,7 +97,16 @@ class WebhookService:
     async def retry_failed(self, db: AsyncSession) -> list[WebhookDeliveryLog]:
         """Re-deliver failed webhooks that haven't exceeded max attempts.
 
-        Returns list of newly created delivery logs.
+        Behavior:
+        1. Query the most recent 100 failed delivery logs.
+        2. Look up the subscription and event for each log.
+        3. Skip inactive subscriptions or missing events.
+        4. Re-attempt delivery and collect new logs.
+
+        Raises: None
+        Side Effects: Creates new WebhookDeliveryLog rows; makes outbound HTTP POSTs.
+        Dependencies: WebhookService.deliver.
+        Consumers: Background retry scheduler.
         """
         result = await db.execute(
             select(WebhookDeliveryLog)
@@ -110,7 +133,18 @@ class WebhookService:
 
     @staticmethod
     def _sign(body: str, secret: str) -> str:
-        """Generate HMAC-SHA256 hex signature for the request body."""
+        """Generate HMAC-SHA256 hex signature for the request body.
+
+        Behavior:
+        1. Encode the secret and body to UTF-8.
+        2. Compute HMAC-SHA256.
+        3. Return the hex digest.
+
+        Raises: None
+        Side Effects: None (read-only).
+        Dependencies: hashlib.sha256, hmac.new.
+        Consumers: WebhookService.deliver.
+        """
         return hmac.new(
             secret.encode("utf-8"),
             body.encode("utf-8"),

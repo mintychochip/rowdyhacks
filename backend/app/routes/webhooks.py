@@ -13,12 +13,34 @@ router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
 
 class SubscribeRequest(BaseModel):
+    """Request body for creating a webhook subscription.
+
+    Behavior:
+    1. Define the schema for a webhook subscription request.
+    2. Provide url, secret, and events fields.
+
+    Side Effects: None (schema definition).
+    Dependencies: pydantic.BaseModel.
+    Consumers: POST /api/webhooks/subscribe, subscription creation.
+    """
+
     url: str
     secret: str
     events: list[str]
 
 
 class SubscriptionResponse(BaseModel):
+    """Response schema for a webhook subscription.
+
+    Behavior:
+    1. Define the schema for a webhook subscription response.
+    2. Provide id, url, events, active, and created_at fields.
+
+    Side Effects: None (schema definition).
+    Dependencies: pydantic.BaseModel.
+    Consumers: GET /api/webhooks/subscriptions, subscription listing.
+    """
+
     id: str
     url: str
     events: list[str]
@@ -32,7 +54,17 @@ async def subscribe(
     db: AsyncSession = Depends(get_db),
     auth: dict = Depends(require_organizer),
 ):
-    """Create a new webhook subscription (organizer only)."""
+    """Create a new webhook subscription (organizer only).
+
+    Behavior:
+    1. Build a WebhookSubscription from the request body.
+    2. Persist the subscription to the database.
+    3. Refresh and return the created subscription.
+
+    Side Effects: Inserts WebhookSubscription row.
+    Dependencies: app.models.WebhookSubscription, app.clerk_auth.require_organizer.
+    Consumers: POST /api/webhooks/subscribe, organizer dashboard.
+    """
     sub = WebhookSubscription(
         url=body.url,
         secret=body.secret,
@@ -56,7 +88,17 @@ async def list_subscriptions(
     db: AsyncSession = Depends(get_db),
     auth: dict = Depends(require_organizer),
 ):
-    """List all webhook subscriptions (organizer only)."""
+    """List all webhook subscriptions (organizer only).
+
+    Behavior:
+    1. Query all WebhookSubscription rows from the database.
+    2. Serialize each row to a SubscriptionResponse dict.
+    3. Return the full list.
+
+    Side Effects: None (read-only).
+    Dependencies: app.models.WebhookSubscription, app.clerk_auth.require_organizer.
+    Consumers: GET /api/webhooks/subscriptions, organizer dashboard.
+    """
     result = await db.execute(select(WebhookSubscription))
     subs = result.scalars().all()
     return [
@@ -77,7 +119,18 @@ async def delete_subscription(
     db: AsyncSession = Depends(get_db),
     auth: dict = Depends(require_organizer),
 ):
-    """Delete a webhook subscription (organizer only)."""
+    """Delete a webhook subscription (organizer only).
+
+    Behavior:
+    1. Load the subscription by UUID.
+    2. Raise 404 if the subscription does not exist.
+    3. Delete the row and commit.
+
+    Raises: HTTPException(404) if subscription not found.
+    Side Effects: Deletes WebhookSubscription row.
+    Dependencies: app.models.WebhookSubscription, app.clerk_auth.require_organizer.
+    Consumers: DELETE /api/webhooks/subscriptions/{subscription_id}, organizer dashboard.
+    """
     from uuid import UUID
 
     result = await db.execute(select(WebhookSubscription).where(WebhookSubscription.id == UUID(subscription_id)))

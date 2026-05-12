@@ -41,7 +41,21 @@ SUSPICIOUS_MESSAGES = {
 
 
 async def check_commit_quality(context: CheckContext) -> CheckResult:
-    """Analyze commit messages for quality and suspicious patterns."""
+    """Analyze commit messages for quality and suspicious patterns.
+
+    Behavior:
+    1. Return early if no repo path is available.
+    2. Run git log to retrieve all commit subject lines.
+    3. Count suspicious placeholder messages and overly short messages.
+    4. Compute average message length and single-word commit ratios.
+    5. Check for conventional commit prefixes (feat, fix, chore, etc.).
+    6. Score and return a CheckResult with quality metrics and evidence.
+
+    Raises: None
+    Side Effects: None (read-only git log access).
+    Dependencies: app.checks.interface.CheckContext, app.checks.interface.CheckResult, asyncio, re.
+    Consumers: Internal check used by the analyzer pipeline.
+    """
     if not context.repo_path:
         return CheckResult(
             check_name="commit-quality",

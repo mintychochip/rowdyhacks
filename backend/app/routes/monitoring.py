@@ -14,6 +14,15 @@ router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
 
 
 class HealthStatus(BaseModel):
+    """Health check response schema.
+
+    Attributes:
+        status: Overall health status ("healthy" or "degraded").
+        timestamp: ISO 8601 timestamp of the check.
+        version: Application version string.
+        checks: Dict of subsystem names to status strings.
+    """
+
     status: str
     timestamp: str
     version: str = "0.1.0"
@@ -21,6 +30,17 @@ class HealthStatus(BaseModel):
 
 
 class MetricsResponse(BaseModel):
+    """Application metrics response schema.
+
+    Attributes:
+        uptime_seconds: Server uptime in seconds.
+        requests_total: Total requests since startup.
+        requests_per_minute: Calculated request rate.
+        average_response_time_ms: Average response latency in milliseconds.
+        error_rate: Percentage of requests resulting in errors.
+        active_connections: Currently active WebSocket / HTTP connections.
+    """
+
     uptime_seconds: float
     requests_total: int
     requests_per_minute: float
@@ -42,7 +62,20 @@ _metrics = {
 
 @router.get("/health", response_model=HealthStatus)
 async def health_check():
-    """Comprehensive health check including database and Redis."""
+    """Comprehensive health check including database and Redis.
+
+    Behavior:
+    1. Ping the database via async SQLAlchemy session.
+    2. Ping Redis if configured.
+    3. Check disk usage on /tmp.
+    4. Aggregate subsystem statuses and determine overall healthy/degraded state.
+    5. Return HealthStatus with timestamp and per-subsystem checks.
+
+    Raises: None
+    Side Effects: None (read-only probes).
+    Dependencies: app.database.async_session, app.cache.get_redis.
+    Consumers: GET /api/monitoring/health, load balancer and uptime checks.
+    """
     checks = {}
 
     # Database check
@@ -87,7 +120,17 @@ async def health_check():
 
 @router.get("/ready")
 async def readiness_check():
-    """Kubernetes-style readiness probe."""
+    """Kubernetes-style readiness probe.
+
+    Behavior:
+    1. Ping the database via async SQLAlchemy session.
+    2. Return {"ready": True} on success, {"ready": False} on failure.
+
+    Raises: None
+    Side Effects: None (read-only probe).
+    Dependencies: app.database.async_session.
+    Consumers: GET /api/monitoring/ready, Kubernetes readiness probe.
+    """
     try:
         async with async_session() as db:
             await db.execute(text("SELECT 1"))
@@ -98,13 +141,33 @@ async def readiness_check():
 
 @router.get("/live")
 async def liveness_check():
-    """Kubernetes-style liveness probe."""
+    """Kubernetes-style liveness probe.
+
+    Behavior:
+    1. Return {"alive": True} immediately.
+
+    Raises: None
+    Side Effects: None.
+    Dependencies: None.
+    Consumers: GET /api/monitoring/live, Kubernetes liveness probe.
+    """
     return {"alive": True}
 
 
 @router.get("/metrics")
 async def get_metrics():
-    """Application metrics (Prometheus-compatible format)."""
+    """Application metrics (Prometheus-compatible format).
+
+    Behavior:
+    1. Compute uptime from process start time.
+    2. Calculate requests per minute, average response time, and error rate from in-memory counters.
+    3. Return MetricsResponse with computed metrics.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: None.
+    Consumers: GET /api/monitoring/metrics, internal metrics dashboard.
+    """
     uptime = time.monotonic() - _metrics["start_time"]
 
     # Calculate requests per minute
@@ -130,7 +193,19 @@ async def get_metrics():
 
 @router.get("/metrics/prometheus")
 async def prometheus_metrics():
-    """Prometheus-formatted metrics endpoint."""
+    """Prometheus-formatted metrics endpoint.
+
+    Behavior:
+    1. Compute uptime from process start time.
+    2. Build Prometheus exposition lines for uptime, requests, errors, and active connections.
+    3. Append per-endpoint request count metrics.
+    4. Return plain-text Prometheus exposition format.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: None.
+    Consumers: GET /api/monitoring/metrics/prometheus, Prometheus scraper.
+    """
     uptime = time.monotonic() - _metrics["start_time"]
 
     lines = [
@@ -160,7 +235,21 @@ async def prometheus_metrics():
 
 # Request tracking middleware
 async def track_request(request: Request, call_next):
-    """Middleware to track request metrics."""
+    """Middleware to track request metrics.
+
+    Behavior:
+    1. Increment active connections and total request counters.
+    2. Record per-endpoint request count.
+    3. Measure downstream handler duration.
+    4. Increment error totals on 4xx/5xx responses or unhandled exceptions.
+    5. Decrement active connections and record response time in finally block.
+    6. Return the downstream HTTP response.
+
+    Raises: None (exceptions are re-raised after incrementing error counter).
+    Side Effects: Mutates in-memory _metrics dict.
+    Dependencies: fastapi.Request.
+    Consumers: FastAPI middleware stack.
+    """
     _metrics["active_connections"] += 1
     _metrics["requests_total"] += 1
 
@@ -188,7 +277,21 @@ async def track_request(request: Request, call_next):
 
 @router.get("/diagnostics")
 async def diagnostics():
-    """Extended diagnostics for all subsystems."""
+    """Extended diagnostics for all subsystems.
+
+    Behavior:
+    1. Ping the database and record status.
+    2. Ping Redis and record version info if available.
+    3. Check Discord bot readiness and guild count.
+    4. Check background job scheduler status and job count.
+    5. Check disk usage on /tmp.
+    6. Aggregate statuses and return overall state with timestamp.
+
+    Raises: None
+    Side Effects: None (read-only probes).
+    Dependencies: app.database.async_session, app.cache.get_redis, app.discord_bot.bot, app.background_jobs.scheduler.
+    Consumers: GET /api/monitoring/diagnostics, admin health panel.
+    """
     checks = {}
 
     # Database
@@ -259,7 +362,16 @@ async def diagnostics():
 
 @router.get("/version")
 async def version():
-    """Get application version and build info."""
+    """Get application version and build info.
+
+    Behavior:
+    1. Return static version metadata including app version, Python version, FastAPI version, and placeholder build metadata.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: None.
+    Consumers: GET /api/monitoring/version, deployment info.
+    """
     return {
         "version": "0.1.0",
         "build_time": None,  # Set during CI/CD

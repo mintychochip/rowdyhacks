@@ -14,7 +14,22 @@ AI_PHRASES = [
 
 
 async def check_ai(context: CheckContext) -> CheckResult:
-    """Heuristic check for AI-generated code patterns."""
+    """Heuristic check for AI-generated code patterns in a repository.
+
+    Behavior:
+    1. Return early if no repo path is available.
+    2. Walk the repository and skip non-source files and directories.
+    3. Read source files up to a byte limit and count total and comment lines.
+    4. Search file contents for known AI phrase markers.
+    5. Detect style shifts (tab versus space mixing) per file.
+    6. Score based on comment ratio, AI phrases found, and style shifts.
+    7. Return a CheckResult with computed score and evidence.
+
+    Raises: None
+    Side Effects: None (read-only filesystem scan).
+    Dependencies: app.checks.interface.CheckContext, app.checks.interface.CheckResult.
+    Consumers: Internal check used by the analyzer pipeline.
+    """
     if not context.repo_path:
         return CheckResult(
             check_name="ai-detection",

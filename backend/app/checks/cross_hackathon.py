@@ -16,7 +16,17 @@ from app.models import CrawledProject
 async def _resolve_session(
     db: AsyncSession | None,
 ) -> AsyncIterator[AsyncSession]:
-    """Yield the provided session, or create one from the default pool."""
+    """Yield the provided database session, or create one from the default pool.
+
+    Behavior:
+    1. If a session is provided, yield it directly.
+    2. Otherwise, open a new async session from the global pool and yield it.
+
+    Raises: None
+    Side Effects: None (session creation is scoped to the async context manager).
+    Dependencies: app.database.async_session.
+    Consumers: Internal helper used by check_cross_hackathon_duplicate and check_repeat_offender.
+    """
     if db is not None:
         yield db
     else:
@@ -30,13 +40,18 @@ async def check_cross_hackathon_duplicate(
 ) -> CheckResult:
     """Check if the same project appears in other hackathons in the crawled index.
 
-    Parameters
-    ----------
-    context : CheckContext
-        The analysis context containing scraped submission data.
-    db : AsyncSession | None
-        Optional database session for testing. When None (the default),
-        a session is created from the application's connection pool.
+    Behavior:
+    1. Return early if no GitHub URL is present in the scraped data.
+    2. Open a database session (provided or newly created).
+    3. Query CrawledProject for exact GitHub URL matches across other hackathons.
+    4. Query for matching HEAD commit hashes across different GitHub URLs.
+    5. Query for duplicate repository names with different owners.
+    6. Compute a score based on match severity and return a CheckResult.
+
+    Raises: None
+    Side Effects: None (read-only database query).
+    Dependencies: app.checks.interface.CheckContext, app.checks.interface.CheckResult, app.checks.similarity._parse_repo_name, app.database.async_session, app.models.CrawledProject.
+    Consumers: Internal check used by the analyzer pipeline.
     """
     score = 0
     details: dict = {"matches": []}

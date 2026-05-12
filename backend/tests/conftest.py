@@ -91,10 +91,34 @@ async def _override_require_clerk_user_with_db():
     }
 
 
+async def _override_require_hackathon_organizer(hackathon_id: uuid.UUID):
+    """Override require_hackathon_organizer for testing."""
+    return {
+        "user": type(
+            "FakeUser",
+            (),
+            {
+                "role": UserRole.organizer,
+                "id": "test-organizer-id",
+                "email": "organizer@test.com",
+                "name": "Test Organizer",
+            },
+        )(),
+        "sub": "test-organizer-id",
+        "email": "organizer@test.com",
+        "payload": {},
+    }
+
+
 @pytest_asyncio.fixture
 async def client(engine):
     """Provide an async test client that uses the test DB."""
-    from app.clerk_auth import require_clerk_user, require_clerk_user_with_db, require_organizer
+    from app.clerk_auth import (
+        require_clerk_user,
+        require_clerk_user_with_db,
+        require_hackathon_organizer,
+        require_organizer,
+    )
 
     async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -109,6 +133,7 @@ async def client(engine):
     app.dependency_overrides[require_clerk_user] = _override_require_clerk_user
     app.dependency_overrides[require_clerk_user_with_db] = _override_require_clerk_user_with_db
     app.dependency_overrides[require_organizer] = _override_require_organizer
+    app.dependency_overrides[require_hackathon_organizer] = _override_require_hackathon_organizer
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

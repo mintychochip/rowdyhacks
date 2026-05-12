@@ -32,7 +32,16 @@ from app.clerk_auth import require_clerk_user_with_db
 async def get_current_user(
     auth: dict = Depends(require_clerk_user_with_db),
 ) -> User:
-    """Get current User ORM object from Clerk auth."""
+    """Get current User ORM object from Clerk auth.
+
+    Behavior:
+    1. Extract the User ORM object from the Clerk auth dict.
+    2. Return the User instance.
+
+    Side Effects: None (read-only).
+    Dependencies: app.clerk_auth.require_clerk_user_with_db.
+    Consumers: Internal helper used by assistant routes.
+    """
     return auth["user"]
 
 
@@ -49,7 +58,17 @@ async def get_hackathon(
     hackathon_id: Optional[UUID],
     db: AsyncSession = Depends(get_db),
 ) -> Optional[Hackathon]:
-    """Get hackathon by ID if provided."""
+    """Get hackathon by ID if provided.
+
+    Behavior:
+    1. Return None if no hackathon_id is provided.
+    2. Query the Hackathon table by id.
+    3. Return the Hackathon ORM instance or None if not found.
+
+    Side Effects: None (read-only).
+    Dependencies: app.models.Hackathon, app.database.get_db.
+    Consumers: Internal helper used by assistant routes.
+    """
     if not hackathon_id:
         return None
 
@@ -69,7 +88,23 @@ async def create_chat_message(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new chat message and start processing."""
+    """Create a new chat message and start processing.
+
+    Deprecated: Replaced by client-side AgentLoop + POST /api/llm/chat.
+    Kept for backward compatibility.
+
+    Behavior:
+    1. Get or create an AssistantConversation for the user.
+    2. Raise 404 if an existing conversation_id does not belong to the user.
+    3. Save the user message as an AssistantMessage.
+    4. Create a pending assistant response placeholder.
+    5. Commit and return the conversation and message ids with status.
+
+    Raises: HTTPException(404) if conversation not found or does not belong to user.
+    Side Effects: Inserts AssistantConversation and AssistantMessage rows.
+    Dependencies: app.models_assistant.AssistantConversation, app.models_assistant.AssistantMessage, app.models.Hackathon.
+    Consumers: POST /api/chat, assistant chat (deprecated).
+    """
 
     # Get or create conversation
     if conversation_id:
@@ -137,7 +172,22 @@ async def get_current_user_sse(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Get current user from either Authorization header or query param (for SSE). Clerk-only."""
+    """Get current user from either Authorization header or query param (for SSE). Clerk-only.
+
+    Behavior:
+    1. Read the Bearer token from the Authorization header or query param.
+    2. Raise 401 if the token is missing.
+    3. Validate the token is a Clerk token.
+    4. Decode the Clerk token and extract the user_id.
+    5. Set the current user_id for RLS.
+    6. Look up or auto-create the User in the database.
+    7. Return the User ORM instance.
+
+    Raises: HTTPException(401) if token missing, not a Clerk token, or invalid.
+    Side Effects: Sets RLS user context via app.database.set_current_user_id; may insert User row.
+    Dependencies: app.clerk_auth.is_clerk_token, app.clerk_auth.decode_clerk_token, app.database.set_current_user_id, app.models.User.
+    Consumers: Internal helper used by SSE streaming routes.
+    """
     from app.clerk_auth import is_clerk_token, decode_clerk_token, extract_clerk_user_id
     from app.database import set_current_user_id
 
@@ -198,7 +248,25 @@ async def stream_response(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_sse),
 ):
-    """Stream the assistant response for a message."""
+    """Stream the assistant response for a message.
+
+    Deprecated: Replaced by client-side AgentLoop. Kept for backward compat.
+
+    Behavior:
+    1. Load the assistant message and verify ownership via conversation user_id.
+    2. Raise 404 if the message is not found or does not belong to the user.
+    3. Return the existing content if the message is already completed.
+    4. Build conversation context, history, and available tools.
+    5. Stream LLM response chunks via SSE.
+    6. Execute any tool calls and yield results.
+    7. Persist final content and index for semantic search.
+    8. Return a StreamingResponse.
+
+    Raises: HTTPException(404) if message not found or does not belong to user.
+    Side Effects: Mutates AssistantMessage content, status, tool_results; indexes message in vector store.
+    Dependencies: app.assistant.context_builder.ContextBuilder, app.assistant.llm.llm_client, app.assistant.tools.ToolExecutor, app.assistant.embedder.embedder, app.assistant.vector_store.vector_store.
+    Consumers: GET /api/stream/{message_id}, assistant streaming (deprecated).
+    """
 
     # Get the message and verify ownership
     result = await db.execute(
@@ -227,7 +295,15 @@ async def stream_response(
         hackathon = result.scalar_one_or_none()
 
     async def generate_stream() -> AsyncGenerator[str, None]:
-        """Generate streaming response."""
+        """Generate streaming response.
+
+        Yields SSE data chunks containing assistant content, tool calls, and
+        completion signals. Also persists the final message content and indexes it
+        for semantic search.
+
+        Yields:
+            Server-Sent Event formatted strings (data: <json>\n\n).
+        """
         try:
             # Send initial heartbeat to confirm connection
             yield f"data: {json.dumps({'connected': True})}\n\n"
@@ -389,7 +465,18 @@ async def list_conversations(
     limit: int = 20,
     offset: int = 0,
 ):
-    """List user's conversation history."""
+    """List user's conversation history.
+
+    Behavior:
+    1. Query AssistantConversation rows for the current user.
+    2. Order by updated_at descending and apply pagination.
+    3. Serialize each conversation to a summary dict.
+    4. Return the list and total count.
+
+    Side Effects: None (read-only).
+    Dependencies: app.models_assistant.AssistantConversation.
+    Consumers: GET /api/history, assistant conversation list.
+    """
 
     result = await db.execute(
         select(AssistantConversation)
@@ -421,7 +508,19 @@ async def get_conversation(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get a specific conversation with all messages."""
+    """Get a specific conversation with all messages.
+
+    Behavior:
+    1. Load the conversation by id and user_id.
+    2. Raise 404 if the conversation is not found or does not belong to the user.
+    3. Load all messages ordered by created_at.
+    4. Return the conversation metadata and message list.
+
+    Raises: HTTPException(404) if conversation not found or does not belong to user.
+    Side Effects: None (read-only).
+    Dependencies: app.models_assistant.AssistantConversation, app.models_assistant.AssistantMessage.
+    Consumers: GET /api/history/{conversation_id}, assistant conversation detail.
+    """
 
     result = await db.execute(
         select(AssistantConversation)
@@ -469,7 +568,20 @@ async def delete_conversation(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Delete a conversation and all its messages."""
+    """Delete a conversation and all its messages.
+
+    Behavior:
+    1. Load the conversation by id and user_id.
+    2. Raise 404 if the conversation is not found or does not belong to the user.
+    3. Delete associated messages from the vector store.
+    4. Delete the conversation from the database and commit.
+    5. Return a success dict.
+
+    Raises: HTTPException(404) if conversation not found or does not belong to user.
+    Side Effects: Deletes AssistantConversation row and vector store entries.
+    Dependencies: app.models_assistant.AssistantConversation, app.assistant.vector_store.vector_store.
+    Consumers: DELETE /api/history/{conversation_id}, assistant conversation management.
+    """
 
     result = await db.execute(
         select(AssistantConversation)
@@ -498,7 +610,16 @@ async def delete_conversation(
 async def list_available_tools(
     current_user: User = Depends(get_current_user),
 ):
-    """List tools available to the current user."""
+    """List tools available to the current user.
+
+    Behavior:
+    1. Get the tool definitions for the user's role.
+    2. Return the role and available tools.
+
+    Side Effects: None (read-only).
+    Dependencies: app.assistant.permissions.get_tools_for_role.
+    Consumers: GET /api/tools, assistant tool listing.
+    """
     tools = get_tools_for_role(current_user.role)
     return {"role": current_user.role, "tools": tools}
 
@@ -519,7 +640,16 @@ async def detect_intent(
     message: str,
     current_user: User = Depends(get_current_user),
 ):
-    """Detect if user message indicates intent to build a project."""
+    """Detect if user message indicates intent to build a project.
+
+    Behavior:
+    1. Call detect_build_intent on the raw message text.
+    2. Return the intent flag, confidence score, and original message.
+
+    Side Effects: None (read-only).
+    Dependencies: app.assistant.context_builder.detect_build_intent.
+    Consumers: POST /api/detect-intent, builder mode.
+    """
     has_intent, confidence = detect_build_intent(message)
 
     return {
@@ -536,7 +666,19 @@ async def generate_plan(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Generate a project plan from user description."""
+    """Generate a project plan from user description.
+
+    Behavior:
+    1. Load optional hackathon context and associated tracks.
+    2. Build a plan generation prompt with description, hackathon name, and tracks.
+    3. Call the LLM and attempt to parse JSON from the response.
+    4. Add a generated UUID to the plan.
+    5. Return the plan with a success flag, or an error dict on failure.
+
+    Side Effects: None (read-only, LLM call only).
+    Dependencies: app.assistant.context_builder.build_plan_generation_prompt, app.assistant.llm.llm_client, app.models.Hackathon, app.models.Track.
+    Consumers: POST /api/generate-plan, builder mode.
+    """
     import json
 
     # Get hackathon context
@@ -617,7 +759,20 @@ async def generate_project(
     request: GenerateProjectRequest,
     current_user: User = Depends(get_current_user),
 ):
-    """Generate project files from a plan."""
+    """Generate project files from a plan.
+
+    Behavior:
+    1. Convert the request plan to a dict.
+    2. Build a project generation prompt with the plan and project type.
+    3. Call the LLM and attempt to parse JSON from the response.
+    4. Validate the response contains a files array.
+    5. Auto-generate a README if missing.
+    6. Return the files, README, and success flag, or an error dict on failure.
+
+    Side Effects: None (read-only, LLM call only).
+    Dependencies: app.assistant.context_builder.build_project_generation_prompt, app.assistant.llm.llm_client, app.schemas.builder.GenerateProjectRequest.
+    Consumers: POST /api/generate-project, builder mode.
+    """
     import json
 
     # Convert plan to dict
@@ -715,6 +870,17 @@ Generated for this hackathon.
 
 
 class ExecuteToolRequest(BaseModel):
+    """Request body for executing an assistant tool.
+
+    Behavior:
+    1. Define the schema for a tool execution request.
+    2. Provide tool_name and parameters fields.
+
+    Side Effects: None (schema definition).
+    Dependencies: pydantic.BaseModel.
+    Consumers: POST /api/execute-tool, assistant tool execution.
+    """
+
     tool_name: str
     parameters: dict = {}
 
@@ -725,7 +891,20 @@ async def execute_tool(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Execute a single tool. Auth and permission checked server-side."""
+    """Execute a single tool. Auth and permission checked server-side.
+
+    Behavior:
+    1. Verify the user's role can use the requested tool.
+    2. Raise 403 if the tool is not allowed for the role.
+    3. Execute the tool via ToolExecutor.
+    4. Return the result under the "result" key.
+    5. Raise 500 if tool execution fails unexpectedly.
+
+    Raises: HTTPException(403) if tool not allowed for role. HTTPException(500) if tool execution fails.
+    Side Effects: May mutate database state depending on the tool executed.
+    Dependencies: app.assistant.permissions.can_use_tool, app.assistant.tools.ToolExecutor.
+    Consumers: POST /api/execute-tool, assistant tool execution.
+    """
     if not can_use_tool(current_user.role, request.tool_name):
         raise HTTPException(
             status_code=403,
@@ -742,6 +921,17 @@ async def execute_tool(
 
 
 class RAGSearchRequest(BaseModel):
+    """Request body for RAG document search.
+
+    Behavior:
+    1. Define the schema for a RAG search request.
+    2. Provide a query field.
+
+    Side Effects: None (schema definition).
+    Dependencies: pydantic.BaseModel.
+    Consumers: POST /api/rag-search, assistant document search.
+    """
+
     query: str
 
 
@@ -751,7 +941,18 @@ async def rag_search(
     current_user: User = Depends(get_current_user),
     hackathon: Optional[Hackathon] = Depends(get_hackathon),
 ):
-    """Search Qdrant for relevant hackathon documents."""
+    """Search Qdrant for relevant hackathon documents.
+
+    Behavior:
+    1. Embed the query text.
+    2. Search the vector store for matching documents.
+    3. Apply role-based and hackathon-scoped filters.
+    4. Return the matching documents with relevance scores.
+
+    Side Effects: None (read-only).
+    Dependencies: app.assistant.embedder.embedder, app.assistant.vector_store.vector_store.
+    Consumers: POST /api/rag-search, assistant document search.
+    """
     embedding = embedder.embed_text(request.query)
     results = await vector_store.search_documents(
         query_embedding=embedding,
@@ -775,6 +976,17 @@ async def rag_search(
 
 
 class ChatLogRequest(BaseModel):
+    """Request body for persisting a browser agent conversation.
+
+    Behavior:
+    1. Define the schema for a chat log persistence request.
+    2. Provide messages and optional conversation_id fields.
+
+    Side Effects: None (schema definition).
+    Dependencies: pydantic.BaseModel.
+    Consumers: POST /api/chat-log, assistant chat logging.
+    """
+
     messages: list[dict]
     conversation_id: Optional[str] = None
 
@@ -785,7 +997,20 @@ async def chat_log(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Persist a conversation from the browser agent."""
+    """Persist a conversation from the browser agent.
+
+    Behavior:
+    1. Create a new conversation if no conversation_id is provided.
+    2. Verify an existing conversation_id belongs to the current user.
+    3. Raise 404 if the conversation is not found.
+    4. Persist each message as an AssistantMessage row.
+    5. Commit and return the conversation_id with status "saved".
+
+    Raises: HTTPException(404) if conversation not found or does not belong to user.
+    Side Effects: Inserts AssistantConversation and AssistantMessage rows.
+    Dependencies: app.models_assistant.AssistantConversation, app.models_assistant.AssistantMessage.
+    Consumers: POST /api/chat-log, assistant chat logging.
+    """
     conversation_id = request.conversation_id
 
     if not conversation_id:
@@ -824,6 +1049,17 @@ async def chat_log(
 
 
 class LLMChatRequest(BaseModel):
+    """Request body for LLM chat proxy.
+
+    Behavior:
+    1. Define the schema for an LLM chat proxy request.
+    2. Provide messages and model fields.
+
+    Side Effects: None (schema definition).
+    Dependencies: pydantic.BaseModel.
+    Consumers: POST /api/llm/chat (mounted in main.py), LLM proxy.
+    """
+
     messages: list[dict]
     model: str = "fast"
 
@@ -834,8 +1070,20 @@ async def llm_chat_proxy(
 ):
     """Proxy LLM chat requests to Poolside.
 
-    Strips client tool defs, injects server-authorized ones.
-    Validates Clerk JWT.
+    Strips client tool definitions and injects server-authorized ones based
+    on the user's role. Validates Clerk JWT.
+
+    Behavior:
+    1. Get server-authorized tools for the user's role.
+    2. Determine the model based on the request model selector.
+    3. Call the LLM with messages and authorized tools.
+    4. Return the LLM response content.
+    5. Raise 502 if the LLM service returns an error.
+
+    Raises: HTTPException(502) if LLM service returns an error.
+    Side Effects: None (read-only proxy).
+    Dependencies: app.assistant.permissions.get_tools_for_role, app.assistant.llm.llm_client.
+    Consumers: POST /api/llm/chat (mounted in main.py), LLM proxy.
     """
     # Inject server-authorized tools — strip whatever client sent.
     # get_tools_for_role() returns OpenAI format:

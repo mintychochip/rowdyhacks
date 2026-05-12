@@ -7,18 +7,17 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from app.analyzer import analyze_submission
-from app.auth import create_anonymous_token
-from app.checks import WEIGHTS
 from app.clerk_auth import is_clerk_token, decode_clerk_token, extract_clerk_user_id
 from app.database import get_db
-from app.models import Hackathon, Submission, SubmissionStatus
+from app.models import Hackathon
 from app.schemas import SubmitRequest
 from app.scraper import is_devpost_url, is_github_url
+from app.services.submission_service import SubmissionService
 
 router = APIRouter(prefix="/api/check", tags=["checks"])
+
+submission_service = SubmissionService()
 
 # Rate limiting
 _rate_limit_store: dict[str, list[float]] = {}
@@ -27,6 +26,20 @@ RATE_WINDOW = 60  # seconds
 
 
 def _check_rate_limit(client_ip: str) -> bool:
+    """Check if the client IP is within the rate limit window.
+
+    Behavior:
+    1. Get the current UTC timestamp.
+    2. Initialize the client's request list if not present.
+    3. Remove entries older than the configured RATE_WINDOW.
+    4. Return False if the request count exceeds RATE_LIMIT.
+    5. Otherwise append the current timestamp and return True.
+
+    Raises: None
+    Side Effects: Mutates the in-memory _rate_limit_store dict.
+    Dependencies: None
+    Consumers: Internal helper used by submit_for_check.
+    """
     now = datetime.now(UTC).timestamp()
     if client_ip not in _rate_limit_store:
         _rate_limit_store[client_ip] = []
@@ -39,6 +52,18 @@ def _check_rate_limit(client_ip: str) -> bool:
 
 
 def _extract_client_ip(request: Request) -> str:
+    """Extract the client IP from request headers.
+
+    Behavior:
+    1. Check the X-Forwarded-For header for the original client IP.
+    2. Fall back to the request client's host attribute.
+    3. Default to 127.0.0.1 if no IP can be determined.
+
+    Raises: None
+    Side Effects: None (read-only).
+    Dependencies: fastapi.Request.
+    Consumers: Internal helper used by submit_for_check.
+    """
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
         return forwarded.split(",")[0].strip()
@@ -61,11 +86,11 @@ async def submit_for_check(
     3. Auto-link to the existing hackathon if none specified.
     4. Create a pending Submission with an anonymous access token.
     5. Persist the submission to the database.
-    6. Trigger background analysis via analyze_submission.
+    6. Trigger background analysis via SubmissionService.analyze_submission.
 
     Raises: HTTPException(429) if rate limited, HTTPException(400) if URL invalid.
     Side Effects: Inserts Submission row; spawns background asyncio task.
-    Dependencies: app.analyzer.analyze_submission, app.auth.create_anonymous_token, app.scraper.is_devpost_url, app.scraper.is_github_url.
+    Dependencies: app.services.submission_service.SubmissionService, app.scraper.is_devpost_url, app.scraper.is_github_url.
     Consumers: POST /api/check, public submission form.
     """
     # Rate limit
@@ -85,20 +110,10 @@ async def submit_for_check(
     else:
         hackathon_id = body.hackathon_id
 
-    # Create submission
-    access_token = create_anonymous_token()
-    sub = Submission(
-        devpost_url=body.url,
-        status=SubmissionStatus.pending,
-        access_token=access_token,
-        hackathon_id=hackathon_id,
-    )
-    db.add(sub)
-    await db.commit()
-    await db.refresh(sub)
+    sub = await submission_service.create_submission(db, url=body.url, hackathon_id=hackathon_id)
 
     # Trigger analysis in background
-    asyncio.create_task(analyze_submission(sub.id))
+    asyncio.create_task(submission_service.analyze_submission(sub.id))
 
     from app.services.event_service import publish_event
 
@@ -108,7 +123,7 @@ async def submit_for_check(
         {"submission_id": str(sub.id), "hackathon_id": str(hackathon_id), "url": body.url},
     )
 
-    return {"id": str(sub.id), "access_token": access_token, "status": "pending"}
+    return {"id": str(sub.id), "access_token": sub.access_token, "status": "pending"}
 
 
 @router.get("/{submission_id}")
@@ -128,13 +143,10 @@ async def get_check_status(
 
     Raises: HTTPException(404) if submission not found.
     Side Effects: None (read-only).
-    Dependencies: app.models.Submission, sqlalchemy.orm.selectinload.
+    Dependencies: app.services.submission_service.SubmissionService.
     Consumers: GET /api/check/{submission_id}, status polling UI.
     """
-    result = await db.execute(
-        select(Submission).where(Submission.id == submission_id).options(selectinload(Submission.check_results))
-    )
-    sub = result.scalar_one_or_none()
+    sub = await submission_service.get_submission(db, submission_id)
     if not sub:
         raise HTTPException(status_code=404, detail="Submission not found")
 
@@ -191,15 +203,14 @@ async def get_check_report(
 
     Raises: HTTPException(404) if submission not found, HTTPException(403) if access denied.
     Side Effects: None (read-only).
-    Dependencies: app.clerk_auth.is_clerk_token, app.clerk_auth.decode_clerk_token, app.models.Submission, app.models.User, app.checks.WEIGHTS.
+    Dependencies: app.clerk_auth.is_clerk_token, app.clerk_auth.decode_clerk_token, app.models.Submission, app.models.User, app.services.submission_service.SubmissionService.
     Consumers: GET /api/check/{submission_id}/report, report viewer.
     """
-    result = await db.execute(
-        select(Submission).where(Submission.id == submission_id).options(selectinload(Submission.check_results))
-    )
-    sub = result.scalar_one_or_none()
-    if not sub:
+    report = await submission_service.get_submission_report(db, submission_id)
+    if report is None:
         raise HTTPException(status_code=404, detail="Submission not found")
+
+    sub = await submission_service.get_submission(db, submission_id)
 
     # Check if user is organizer (bypasses token check)
     is_organizer = False
@@ -208,7 +219,6 @@ async def get_check_report(
         if is_clerk_token(jwt_token):
             try:
                 payload = await decode_clerk_token(jwt_token)
-                # Look up user role from DB
                 user_id = extract_clerk_user_id(payload)
                 if user_id:
                     from app.models import User
@@ -224,32 +234,7 @@ async def get_check_report(
     if not is_organizer and sub.access_token and sub.access_token != token:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    return {
-        "submission": {
-            "id": str(sub.id),
-            "devpost_url": sub.devpost_url,
-            "github_url": sub.github_url,
-            "project_title": sub.project_title,
-            "project_description": sub.project_description,
-            "claimed_tech": sub.claimed_tech,
-            "team_members": sub.team_members,
-            "status": sub.status.value,
-            "risk_score": sub.risk_score,
-            "verdict": sub.verdict.value if sub.verdict else None,
-        },
-        "check_results": [
-            {
-                "check_category": cr.check_category,
-                "check_name": cr.check_name,
-                "score": cr.score,
-                "status": cr.status,
-                "details": cr.details,
-                "evidence": cr.evidence,
-            }
-            for cr in (sub.check_results or [])
-        ],
-        "weights": WEIGHTS,
-    }
+    return report
 
 
 @router.post("/{submission_id}/retry")
@@ -268,28 +253,12 @@ async def retry_check(
 
     Raises: HTTPException(404) if submission not found.
     Side Effects: Deletes CheckResult rows; mutates Submission fields; spawns background asyncio task.
-    Dependencies: app.analyzer.analyze_submission, app.models.Submission, app.models.SubmissionStatus, app.models.CheckResultModel.
+    Dependencies: app.services.submission_service.SubmissionService.
     Consumers: POST /api/check/{submission_id}/retry, organizer dashboard.
     """
-    result = await db.execute(select(Submission).where(Submission.id == submission_id))
-    sub = result.scalar_one_or_none()
+    sub = await submission_service.reset_submission(db, submission_id)
     if not sub:
         raise HTTPException(status_code=404, detail="Submission not found")
 
-    # Delete old check results
-    from sqlalchemy import delete as sqla_delete
-
-    from app.models import CheckResultModel
-
-    await db.execute(sqla_delete(CheckResultModel).where(CheckResultModel.submission_id == submission_id))
-
-    sub.status = SubmissionStatus.pending
-    sub.risk_score = None
-    sub.verdict = None
-    sub.completed_at = None
-    sub.stage = None
-    sub.check_progress = None
-    await db.commit()
-
-    asyncio.create_task(analyze_submission(sub.id))
+    asyncio.create_task(submission_service.analyze_submission(sub.id))
     return {"id": str(sub.id), "status": "pending"}
