@@ -304,9 +304,15 @@ export default function FloatingChatBot() {
           onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
-            <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"/>
-            <path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M9.5 15a3.5 3.5 0 0 0 5 0"/>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="4" y="4" width="16" height="12" rx="2"/>
+            <path d="M9 9h.01"/><path d="M15 9h.01"/>
+            <path d="M10 14l2 2 2-2"/>
+            <path d="M12 16v4"/>
+            <path d="M8 20h8"/>
+            <path d="M2 10h2"/><path d="M20 10h2"/>
+            <circle cx="8" cy="9" r="1" fill="#fff" stroke="none"/>
+            <circle cx="16" cy="9" r="1" fill="#fff" stroke="none"/>
           </svg>
         </button>
       )}
@@ -403,9 +409,15 @@ export default function FloatingChatBot() {
             {messages.length === 0 && (
               <div style={{ textAlign: 'center', marginTop: 40, color: '#62666d' }}>
                 <div style={{ fontSize: 32, marginBottom: 12 }}>
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#5e6ad2" strokeWidth="1.5" strokeLinecap="round">
-                    <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"/>
-                    <path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M9.5 15a3.5 3.5 0 0 0 5 0"/>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#5e6ad2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="4" y="4" width="16" height="12" rx="2"/>
+                    <path d="M9 9h.01"/><path d="M15 9h.01"/>
+                    <path d="M10 14l2 2 2-2"/>
+                    <path d="M12 16v4"/>
+                    <path d="M8 20h8"/>
+                    <path d="M2 10h2"/><path d="M20 10h2"/>
+                    <circle cx="8" cy="9" r="1" fill="#5e6ad2" stroke="none"/>
+                    <circle cx="16" cy="9" r="1" fill="#5e6ad2" stroke="none"/>
                   </svg>
                 </div>
                 <p style={{ fontSize: 14, fontWeight: 500, color: '#d0d6e0' }}>

@@ -105,6 +105,9 @@ class Settings(BaseSettings):
     s3_bucket: str = Field(default="hackverify-files", description="Default S3 bucket for file storage")
     s3_region: str = Field(default="us-east-1", description="S3 region (for AWS S3 compatibility)")
     s3_use_ssl: bool = Field(default=False, description="Use SSL/TLS for S3 connections")
+    s3_public_url: str = Field(
+        default="", description="Public base URL for serving uploaded files (falls back to s3_endpoint)"
+    )
 
     crawler_schedule: str = Field(
         default="0 3 * * 0",  # Sunday 3 AM UTC

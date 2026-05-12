@@ -45,16 +45,17 @@ class StorageService:
         """Build the public asset URL prefix from the configured S3 endpoint.
 
         Behavior:
-        1. Strip trailing slashes from the endpoint URL.
-        2. Return an empty string if no endpoint is configured.
-        3. Otherwise return ``endpoint/bucket``.
+        1. Use ``s3_public_url`` if configured, otherwise fall back to ``s3_endpoint``.
+        2. Strip trailing slashes from the URL.
+        3. Return an empty string if no endpoint is configured.
+        4. Otherwise return ``endpoint/bucket``.
 
         Raises: None
         Side Effects: None (read-only).
-        Dependencies: app.config.settings.s3_endpoint.
+        Dependencies: app.config.settings.s3_endpoint, app.config.settings.s3_public_url.
         Consumers: StorageService.__init__, StorageService.upload.
         """
-        endpoint = settings.s3_endpoint.rstrip("/")
+        endpoint = (settings.s3_public_url or settings.s3_endpoint).rstrip("/")
         if not endpoint:
             return ""
         return f"{endpoint}/{self._bucket}"
@@ -164,6 +165,9 @@ class StorageService:
         except Exception:
             pass
 
+        # Normalize MIME type: strip charset suffixes
+        detected = detected.split(";")[0].strip()
+
         if detected not in ALLOWED_IMAGE_TYPES:
             raise ValueError(f"Unsupported file type: {detected}. Allowed: {ALLOWED_IMAGE_TYPES}")
 
@@ -183,12 +187,111 @@ class StorageService:
         url = f"{self._public_base}/{object_key}"
         return {"key": object_key, "url": url}
 
+    async def list_objects(self, prefix: str = "") -> list[dict]:
+        """List objects in the bucket with an optional prefix.
+
+        Behavior:
+        1. Obtain the boto3 S3 client.
+        2. Issue ``list_objects_v2`` in a thread pool.
+        3. Return a list of lightweight dicts with ``key``, ``size``, and ``last_modified``.
+
+        Raises: None (boto3 exceptions propagate).
+        Side Effects: None (read-only).
+        Dependencies: boto3.client, asyncio.to_thread.
+        Consumers: resource_service.list_resources.
+        """
+        s3 = self._get_client()
+        response = await asyncio.to_thread(
+            s3.list_objects_v2,
+            Bucket=self._bucket,
+            Prefix=prefix,
+        )
+        return [
+            {
+                "key": obj["Key"],
+                "size": obj["Size"],
+                "last_modified": obj["LastModified"].isoformat(),
+            }
+            for obj in response.get("Contents", [])
+        ]
+
+    async def get_object(self, key: str) -> bytes:
+        """Download an object from S3/MinIO and return its raw bytes.
+
+        Behavior:
+        1. Obtain the boto3 S3 client.
+        2. Issue ``get_object`` in a thread pool.
+        3. Read the response body in a thread pool.
+        4. Return the raw bytes.
+
+        Raises: botocore.exceptions.ClientError if the object does not exist.
+        Side Effects: None (read-only).
+        Dependencies: boto3.client, asyncio.to_thread.
+        Consumers: resource_service.get_resource.
+        """
+        s3 = self._get_client()
+        response = await asyncio.to_thread(
+            s3.get_object,
+            Bucket=self._bucket,
+            Key=key,
+        )
+        return await asyncio.to_thread(response["Body"].read)
+
+    async def object_exists(self, key: str) -> bool:
+        """Check whether an object exists in the bucket via HEAD.
+
+        Behavior:
+        1. Obtain the boto3 S3 client.
+        2. Issue ``head_object`` in a thread pool.
+        3. Return True if the object exists, False otherwise.
+
+        Raises: None (boto3 errors are caught and swallowed).
+        Side Effects: None (read-only).
+        Dependencies: boto3.client, asyncio.to_thread.
+        Consumers: resource_service.get_resource.
+        """
+        s3 = self._get_client()
+        try:
+            await asyncio.to_thread(s3.head_object, Bucket=self._bucket, Key=key)
+            return True
+        except Exception:
+            return False
+
+    async def put_object(
+        self,
+        key: str,
+        data: bytes,
+        content_type: str = "application/octet-stream",
+    ) -> None:
+        """Upload raw bytes to S3/MinIO without validation.
+
+        Behavior:
+        1. Ensure the target bucket exists.
+        2. Obtain the boto3 S3 client.
+        3. Issue ``put_object`` in a thread pool.
+
+        Raises: None (boto3 exceptions propagate).
+        Side Effects: Writes an S3 object.
+        Dependencies: boto3.client, asyncio.to_thread.
+        Consumers: Seed scripts and internal services.
+        """
+        await self.ensure_bucket()
+        s3 = self._get_client()
+        await asyncio.to_thread(
+            s3.put_object,
+            Bucket=self._bucket,
+            Key=key,
+            Body=data,
+            ContentType=content_type,
+        )
+
     # Generic file upload constants for registration attachments
     GENERIC_ALLOWED_TYPES = {
         "application/pdf",
         "application/msword",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "text/plain",
+        "text/markdown",
         "image/png",
         "image/jpeg",
     }
@@ -200,6 +303,7 @@ class StorageService:
         folder: str = "assets",
         allowed_types: set[str] | None = None,
         max_size: int | None = None,
+        contents: bytes | None = None,
     ) -> dict:
         """Validate and upload a generic file (not just images), returning its public URL.
 
@@ -208,6 +312,7 @@ class StorageService:
             folder: S3 folder prefix.
             allowed_types: Set of allowed MIME types. Defaults to GENERIC_ALLOWED_TYPES.
             max_size: Max file size in bytes. Defaults to MAX_GENERIC_FILE_SIZE.
+            contents: Optional pre-read bytes. If provided, skips reading from ``file``.
 
         Raises:
             ValueError: If file exceeds size limit or has unsupported type.
@@ -215,17 +320,20 @@ class StorageService:
         allowed = allowed_types or self.GENERIC_ALLOWED_TYPES
         max_sz = max_size or self.MAX_GENERIC_FILE_SIZE
 
-        contents = await file.read()
-        if len(contents) > max_sz:
-            raise ValueError(f"File exceeds {max_sz // (1024 * 1024)}MB limit ({len(contents)} bytes)")
+        data = contents if contents is not None else await file.read()
+        if len(data) > max_sz:
+            raise ValueError(f"File exceeds {max_sz // (1024 * 1024)}MB limit ({len(data)} bytes)")
 
         detected = file.content_type or "application/octet-stream"
         try:
             import magic
 
-            detected = magic.from_buffer(contents, mime=True)
+            detected = magic.from_buffer(data, mime=True)
         except Exception:
             pass
+
+        # Normalize MIME type: strip charset suffixes like "text/plain; charset=utf-8"
+        detected = detected.split(";")[0].strip()
 
         if detected not in allowed:
             raise ValueError(f"Unsupported file type: {detected}. Allowed: {allowed}")
@@ -239,7 +347,7 @@ class StorageService:
             s3.put_object,
             Bucket=self._bucket,
             Key=object_key,
-            Body=contents,
+            Body=data,
             ContentType=detected,
         )
 

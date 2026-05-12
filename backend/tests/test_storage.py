@@ -30,3 +30,20 @@ def test_build_public_base(service):
         assert service._public_base == ""
     else:
         assert service._bucket in service._public_base
+
+
+def test_generic_allowed_types_includes_markdown(service):
+    assert "text/markdown" in service.GENERIC_ALLOWED_TYPES
+
+
+def test_upload_generic_rejects_unknown_type(service):
+    import asyncio
+    from unittest.mock import MagicMock, AsyncMock
+
+    file = MagicMock()
+    file.content_type = "application/zip"
+    file.filename = "archive.zip"
+    file.read = AsyncMock(return_value=b"PK")
+
+    with pytest.raises(ValueError, match="Unsupported file type"):
+        asyncio.run(service.upload_generic(file=file, allowed_types={"text/plain"}, max_size=1024))
