@@ -15,6 +15,16 @@ export class AgentLoop {
     this.config = config;
   }
 
+  /** Update the system prompt dynamically (e.g., for per-message RAG context) */
+  updateSystemPrompt(prompt: string): void {
+    this.config.systemPrompt = prompt;
+  }
+
+  /** Replace the internal message list (e.g., after loading history) */
+  setMessages(messages: AgentMessage[]): void {
+    this.messages = [...messages];
+  }
+
   /** Send user message and start agent loop */
   async send(message: string): Promise<void> {
     if (this.running) return;

@@ -7,7 +7,6 @@ import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import AnalyzePage from './pages/AnalyzePage';
 import ReportPage from './pages/ReportPage';
-import AssistantPage from './pages/AssistantPage';
 import Dashboard from './pages/Dashboard';
 import AuthPage from './pages/AuthPage';
 import RegisterPage from './pages/RegisterPage';
@@ -29,6 +28,7 @@ import PublicLeaderboard from './pages/PublicLeaderboard';
 import TracksPage from './pages/TracksPage';
 import CrawledDataPage from './pages/CrawledDataPage';
 import ResourcesPage from './pages/ResourcesPage';
+import ResourceDetailPage from './pages/ResourceDetailPage';
 import ContentEditorPage from './pages/ContentEditorPage';
 
 function BrandingLoader({ children }: { children: React.ReactNode }) {
@@ -59,7 +59,6 @@ export default function App() {
                 <Route path="/analyze" element={<AnalyzePage />} />
                 <Route path="/report/:id" element={<ReportPage />} />
                 <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/assistant" element={<AssistantPage />} />
                 <Route path="/hackathons" element={<Navigate to="/" replace />} />
                 <Route path="/apply" element={<ApplyPage />} />
                 <Route path="/register" element={<RegisterPage />} />
@@ -77,6 +76,7 @@ export default function App() {
                 <Route path="/hackathons/:id/tracks/edit" element={<TracksEditorPage />} />
                 <Route path="/tracks" element={<TracksPage />} />
                 <Route path="/resources" element={<ResourcesPage />} />
+                <Route path="/resources/:slug" element={<ResourceDetailPage />} />
                 <Route path="/admin/content" element={<ContentEditorPage />} />
                 <Route path="/crawled-data" element={<CrawledDataPage />} />
                 <Route path="/hackathons/:id/hacker-dashboard" element={<HackerDashboard />} />

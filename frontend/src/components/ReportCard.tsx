@@ -1,5 +1,5 @@
 import ScoreCircle from './ScoreCircle';
-import { SUCCESS, WARNING, ERROR, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, CARD_BG, BORDER, INPUT_BG } from '../theme';
+import { SUCCESS, SUCCESS_BG10, WARNING, WARNING_BG10, ERROR, ERROR_BG10, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, CARD_BG, BORDER, INPUT_BG } from '../theme';
 
 interface CheckSummary {
   check_name: string;
@@ -54,9 +54,9 @@ function generateNarrative(checks: CheckSummary[], riskScore: number, verdict: s
 }
 
 function severityBadge(score: number) {
-  if (score >= 60) return { label: 'High', color: ERROR, bg: '#ff444418' };
-  if (score >= 30) return { label: 'Medium', color: WARNING, bg: '#ffc10718' };
-  return { label: 'Low', color: SUCCESS, bg: '#00c85318' };
+  if (score >= 60) return { label: 'High', color: ERROR, bg: ERROR_BG10 };
+  if (score >= 30) return { label: 'Medium', color: WARNING, bg: WARNING_BG10 };
+  return { label: 'Low', color: SUCCESS, bg: SUCCESS_BG10 };
 }
 
 export default function ReportCard({ projectTitle, riskScore, verdict, categories, checks }: Props) {

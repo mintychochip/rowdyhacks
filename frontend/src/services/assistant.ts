@@ -315,8 +315,8 @@ export async function ragSearch(query: string): Promise<{
 export async function chatLog(
   messages: Array<{ role: string; content: string }>,
   conversationId?: string
-): Promise<void> {
-  await fetch(`${BASE}/assistant/chat-log`, {
+): Promise<{ conversation_id?: string }> {
+  const res = await fetch(`${BASE}/assistant/chat-log`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -324,6 +324,9 @@ export async function chatLog(
     },
     body: JSON.stringify({ messages, conversation_id: conversationId }),
   });
+
+  if (!res.ok) throw new Error('Failed to sync chat log');
+  return res.json();
 }
 
 // Unwrap tool definitions from server (nested OpenAI format → flat AgentTool format)

@@ -5,10 +5,16 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 import * as api from '../services/api';
 import { useBrandingStore } from '../stores/brandingStore';
 
+import {
+  PRIMARY, PRIMARY_BG20,
+  GOLD, GOLD_BG10,
+  SUCCESS, SUCCESS_BG10,
+} from '../theme';
+
 const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  organizer: { label: 'Organizer', color: '#3b82f6', bg: 'rgba(37, 99, 235, 0.12)' },
-  judge: { label: 'Judge', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.12)' },
-  participant: { label: 'Participant', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.12)' },
+  organizer: { label: 'Organizer', color: PRIMARY, bg: PRIMARY_BG20 },
+  judge: { label: 'Judge', color: GOLD, bg: GOLD_BG10 },
+  participant: { label: 'Participant', color: SUCCESS, bg: SUCCESS_BG10 },
 };
 
 type NavItem = {
@@ -28,16 +34,6 @@ const HomeIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
     <polyline points="9 22 9 12 15 12 15 22"/>
-  </svg>
-);
-
-const SparklesIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-    <path d="M5 3v4"/>
-    <path d="M19 17v4"/>
-    <path d="M3 5h4"/>
-    <path d="M17 19h4"/>
   </svg>
 );
 
@@ -140,7 +136,6 @@ const SearchIcon = () => (
 
 const NAV_ICONS: Record<string, React.ReactNode> = {
   'Home': <HomeIcon />,
-  'AI Assistant': <SparklesIcon />,
   'Analyze': <ChartIcon />,
   'Registrations': <UsersIcon />,
   'Judging': <GavelIcon />,
@@ -201,7 +196,6 @@ export default function Layout() {
 
   const rawNav: NavItem[] = [
     { to: '/', label: 'Home' },
-    { to: '/assistant', label: 'AI Assistant', roles: ['organizer', 'participant', 'judge'] },
     { to: '/analyze', label: 'Analyze', roles: ['organizer'] },
     { to: hk('/registrations'), label: 'Registrations', roles: ['organizer'] },
     { to: hk('/judging/setup'), label: 'Judging', roles: ['organizer'] },
