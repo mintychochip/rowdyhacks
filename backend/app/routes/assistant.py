@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import AsyncGenerator, Optional
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -14,19 +14,24 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.assistant.context_builder import ContextBuilder
 from app.assistant.embedder import embedder
-from app.assistant.llm import llm_client
+from app.assistant.indexer import DocumentIndexer
+from app.assistant.llm import llm_client, get_llm_client
 from app.assistant.permissions import can_use_tool, get_tools_for_role
+from app.config import settings
 from app.assistant.tools import ToolExecutor
 from app.assistant.vector_store import vector_store
-from app.auth import get_current_user, verify_access_token
+from app.auth import get_current_user, require_organizer, verify_access_token
 from app.database import get_db
 from app.models import Hackathon, User
 from app.models_assistant import (
     AssistantConversation,
+    AssistantDocument,
     AssistantMessage,
     AssistantMessageStatus,
     ConversationRole,
+    DocumentType,
 )
+from app.storage import StorageService
 
 
 from app.schemas.builder import (
@@ -920,7 +925,7 @@ async def rag_search(
         hackathon_id=str(hackathon.id) if hackathon else None,
         role=current_user.role,
         limit=5,
-        score_threshold=0.7,
+        score_threshold=0.35,
     )
 
     return {
@@ -1052,10 +1057,20 @@ async def llm_chat_proxy(
     tool_defs = get_tools_for_role(current_user.role)
 
     # Determine model
-    model = "poolside/m.1" if request.model == "thinking" else "poolside/laguna-xs.2"
+    if request.model == "fast":
+        model = settings.assistant_fast_model or settings.llm_model
+    elif request.model == "thinking":
+        model = settings.assistant_thinking_model or settings.llm_model
+    else:
+        model = settings.llm_model
+
+    if not model:
+        raise HTTPException(status_code=500, detail="LLM provider not configured.")
+
+    client = get_llm_client(model)
 
     try:
-        response = await llm_client.chat_completion(
+        response = await client.chat_completion(
             messages=request.messages,
             tools=tool_defs if tool_defs else None,
             temperature=0.7,
@@ -1066,3 +1081,223 @@ async def llm_chat_proxy(
     except Exception as e:
         logger.error(f"LLM proxy error: {e}")
         raise HTTPException(status_code=502, detail=f"LLM service error: {str(e)}")
+
+
+# ── Document Upload / Indexing ──
+
+storage_service = StorageService()
+
+
+ALLOWED_DOC_TYPES = {
+    "text/plain",
+    "text/markdown",
+    "application/pdf",
+    "application/octet-stream",
+}
+MAX_DOC_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
+def _extract_text_from_pdf(contents: bytes) -> str:
+    """Extract plain text from a PDF byte buffer.
+
+    Raises:
+        ValueError: If pypdf is not installed or parsing fails.
+    """
+    try:
+        from pypdf import PdfReader
+        from io import BytesIO
+
+        reader = PdfReader(BytesIO(contents))
+        parts = []
+        for page in reader.pages:
+            text = page.extract_text()
+            if text:
+                parts.append(text)
+        return "\n".join(parts)
+    except ImportError as e:
+        raise ValueError("PDF parsing requires pypdf. Install it and rebuild the container.") from e
+    except Exception as e:
+        raise ValueError(f"Failed to parse PDF: {e}") from e
+
+
+def _extract_text(filename: str, contents: bytes, content_type: str) -> str:
+    """Extract plain text from an uploaded file depending on its type.
+
+    Raises:
+        ValueError: If the file type is unsupported or parsing fails.
+    """
+    lowered = filename.lower()
+    if content_type == "application/pdf" or lowered.endswith(".pdf"):
+        return _extract_text_from_pdf(contents)
+    if lowered.endswith((".txt", ".md", ".markdown", ".rst")):
+        return contents.decode("utf-8", errors="replace")
+    # Try plain text for unknown types
+    try:
+        return contents.decode("utf-8", errors="replace")
+    except Exception as e:
+        raise ValueError(f"Unsupported file type: {content_type}. Upload .txt, .md, or .pdf") from e
+
+
+@router.post("/hackathons/{hackathon_id}/documents")
+async def upload_document(
+    hackathon_id: UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_organizer),
+):
+    """Upload a document, store it in MinIO, and index it for the assistant.
+
+    Behavior:
+    1. Validate the hackathon exists.
+    2. Read the uploaded file and validate size/type.
+    3. Upload the raw file to MinIO via StorageService.
+    4. Extract plain text from the file.
+    5. Chunk, embed, and index the text into Qdrant.
+    6. Persist metadata in the ``assistant_documents`` table.
+    7. Return the created document metadata.
+
+    Raises:
+        HTTPException(404): If hackathon not found.
+        HTTPException(413): If file exceeds 10MB.
+        HTTPException(400): If file type is unsupported or text extraction fails.
+        HTTPException(502): If storage or indexing fails.
+    """
+    result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
+    hackathon = result.scalar_one_or_none()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+
+    contents = await file.read()
+    if len(contents) > MAX_DOC_SIZE:
+        raise HTTPException(status_code=413, detail=f"File exceeds 10MB limit ({len(contents)} bytes)")
+
+    detected = file.content_type or "application/octet-stream"
+    try:
+        import magic
+
+        detected = magic.from_buffer(contents, mime=True)
+    except Exception:
+        pass
+
+    if detected not in ALLOWED_DOC_TYPES and not file.filename.lower().endswith((".txt", ".md", ".markdown", ".pdf")):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {detected}. Allowed: text/plain, text/markdown, application/pdf",
+        )
+
+    # Upload to MinIO
+    try:
+        upload_result = await storage_service.upload_generic(
+            file=file,
+            folder="assistant-documents",
+            allowed_types=ALLOWED_DOC_TYPES,
+            max_size=MAX_DOC_SIZE,
+            contents=contents,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Storage error: {e}")
+
+    # Extract text
+    try:
+        text = _extract_text(file.filename or "document", contents, detected)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if not text or not text.strip():
+        raise HTTPException(status_code=400, detail="Document appears to be empty")
+
+    # Index
+    try:
+        indexer = DocumentIndexer(db)
+        index_result = await indexer.index_uploaded_document(
+            hackathon=hackathon,
+            filename=file.filename or "document",
+            content=text,
+            s3_url=upload_result.get("url"),
+            s3_key=upload_result.get("key"),
+        )
+    except Exception as e:
+        logger.error(f"Document indexing failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Indexing failed: {e}")
+
+    return {
+        "document_id": index_result["document_id"],
+        "filename": file.filename,
+        "chunk_count": index_result["chunk_count"],
+        "s3_url": upload_result.get("url"),
+    }
+
+
+@router.get("/hackathons/{hackathon_id}/documents")
+async def list_documents(
+    hackathon_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List uploaded documents indexed for a hackathon.
+
+    Behavior:
+    1. Query ``assistant_documents`` for rows matching the hackathon with type ``resources``.
+    2. Return a list with id, filename, chunk_count, s3_url, and created_at.
+
+    Raises: HTTPException(404) if hackathon not found.
+    Side Effects: None (read-only).
+    """
+    result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
+    hackathon = result.scalar_one_or_none()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+
+    docs_result = await db.execute(
+        select(AssistantDocument)
+        .where(AssistantDocument.hackathon_id == hackathon_id)
+        .where(AssistantDocument.doc_type == DocumentType.RESOURCES)
+        .order_by(AssistantDocument.created_at.desc())
+    )
+    docs = docs_result.scalars().all()
+
+    return {
+        "documents": [
+            {
+                "id": str(d.id),
+                "filename": d.doc_metadata.get("filename", d.title),
+                "chunk_count": d.doc_metadata.get("chunk_count", 0),
+                "s3_url": d.doc_metadata.get("s3_url"),
+                "created_at": d.created_at.isoformat() if d.created_at else None,
+            }
+            for d in docs
+        ]
+    }
+
+
+@router.delete("/hackathons/{hackathon_id}/documents/{doc_id}")
+async def delete_document(
+    hackathon_id: UUID,
+    doc_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_organizer),
+):
+    """Delete an uploaded document and its indexed chunks.
+
+    Behavior:
+    1. Verify the hackathon exists.
+    2. Use DocumentIndexer to delete the document from Qdrant and PostgreSQL.
+    3. Return 204 on success, 404 if the document is not found.
+
+    Raises:
+        HTTPException(404): If hackathon or document not found.
+        HTTPException(502): If deletion from Qdrant fails.
+    """
+    result = await db.execute(select(Hackathon).where(Hackathon.id == hackathon_id))
+    hackathon = result.scalar_one_or_none()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+
+    indexer = DocumentIndexer(db)
+    deleted = await indexer.delete_uploaded_document(doc_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    return {"status": "deleted"}
