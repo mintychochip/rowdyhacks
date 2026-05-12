@@ -2,6 +2,7 @@ from textual.app import App
 
 from cli.tui.screens.welcome import WelcomeScreen
 from cli.tui.screens.dashboard import DashboardScreen
+from cli.tui.screens.finish import FinishScreen
 
 
 class TuiApp(App):
@@ -9,6 +10,7 @@ class TuiApp(App):
     SCREENS = {
         "welcome": WelcomeScreen,
         "dashboard": DashboardScreen,
+        "finish": FinishScreen,
     }
 
     BINDINGS = [

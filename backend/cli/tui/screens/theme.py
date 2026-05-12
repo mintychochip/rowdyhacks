@@ -44,6 +44,12 @@ class ThemeScreen(Screen):
             async with db_session() as db:
                 for key, val in vals.items():
                     await config_service.set(key, val, db)
-            self.query_one("#preview", Static).update("[green]Theme saved![/green]")
+            # Write remaining env vars
+            from cli.tui.docker_orchestrator import write_env, generate_secret_key, env_exists
+
+            if not env_exists():
+                write_env({"HACKVERIFY_SECRET_KEY": generate_secret_key()})
+            self.query_one("#preview", Static).update("[green]Theme saved! Proceeding to launch...[/green]")
+            self.app.push_screen("finish")
         except Exception as exc:
             self.query_one("#preview", Static).update(f"[red]Error: {exc}[/red]")
