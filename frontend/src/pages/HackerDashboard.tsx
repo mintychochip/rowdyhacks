@@ -51,8 +51,8 @@ interface RegistrationData {
 
 const SCAN_ICONS: Record<string, string> = {
   checkin: '>>',
-  meal: '🍽',
-  workshop: '⚙',
+  meal: '',
+  workshop: '',
 };
 
 const SCAN_LABELS: Record<string, string> = {

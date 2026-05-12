@@ -29,13 +29,13 @@ export const getExtBadge = (name: string): { label: string; color: string } => {
 
 // ── File icons (for CodeEditor) ────────────────────────────
 export const FILE_ICONS: Record<string, string> = {
-  js: '📜', ts: '📘', jsx: '⚛️', tsx: '⚛️', html: '🌐', css: '🎨',
-  py: '🐍', ino: '🔌', json: '📋', md: '📝',
+  js: '', ts: '', jsx: '', tsx: '', html: '', css: '',
+  py: '', ino: '', json: '', md: '',
 };
 
 export const getFileIcon = (filename: string): string => {
   const ext = filename.split('.').pop()?.toLowerCase() || '';
-  return FILE_ICONS[ext] || '📄';
+  return FILE_ICONS[ext] || '';
 };
 
 // ── Starter Templates ──────────────────────────────────────

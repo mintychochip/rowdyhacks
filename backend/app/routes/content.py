@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.assistant.site_pages import delete_content_page, index_content_page
 from app.cache import cache_delete_pattern, cached
 from app.auth import require_organizer
 from app.database import get_db
@@ -171,6 +172,14 @@ async def create_page(
     await db.commit()
     await db.refresh(page)
 
+    # Index the new page for the AI assistant
+    try:
+        await index_content_page(page, db)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception("Failed to index content page on create")
+
     await _bust_content_cache()
     return _page_to_response(page)
 
@@ -220,6 +229,14 @@ async def update_page(
     await db.commit()
     await db.refresh(page)
 
+    # Re-index the updated page for the AI assistant
+    try:
+        await index_content_page(page, db)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception("Failed to re-index content page on update")
+
     await _bust_content_cache()
     return _page_to_response(page)
 
@@ -248,6 +265,14 @@ async def delete_page(
     page = result.scalar_one_or_none()
     if not page:
         raise HTTPException(status_code=404, detail="Page not found")
+
+    # Remove from assistant index before deleting the page
+    try:
+        await delete_content_page(str(page.id), db)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception("Failed to delete content page from assistant index")
 
     await db.delete(page)
     await db.commit()

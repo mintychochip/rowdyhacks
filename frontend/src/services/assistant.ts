@@ -51,7 +51,7 @@ export async function sendChatMessage(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        'Authorization': `Bearer ${localStorage.getItem('openhack_access_token') || ''}`,
       },
       signal: controller.signal,
     });
@@ -88,7 +88,7 @@ export function streamChatResponse(
   onComplete: () => void,
   onError: (error: string) => void
 ): () => void {
-  const token = localStorage.getItem('auth_token') || '';
+  const token = localStorage.getItem('openhack_access_token') || '';
   const eventSource = new EventSource(
     `${BASE}/assistant/stream/${messageId}?token=${encodeURIComponent(token)}`
   );
@@ -209,7 +209,7 @@ export async function getConversations(): Promise<{
 }> {
   const res = await fetch(`${BASE}/assistant/history`, {
     headers: {
-      'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+      'Authorization': `Bearer ${localStorage.getItem('openhack_access_token') || ''}`,
     },
   });
 
@@ -228,7 +228,7 @@ export async function getConversation(
 }> {
   const res = await fetch(`${BASE}/assistant/history/${conversationId}`, {
     headers: {
-      'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+      'Authorization': `Bearer ${localStorage.getItem('openhack_access_token') || ''}`,
     },
   });
 
@@ -241,7 +241,7 @@ export async function deleteConversation(conversationId: string): Promise<void> 
   const res = await fetch(`${BASE}/assistant/history/${conversationId}`, {
     method: 'DELETE',
     headers: {
-      'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+      'Authorization': `Bearer ${localStorage.getItem('openhack_access_token') || ''}`,
     },
   });
 
@@ -255,7 +255,7 @@ export async function getAvailableTools(): Promise<{
 }> {
   const res = await fetch(`${BASE}/assistant/tools`, {
     headers: {
-      'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+      'Authorization': `Bearer ${localStorage.getItem('openhack_access_token') || ''}`,
     },
   });
 
@@ -265,7 +265,7 @@ export async function getAvailableTools(): Promise<{
 
 // ── New: Browser Agent Harness API ──────────────────────────────────
 
-const TOKEN = () => localStorage.getItem('auth_token') || '';
+const TOKEN = () => localStorage.getItem('openhack_access_token') || '';
 
 // LLM proxy chat (replaces sendChatMessage + streamChatResponse)
 export async function llmChat(

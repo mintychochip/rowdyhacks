@@ -92,6 +92,14 @@ export default function RubricBuilderPage() {
 
   if (!user) return null;
 
+  if (user.role !== 'organizer' && user.role !== 'judge') {
+    return (
+      <div style={{ textAlign: 'center', padding: 40, color: TEXT_MUTED }}>
+        <p>Only organizers and judges can access judging setup.</p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h2 style={{ fontSize: 24, marginBottom: 20 }} data-mobile-h1>Judging Setup</h2>

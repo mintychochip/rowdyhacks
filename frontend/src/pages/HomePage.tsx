@@ -8,6 +8,13 @@ import QRCodeDisplay from '../components/QRCodeDisplay';
 import WalletButtons from '../components/WalletButtons';
 import ScheduleGrid from '../components/ScheduleGrid';
 import { Badge } from '../components/Primitives';
+import { Calendar, Mail } from 'lucide-react';
+import {
+  SUCCESS, SUCCESS_BG10, SUCCESS_BG20,
+  WARNING, WARNING_BG10, WARNING_BORDER30,
+  ERROR, ERROR_BG10, ERROR_BORDER30,
+  INFO, INFO_BG10, INFO_BG20,
+} from '../theme';
 
 interface ScheduleEvent { datetime: string; title: string; description?: string; location?: string; }
 interface HackathonData {
@@ -23,10 +30,10 @@ interface RegData {
 }
 
 const STATUS_COLORS: Record<string, { bg: string; color: string; border: string }> = {
-  pending: { bg: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.2)' },
-  accepted: { bg: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', border: 'rgba(34, 197, 94, 0.2)' },
-  rejected: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.2)' },
-  checked_in: { bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: 'rgba(59, 130, 246, 0.2)' },
+  pending: { bg: WARNING_BG10, color: WARNING, border: WARNING_BORDER30 },
+  accepted: { bg: SUCCESS_BG10, color: SUCCESS, border: SUCCESS_BG20 },
+  rejected: { bg: ERROR_BG10, color: ERROR, border: ERROR_BORDER30 },
+  checked_in: { bg: INFO_BG10, color: INFO, border: INFO_BG20 },
 };
 
 const SCAN_LABELS: Record<string, string> = { checkin: 'Check-in', meal: 'Meal', workshop: 'Workshop' };
@@ -403,7 +410,7 @@ export default function HomePage() {
           margin: '0 auto 24px',
           fontSize: 40,
         }}>
-          📅
+          <Calendar size={40} color="var(--text-muted)" />
         </div>
         <h1 style={{
           fontSize: 28,
@@ -1068,7 +1075,7 @@ export default function HomePage() {
             margin: '0 auto 20px',
             fontSize: 28,
           }}>
-            ✉️
+            <Mail size={28} color="var(--warning)" />
           </div>
 
           <span style={{
@@ -1171,6 +1178,9 @@ export default function HomePage() {
             {[
               { label: 'Manage Registrations', onClick: () => navigate(`/hackathons/${hackathon.id}/registrations`), primary: true },
               { label: 'Event Settings', onClick: () => navigate(`/hackathons/${hackathon.id}/settings`) },
+              { label: 'Edit Tracks', onClick: () => navigate(`/hackathons/${hackathon.id}/tracks/edit`) },
+              { label: 'Edit Prizes', onClick: () => navigate(`/hackathons/${hackathon.id}/prizes/edit`) },
+              { label: 'Edit Sponsors', onClick: () => navigate(`/hackathons/${hackathon.id}/sponsors/edit`) },
               { label: 'Set Up Judging', onClick: () => navigate(`/hackathons/${hackathon.id}/judging/setup`) },
               { label: 'View Results', onClick: () => navigate(`/hackathons/${hackathon.id}/judging/results`) },
               { label: 'Score Projects', onClick: () => navigate(`/hackathons/${hackathon.id}/judging`) },

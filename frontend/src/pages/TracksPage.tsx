@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { useAuth } from '../contexts/AuthContext';
 import * as api from '../services/api';
+import { Trophy, Rocket } from 'lucide-react';
 
 interface TrackResource {
   name: string;
@@ -81,15 +82,6 @@ const ArrowRightIcon = () => (
   </svg>
 );
 
-// Track icon mapping
-const TRACK_ICONS: Record<string, string> = {
-  'Deep Space Exploration': '🚀',
-  'Orbital Commerce': '💎',
-  'Cosmic Commons': '🌌',
-  'Nebula Arts': '✨',
-  'Mission Control AI': '🤖',
-  'Lunar Settlements': '🌕',
-};
 
 function TrackCard({ track, hackathonId, isMobile, expandedTrack, toggleTrack }: TrackCardProps) {
   const isExpanded = expandedTrack === track.id;
@@ -131,13 +123,12 @@ function TrackCard({ track, hackathonId, isMobile, expandedTrack, toggleTrack }:
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 24,
           flexShrink: 0,
           transition: 'all 150ms ease',
           border: '1px solid',
           borderColor: isExpanded ? `${accentColor}40` : 'var(--border-default)',
         }}>
-          {TRACK_ICONS[track.name] || track.icon || '🎯'}
+          <Rocket size={24} color={accentColor} />
         </div>
 
         {/* Title & Description */}
@@ -425,42 +416,42 @@ const FALLBACK_TRACKS: Track[] = [
   {
     id: '1', name: 'Deep Space Exploration', description: 'Push the boundaries of space tech. Build tools for satellite data analysis, mission planning, or astronaut support systems.',
     challenge: 'Your mission: create a working prototype that solves a real problem in space exploration. This could be a satellite trajectory planner, a telemetry dashboard, a radiation exposure calculator for astronauts, or an AI system that classifies celestial objects from telescope imagery.\n\nLooking for projects that demonstrate technical depth — bonus points for using real NASA/ESA datasets or simulating realistic physics.',
-    icon: '🚀', color: '#8b5cf6', prize: '$1,000 + SpaceX Tour',
+    icon: '', color: '#8b5cf6', prize: '$1,000 + SpaceX Tour',
     criteria: ['Innovation', 'Technical Complexity', 'Space Applicability', 'Use of Real Data'],
     resources: [{ name: 'NASA Open APIs', url: 'https://api.nasa.gov/' }, { name: 'Space-Track.org', url: 'https://www.space-track.org/' }],
   },
   {
     id: '2', name: 'Orbital Commerce', description: 'Create the future of space economy. Develop marketplace platforms, logistics tools, or financial systems for the space age.',
     challenge: 'The commercialization of low Earth orbit is accelerating. Build a tool, platform, or system that enables commerce in space — a marketplace for satellite services, a launch logistics scheduler, or a DeFi protocol for satellite time-sharing.',
-    icon: '💎', color: '#06b6d4', prize: '$800 + Starlink Kit',
+    icon: '', color: '#06b6d4', prize: '$800 + Starlink Kit',
     criteria: ['Business Viability', 'UX Design', 'Market Potential', 'Technical Execution'],
     resources: [{ name: 'Space Economy Report', url: 'https://spacefoundation.org/research/' }, { name: 'AWS Ground Station', url: 'https://aws.amazon.com/ground-station/' }],
   },
   {
     id: '3', name: 'Cosmic Commons', description: 'Democratize access to space. Build educational tools, citizen science platforms, or community-driven space initiatives.',
     challenge: 'Space shouldn\'t just be for billionaires and government agencies. Create something that makes space more accessible — a VR planetarium for schools, a mobile app for citizen astronomy, or a platform connecting amateur astronomers with researchers.',
-    icon: '🌌', color: '#fbbf24', prize: '$600 + Celestron Telescope',
+    icon: '', color: '#fbbf24', prize: '$600 + Celestron Telescope',
     criteria: ['Social Impact', 'Accessibility', 'Community Engagement', 'Innovation'],
     resources: [{ name: 'Zooniverse Projects', url: 'https://www.zooniverse.org/' }, { name: 'NASA Citizen Science', url: 'https://science.nasa.gov/citizen-science/' }],
   },
   {
     id: '4', name: 'Nebula Arts', description: 'Where space meets creativity. Develop immersive visualizations, space-themed games, or generative art from astronomical data.',
     challenge: 'Art and science are two sides of the same coin. Create something beautiful grounded in real space data — a WebGL nebula renderer, a procedural planet generator, a sonification of solar wind data, or a mixed reality stargazing app.',
-    icon: '✨', color: '#ec4899', prize: '$500 + Wacom Tablet',
+    icon: '', color: '#ec4899', prize: '$500 + Wacom Tablet',
     criteria: ['Aesthetic Quality', 'Technical Execution', 'Concept Originality', 'Emotional Impact'],
     resources: [{ name: 'Three.js Docs', url: 'https://threejs.org/' }, { name: 'ESA Image Archive', url: 'https://www.esa.int/ESA_Multimedia/Images' }],
   },
   {
     id: '5', name: 'Mission Control AI', description: 'Apply artificial intelligence to space operations. Build ML models for anomaly detection, predictive maintenance, or autonomous navigation.',
     challenge: 'AI is transforming how we operate in space. Train a model to detect anomalies in telemetry data, build a reinforcement learning agent for autonomous docking, create an LLM-powered mission planning assistant, or develop computer vision for satellite inspection.',
-    icon: '🤖', color: '#10b981', prize: '$1,200 + NVIDIA Jetson Kit',
+    icon: '', color: '#10b981', prize: '$1,200 + NVIDIA Jetson Kit',
     criteria: ['AI Innovation', 'Model Performance', 'Problem Relevance', 'Presentation Clarity'],
     resources: [{ name: 'NASA Telemetry Data', url: 'https://data.nasa.gov/' }, { name: 'PyTorch Docs', url: 'https://pytorch.org/docs/' }],
   },
   {
     id: '6', name: 'Lunar Settlements', description: 'Design for life beyond Earth. Create habitat concepts, life support simulations, and resource utilization tools for off-world colonies.',
     challenge: 'If we\'re going to stay on the Moon, we need to figure out how to live there. Design a system for sustaining human life off-world — a hydroponics controller for microgravity, a 3D habitat layout tool using in-situ resources, or a crew psychology dashboard.',
-    icon: '🌕', color: '#f97316', prize: '$900 + 3D Printer',
+    icon: '', color: '#f97316', prize: '$900 + 3D Printer',
     criteria: ['Systems Thinking', 'Feasibility', 'Innovation', 'Sustainability'],
     resources: [{ name: 'NASA Artemis Program', url: 'https://www.nasa.gov/artemis/' }, { name: 'Lunar ISRU Papers', url: 'https://www.lpi.usra.edu/' }],
   },
@@ -555,7 +546,7 @@ export default function TracksPage() {
           fontSize: 28,
           marginBottom: 20,
         }}>
-          🏆
+          <Trophy size={28} color="var(--accent-primary)" />
         </div>
         <h1 style={{
           fontSize: isMobile ? 28 : 32,
@@ -601,9 +592,25 @@ export default function TracksPage() {
         }}>
           {tracks.length} tracks available
         </span>
-        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
-          Click to expand
-        </span>
+        {user?.role === 'organizer' && hackathonId && (
+          <Link
+            to={`/hackathons/${hackathonId}/tracks/edit`}
+            style={{
+              marginLeft: 'auto',
+              fontSize: 13,
+              color: 'var(--accent-primary)',
+              textDecoration: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Edit Tracks &rarr;
+          </Link>
+        )}
+        {!(user?.role === 'organizer' && hackathonId) && (
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
+            Click to expand
+          </span>
+        )}
       </div>
 
       {/* Tracks List */}

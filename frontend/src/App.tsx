@@ -17,6 +17,8 @@ import OrganizerRegistrationsPage from './pages/OrganizerRegistrationsPage';
 import CheckInPage from './pages/CheckInPage';
 import RubricBuilderPage from './pages/RubricBuilderPage';
 import TracksEditorPage from './pages/TracksEditorPage';
+import PrizesEditorPage from './pages/PrizesEditorPage';
+import SponsorsEditorPage from './pages/SponsorsEditorPage';
 import JudgePortal from './pages/JudgePortal';
 import JudgingResultsPage from './pages/JudgingResultsPage';
 import HackathonDetailPage from './pages/HackathonDetailPage';
@@ -74,6 +76,8 @@ export default function App() {
                 <Route path="/hackathons/:id/leaderboard" element={<PublicLeaderboard />} />
                 <Route path="/hackathons/:id/tracks" element={<TracksPage />} />
                 <Route path="/hackathons/:id/tracks/edit" element={<TracksEditorPage />} />
+                <Route path="/hackathons/:id/prizes/edit" element={<PrizesEditorPage />} />
+                <Route path="/hackathons/:id/sponsors/edit" element={<SponsorsEditorPage />} />
                 <Route path="/tracks" element={<TracksPage />} />
                 <Route path="/resources" element={<ResourcesPage />} />
                 <Route path="/resources/:slug" element={<ResourceDetailPage />} />

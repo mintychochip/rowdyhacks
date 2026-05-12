@@ -2,16 +2,16 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import * as api from '../services/api';
-import { SUCCESS, SUCCESS_BG10, WARNING, WARNING_BG10, ERROR, ERROR_BG10, ERROR_TEXT, TEXT_PRIMARY, TEXT_MUTED, TEXT_DIM, TEXT_WHITE, CARD_BG, INPUT_BG, INPUT_BORDER, BORDER, TYPO, SPACE, RADIUS, SHADOW } from '../theme';
+import { SUCCESS, SUCCESS_BG10, WARNING, WARNING_BG10, ERROR, ERROR_BG10, ERROR_TEXT, PRIMARY, TEXT_PRIMARY, TEXT_MUTED, TEXT_DIM, TEXT_WHITE, CARD_BG, INPUT_BG, INPUT_BORDER, BORDER, TYPO, SPACE, RADIUS, SHADOW } from '../theme';
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { bg: string; color: string }> = {
     completed: { bg: SUCCESS_BG10, color: SUCCESS },
     failed: { bg: ERROR_BG10, color: ERROR },
     analyzing: { bg: WARNING_BG10, color: WARNING },
-    pending: { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+    pending: { bg: WARNING_BG10, color: WARNING },
   };
-  const s = map[status] || { bg: '#333', color: '#888' };
+  const s = map[status] || { bg: INPUT_BG, color: TEXT_MUTED };
   return (
     <span style={{
       display: 'inline-block', padding: '2px 10px', borderRadius: RADIUS.full,
@@ -78,6 +78,15 @@ export default function Dashboard() {
     { label: 'Review', value: submissions.filter(s => s.verdict === 'review').length, color: WARNING },
     { label: 'Flagged', value: submissions.filter(s => s.verdict === 'flagged').length, color: ERROR },
   ];
+
+  if (user?.role !== 'organizer') {
+    return (
+      <div style={{ textAlign: 'center', padding: SPACE.xl, color: TEXT_MUTED }}>
+        <p>Only organizers can access the submissions dashboard.</p>
+        <Link to="/" style={{ color: PRIMARY, textDecoration: 'none', fontWeight: 600 }}>Back to Home</Link>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -191,8 +200,8 @@ export default function Dashboard() {
                           disabled={retrying === sub.id}
                           title="Retry analysis"
                           style={{
-                            background: 'none', border: `1px solid ${'#555'}`, borderRadius: 4,
-                            color: '#aaa', cursor: 'pointer', fontSize: 11, padding: '2px 8px',
+                            background: 'none', border: `1px solid ${BORDER}`, borderRadius: RADIUS.sm,
+                            color: TEXT_MUTED, cursor: 'pointer', fontSize: 11, padding: '2px 8px',
                             fontFamily: 'inherit', whiteSpace: 'nowrap',
                           }}
                         >

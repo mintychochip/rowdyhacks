@@ -257,6 +257,25 @@ class StorageService:
         except Exception:
             return False
 
+    async def delete_object(self, key: str) -> None:
+        """Delete an object from S3/MinIO.
+
+        Behavior:
+        1. Obtain the boto3 S3 client.
+        2. Issue ``delete_object`` in a thread pool.
+
+        Raises: None (boto3 exceptions propagate).
+        Side Effects: Removes an S3 object.
+        Dependencies: boto3.client, asyncio.to_thread.
+        Consumers: resource_service.delete_resource.
+        """
+        s3 = self._get_client()
+        await asyncio.to_thread(
+            s3.delete_object,
+            Bucket=self._bucket,
+            Key=key,
+        )
+
     async def put_object(
         self,
         key: str,

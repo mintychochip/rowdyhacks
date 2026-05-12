@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 import { AgentLoop } from '../../agent/AgentLoop';
 import { buildSystemPrompt } from '../../agent/context';
 import type { AgentMessage, AgentEvent } from '../../agent/types';
@@ -23,7 +23,7 @@ interface UIMessage {
 }
 
 export default function FloatingChatBot() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, token } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -63,14 +63,14 @@ export default function FloatingChatBot() {
               ...unwrapped,
               execute: async (params: Record<string, unknown>) => {
                 const name = (t as any).function?.name ?? (t as any).name;
-                const token = localStorage.getItem('auth_token') || '';
+                const authToken = token || '';
                 const res = await fetch(`/api/assistant/execute-tool`, {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
+                    'Authorization': `Bearer ${authToken}`,
                   },
-                  body: JSON.stringify({ tool: name, parameters: params }),
+                  body: JSON.stringify({ tool_name: name, parameters: params }),
                 });
                 if (!res.ok) throw new Error(`Tool ${name} failed`);
                 return res.text();

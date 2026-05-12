@@ -162,6 +162,7 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hackathonId, setHackathonId] = useState<string | null>(null);
   const [expandedNav, setExpandedNav] = useState<Set<string>>(new Set(['Resources']));
+  const [resourceChildren, setResourceChildren] = useState<{ to: string; label: string }[]>([]);
   const { branding } = useBrandingStore();
   const role = user?.role;
   const roleBadge = role && ROLE_LABELS[role];
@@ -180,6 +181,18 @@ export default function Layout() {
       if (hks.length > 0) setHackathonId(hks[0].id);
     }).catch(() => {});
   }, [user]);
+
+  useEffect(() => {
+    api.getContentPages()
+      .then((data: any) => {
+        const pages = (data.pages || []).filter((p: any) => p.is_published);
+        pages.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0));
+        setResourceChildren(
+          pages.map((p: any) => ({ to: '/resources/' + p.slug, label: p.title }))
+        );
+      })
+      .catch(() => {});
+  }, []);
 
   const closeSidebar = () => setSidebarOpen(false);
   const toggleSidebar = () => setSidebarOpen(prev => !prev);
@@ -206,15 +219,14 @@ export default function Layout() {
     {
       to: '/resources',
       label: 'Resources',
-      children: [
-        { to: '/resources/getting-started', label: 'Getting Started' },
-        { to: '/resources/apis', label: 'APIs' },
-        { to: '/resources/hardware', label: 'Hardware' },
-      ]
+      children: resourceChildren.length > 0 ? resourceChildren : undefined,
     },
     { to: '/check-in', label: 'Check-In', roles: ['organizer'] },
     { to: '/dashboard', label: 'Submissions', roles: ['organizer'] },
     { to: '/crawled-data', label: 'Indexed Data', roles: ['organizer'] },
+    { to: '/admin/content', label: 'Content Editor', roles: ['organizer'] },
+    { to: hk('/prizes/edit'), label: 'Prizes', roles: ['organizer'] },
+    { to: hk('/sponsors/edit'), label: 'Sponsors', roles: ['organizer'] },
     { to: '/registrations', label: 'Your Application', roles: ['participant'] },
     { to: '/judge', label: 'Judge Portal', roles: ['judge'] },
   ];

@@ -180,8 +180,8 @@ class Settings(BaseSettings):
     )
     hackathon_email: str = Field(default="noreply@example.com", description="Default sender email address")
     hackathon_primary_color: str = Field(default="#2563eb", description="Primary brand color (hex)")
-    hackathon_logo_url: str = Field(default="/openhack-logo.png", description="URL to logo image")
-    hackathon_favicon_url: str = Field(default="/openhack-logo.png", description="URL to favicon")
+    hackathon_logo_url: str = Field(default="/logo.png", description="URL to logo image")
+    hackathon_favicon_url: str = Field(default="/logo.png", description="URL to favicon")
     hackathon_year: int = Field(default=2025, description="Current hackathon year")
 
     # Email configuration

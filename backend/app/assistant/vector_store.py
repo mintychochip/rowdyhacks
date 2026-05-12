@@ -297,6 +297,24 @@ class VectorStore:
             points_selector=PointIdsList(points=[doc_id]),
         )
 
+    async def delete_documents(self, doc_ids: List[str]) -> None:
+        """Delete multiple documents by their Qdrant point IDs.
+
+        Behavior:
+        1. Delete all provided point IDs from the DOCUMENTS_COLLECTION.
+
+        Raises: None
+        Side Effects: Deletes points from Qdrant DOCUMENTS_COLLECTION.
+        Dependencies: qdrant_client.http.models.PointIdsList.
+        Consumers: Bulk document deletion endpoints.
+        """
+        if not doc_ids:
+            return
+        await self.client.delete(
+            collection_name=DOCUMENTS_COLLECTION,
+            points_selector=PointIdsList(points=doc_ids),
+        )
+
     async def index_message(
         self,
         message_id: str,

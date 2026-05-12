@@ -8,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.assistant.embedder import embedder
 from app.assistant.vector_store import vector_store
-from app.models import Hackathon, Track
+from app.models import ContentPage, Hackathon, Track
 from app.models_assistant import AssistantDocument, DocumentType
+from app.assistant.vector_store import GLOBAL_HACKATHON_ID
 
 logger = logging.getLogger(__name__)
 
@@ -482,6 +483,130 @@ class DocumentIndexer:
         from uuid import UUID
 
         result = await self.db.execute(select(AssistantDocument).where(AssistantDocument.id == UUID(doc_id)))
+        doc = result.scalar_one_or_none()
+        if not doc:
+            return False
+
+        chunk_ids = doc.doc_metadata.get("chunk_qdrant_ids", [])
+        if chunk_ids:
+            await vector_store.delete_documents(chunk_ids)
+
+        await self.db.delete(doc)
+        await self.db.commit()
+        return True
+
+    async def index_content_page(self, page: ContentPage) -> dict:
+        """Index a content page into the assistant knowledge base.
+
+        Behavior:
+        1. Chunk the page content into overlapping segments.
+        2. Embed each chunk using the embedder.
+        3. Create or update an AssistantDocument row (hackathon_id=None for global docs).
+        4. Index each chunk as a separate Qdrant point with global hackathon scope.
+        5. Commit and return chunk count and IDs.
+
+        Raises: None
+        Side Effects: Inserts/updates AssistantDocument row; writes multiple points to Qdrant.
+        Dependencies: embedder, vector_store, DocumentType.SITE_PAGE.
+        Consumers: Content page creation/update hooks.
+        """
+        content = page.content or ""
+        chunks = self._chunk_text(content, chunk_size=1000, overlap=200)
+        if not chunks:
+            chunks = [content.strip() or page.title]
+
+        embeddings = embedder.embed_chunks(chunks)
+
+        # Create or update DB record
+        doc_id = str(uuid4())
+        chunk_ids = [str(uuid4()) for _ in chunks]
+
+        result = await self.db.execute(
+            select(AssistantDocument)
+            .where(AssistantDocument.source_id == page.id)
+            .where(AssistantDocument.doc_type == DocumentType.SITE_PAGE)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            # Delete old chunks from Qdrant first
+            old_chunk_ids = existing.doc_metadata.get("chunk_qdrant_ids", [])
+            if old_chunk_ids:
+                await vector_store.delete_documents(old_chunk_ids)
+            existing.version += 1
+            existing.title = page.title
+            existing.doc_metadata = {
+                "slug": page.slug,
+                "tab_group": page.tab_group,
+                "chunk_count": len(chunks),
+                "chunk_qdrant_ids": chunk_ids,
+            }
+            doc_id = existing.qdrant_id
+        else:
+            doc = AssistantDocument(
+                id=uuid4(),
+                hackathon_id=None,
+                qdrant_id=doc_id,
+                doc_type=DocumentType.SITE_PAGE,
+                title=page.title,
+                source_id=page.id,
+                doc_metadata={
+                    "slug": page.slug,
+                    "tab_group": page.tab_group,
+                    "chunk_count": len(chunks),
+                    "chunk_qdrant_ids": chunk_ids,
+                },
+            )
+            self.db.add(doc)
+
+        # Index each chunk in Qdrant
+        for i, (chunk, embedding) in enumerate(zip(chunks, embeddings, strict=False)):
+            await vector_store.index_document(
+                doc_id=chunk_ids[i],
+                embedding=embedding,
+                content=chunk,
+                hackathon_id=GLOBAL_HACKATHON_ID,
+                doc_type=DocumentType.SITE_PAGE.value,
+                title=f"{page.title} (chunk {i + 1}/{len(chunks)})",
+                metadata={
+                    "slug": page.slug,
+                    "tab_group": page.tab_group,
+                    "chunk_index": i,
+                    "chunk_count": len(chunks),
+                    "source_id": str(page.id),
+                },
+                role_access=["participant", "judge", "organizer"],
+            )
+
+        await self.db.commit()
+        return {
+            "document_id": doc_id,
+            "chunk_count": len(chunks),
+            "chunk_ids": chunk_ids,
+        }
+
+    async def delete_content_page(self, page_id: str) -> bool:
+        """Delete a content page's indexed chunks from Qdrant and the database.
+
+        Behavior:
+        1. Load the AssistantDocument row by source_id and doc_type SITE_PAGE.
+        2. Extract chunk_qdrant_ids from metadata.
+        3. Delete all chunk points from Qdrant.
+        4. Delete the DB row.
+        5. Commit and return True if found, False otherwise.
+
+        Raises: None
+        Side Effects: Deletes rows from PostgreSQL and points from Qdrant.
+        Dependencies: vector_store.delete_documents.
+        Consumers: Content page deletion hooks.
+        """
+        from uuid import UUID
+
+        result = await self.db.execute(
+            select(AssistantDocument)
+            .where(AssistantDocument.source_id == UUID(page_id))
+            .where(AssistantDocument.doc_type == DocumentType.SITE_PAGE)
+        )
         doc = result.scalar_one_or_none()
         if not doc:
             return False

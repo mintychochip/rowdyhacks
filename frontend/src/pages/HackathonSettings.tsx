@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -8,7 +8,7 @@ import OAuthAdminPanel from '../components/OAuthAdminPanel';
 import {
   CARD_BG, INPUT_BG, PRIMARY, SUCCESS, SUCCESS_BG10,
   TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_WHITE,
-  BORDER, BORDER_LIGHT, INPUT_BORDER, ERROR_TEXT,
+  BORDER, BORDER_LIGHT, INPUT_BORDER, ERROR, ERROR_TEXT, ERROR_BG10, ERROR_BORDER30,
   TYPO, SPACE, RADIUS,
 } from '../theme';
 
@@ -55,9 +55,25 @@ export default function HackathonSettings() {
   const [error, setError] = useState('');
   const [registrationMode, setRegistrationMode] = useState('open');
 
+  // Assistant documents state
+  const [documents, setDocuments] = useState<Array<{ id: string; filename: string; chunk_count: number; s3_url?: string; created_at?: string }>>([]);
+  const [docLoading, setDocLoading] = useState(false);
+  const [docError, setDocError] = useState('');
+  const [docSuccess, setDocSuccess] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Multi-file upload state
+  const [dragOver, setDragOver] = useState(false);
+  const [uploadQueue, setUploadQueue] = useState<Array<{ file: File; status: 'pending' | 'uploading' | 'done' | 'error'; message?: string }>>([]);
+
+  // Re-index state
+  const [reindexing, setReindexing] = useState(false);
+  const [reindexResult, setReindexResult] = useState('');
+
   useEffect(() => {
     if (!id || !user) { setLoading(false); return; }
     loadHackathon();
+    loadDocuments();
   }, [id, user]);
 
   const loadHackathon = async () => {
@@ -76,6 +92,100 @@ export default function HackathonSettings() {
       setError(e.message || 'Failed to load hackathon');
     }
     setLoading(false);
+  };
+
+  const loadDocuments = async () => {
+    if (!id) return;
+    setDocLoading(true);
+    try {
+      const res = await api.getAssistantDocuments(id);
+      setDocuments(res.documents || []);
+    } catch {
+      // ignore — documents are optional
+    } finally {
+      setDocLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!id || !files || files.length === 0) return;
+    setDocError('');
+    setDocSuccess('');
+
+    const queue = Array.from(files).map((file) => ({ file, status: 'pending' as const }));
+    setUploadQueue(queue);
+
+    for (let i = 0; i < queue.length; i++) {
+      setUploadQueue((prev) => {
+        const next = [...prev];
+        next[i] = { ...next[i], status: 'uploading' };
+        return next;
+      });
+      try {
+        const res = await api.uploadAssistantDocument(id, queue[i].file);
+        setUploadQueue((prev) => {
+          const next = [...prev];
+          next[i] = { ...next[i], status: 'done', message: `${res.chunk_count} chunks indexed` };
+          return next;
+        });
+      } catch (e: any) {
+        setUploadQueue((prev) => {
+          const next = [...prev];
+          next[i] = { ...next[i], status: 'error', message: e.message || 'Upload failed' };
+          return next;
+        });
+      }
+    }
+
+    // Refresh document list and clear queue after a short delay
+    await loadDocuments();
+    setTimeout(() => {
+      setUploadQueue([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }, 3000);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    handleFileUpload(e.dataTransfer.files);
+  };
+
+  const handleReindex = async () => {
+    setReindexing(true);
+    setReindexResult('');
+    setDocError('');
+    try {
+      const res = await api.indexResources();
+      setReindexResult(`Re-indexed ${res.indexed_count} of ${res.total_pages} pages.`);
+    } catch (e: any) {
+      setDocError(e.message || 'Re-index failed');
+    } finally {
+      setReindexing(false);
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!id) return;
+    setDocError('');
+    setDocSuccess('');
+    try {
+      await api.deleteAssistantDocument(id, docId);
+      setDocSuccess('Document deleted.');
+      await loadDocuments();
+    } catch (e: any) {
+      setDocError(e.message || 'Delete failed');
+    }
   };
 
   const addEvent = () => {
@@ -178,7 +288,7 @@ export default function HackathonSettings() {
       {/* Save notification */}
       {error && (
         <div style={{
-          background: '#ff444420', border: '1px solid #ff4444', borderRadius: RADIUS.md,
+          background: ERROR_BG10, border: `1px solid ${ERROR}`, borderRadius: RADIUS.md,
           padding: '10px 16px', marginBottom: SPACE.md, color: ERROR_TEXT, fontSize: 14,
         }}>
           {error}
@@ -226,7 +336,7 @@ export default function HackathonSettings() {
                   <button
                     onClick={() => removeEvent(i)}
                     style={{
-                      background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer',
+                      background: 'none', border: 'none', color: ERROR, cursor: 'pointer',
                       fontSize: 13, fontWeight: 600,
                     }}
                   >
@@ -426,7 +536,7 @@ export default function HackathonSettings() {
           {importResult && (
             <div style={{
               marginTop: SPACE.sm, padding: SPACE.sm, borderRadius: RADIUS.sm,
-              background: importResult.error ? '#ff444420' : SUCCESS_BG10,
+              background: importResult.error ? ERROR_BG10 : SUCCESS_BG10,
               color: importResult.error ? ERROR_TEXT : SUCCESS, fontSize: 13,
             }}>
               {importResult.error
@@ -461,6 +571,162 @@ export default function HackathonSettings() {
             Open allows anyone to register. Invite Only requires a code.
           </p>
         </div>
+      </div>
+
+      {/* Knowledge Base / Documents Section */}
+      <div style={{
+        background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: RADIUS.lg,
+        padding: SPACE.lg, marginBottom: SPACE.md,
+      }}>
+        <h3 style={{ ...TYPO.h3, marginBottom: SPACE.md }}>Assistant Knowledge Base</h3>
+        <p style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: SPACE.md }}>
+          Upload documents (.txt, .md, .pdf) so the AI assistant can answer questions about them.
+        </p>
+
+        {docError && (
+          <div style={{
+            background: ERROR_BG10, border: `1px solid ${ERROR}`, borderRadius: RADIUS.md,
+            padding: '10px 16px', marginBottom: SPACE.md, color: ERROR_TEXT, fontSize: 14,
+          }}>
+            {docError}
+          </div>
+        )}
+
+        {docSuccess && (
+          <div style={{
+            background: SUCCESS_BG10, border: `1px solid ${SUCCESS}`, borderRadius: RADIUS.md,
+            padding: '10px 16px', marginBottom: SPACE.md, color: SUCCESS, fontSize: 14,
+          }}>
+            {docSuccess}
+          </div>
+        )}
+
+        {reindexResult && (
+          <div style={{
+            background: SUCCESS_BG10, border: `1px solid ${SUCCESS}`, borderRadius: RADIUS.md,
+            padding: '10px 16px', marginBottom: SPACE.md, color: SUCCESS, fontSize: 14,
+          }}>
+            {reindexResult}
+          </div>
+        )}
+
+        {/* Drag-and-drop zone */}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            border: `2px dashed ${dragOver ? PRIMARY : BORDER_LIGHT}`,
+            borderRadius: RADIUS.md,
+            padding: SPACE.lg,
+            textAlign: 'center',
+            cursor: 'pointer',
+            background: dragOver ? `${PRIMARY}10` : INPUT_BG,
+            transition: 'all 0.2s ease',
+            marginBottom: SPACE.md,
+          }}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".txt,.md,.pdf,.markdown"
+            multiple
+            onChange={(e) => handleFileUpload(e.target.files)}
+            style={{ display: 'none' }}
+          />
+          <p style={{ color: TEXT_MUTED, fontSize: 14, margin: 0 }}>
+            {dragOver ? 'Drop files here' : 'Drag & drop files here, or click to browse'}
+          </p>
+          <p style={{ color: TEXT_MUTED, fontSize: 12, margin: '4px 0 0' }}>
+            Supports .txt, .md, .pdf
+          </p>
+        </div>
+
+        {/* Upload queue / per-file status */}
+        {uploadQueue.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm, marginBottom: SPACE.md }}>
+            {uploadQueue.map((item, i) => (
+              <div key={i} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: SPACE.sm, background: INPUT_BG, borderRadius: RADIUS.sm,
+                border: `1px solid ${BORDER_LIGHT}`,
+              }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 13, color: TEXT_PRIMARY, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.file.name}
+                  </div>
+                  <div style={{ fontSize: 11, color: TEXT_MUTED }}>
+                    {(item.file.size / 1024).toFixed(1)} KB
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginLeft: SPACE.md, whiteSpace: 'nowrap' }}>
+                  {item.status === 'pending' && <span style={{ color: TEXT_MUTED }}>Waiting...</span>}
+                  {item.status === 'uploading' && <span style={{ color: PRIMARY }}>Uploading...</span>}
+                  {item.status === 'done' && <span style={{ color: SUCCESS }}>{item.message}</span>}
+                  {item.status === 'error' && <span style={{ color: ERROR }}>{item.message}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Re-index button */}
+        <div style={{ marginBottom: SPACE.md }}>
+          <button
+            onClick={handleReindex}
+            disabled={reindexing}
+            style={{
+              padding: '10px 24px', background: reindexing ? INPUT_BG : SUCCESS,
+              border: 'none', borderRadius: RADIUS.md, color: TEXT_WHITE,
+              fontSize: 14, fontWeight: 600, cursor: reindexing ? 'not-allowed' : 'pointer',
+              opacity: reindexing ? 0.6 : 1,
+            }}
+          >
+            {reindexing ? 'Re-indexing...' : 'Re-index All Resources'}
+          </button>
+        </div>
+
+        {/* Uploaded documents list */}
+        {docLoading ? (
+          <p style={{ color: TEXT_MUTED, fontSize: 14 }}>Loading documents...</p>
+        ) : documents.length === 0 ? (
+          <p style={{ color: TEXT_MUTED, fontSize: 14 }}>No documents uploaded yet.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
+            {documents.map((doc) => (
+              <div key={doc.id} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: SPACE.md, background: INPUT_BG, borderRadius: RADIUS.md,
+                border: `1px solid ${BORDER_LIGHT}`,
+              }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 14, color: TEXT_PRIMARY, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {doc.filename}
+                  </div>
+                  <div style={{ fontSize: 12, color: TEXT_MUTED, marginTop: 2 }}>
+                    {doc.chunk_count} chunks indexed
+                    {doc.s3_url && (
+                      <a href={doc.s3_url} target="_blank" rel="noopener noreferrer" style={{ color: PRIMARY, marginLeft: 8, textDecoration: 'none' }}>
+                        View file
+                      </a>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleDeleteDocument(doc.id)}
+                  style={{
+                    background: 'none', border: 'none', color: ERROR,
+                    cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                    marginLeft: SPACE.md,
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <InviteCodeManager hackathonId={id!} />

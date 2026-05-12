@@ -15,5 +15,8 @@
   "devDependencies": {
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0"
+  },
+  "dependencies": {
+    "lucide-react": "^1.14.0"
   }
 }

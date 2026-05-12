@@ -365,6 +365,71 @@ async def get_registration(
     return RegistrationService.registration_to_response(reg, reg.user)
 
 
+@router.delete("/registrations/{registration_id}", status_code=200)
+async def delete_registration(
+    registration_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Withdraw / cancel a participant's own registration.
+
+    Behavior:
+    1. Load the current user.
+    2. Raise 401 if the user is not found.
+    3. Load the registration by id filtered by user_id.
+    4. Raise 404 if the registration is not found.
+    5. Raise 409 if the registration is already checked in.
+    6. If the registration was accepted, decrement hackathon.current_participants.
+    7. Delete the registration (cascades to answers, scans, review notes).
+    8. Publish a registration.cancelled event.
+    9. Return confirmation.
+
+    Raises: HTTPException(401) if user not found. HTTPException(404) if registration not found. HTTPException(409) if already checked in.
+    Side Effects: Deletes Registration row and related data; may decrement Hackathon.current_participants.
+    Dependencies: app.models.Registration, app.models.Hackathon, app.models.User, app.services.event_service.publish_event.
+    Consumers: DELETE /api/registrations/{registration_id}, participant application page.
+    """
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    from sqlalchemy.orm import selectinload
+
+    reg_result = await db.execute(
+        select(Registration)
+        .where(and_(Registration.id == registration_id, Registration.user_id == user.id))
+        .options(selectinload(Registration.hackathon))
+    )
+    reg = reg_result.scalar_one_or_none()
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+
+    if reg.status == RegistrationStatus.checked_in:
+        raise HTTPException(status_code=409, detail="Cannot cancel a registration that has already been checked in")
+
+    hackathon = reg.hackathon
+    if hackathon and reg.status in (RegistrationStatus.accepted, RegistrationStatus.checked_in):
+        hackathon.current_participants = max(0, (hackathon.current_participants or 0) - 1)
+
+    await db.delete(reg)
+    await db.commit()
+
+    from app.services.event_service import publish_event
+
+    await publish_event(
+        db,
+        "registration.cancelled",
+        {
+            "registration_id": str(registration_id),
+            "hackathon_id": str(reg.hackathon_id),
+            "user_id": str(user.id),
+        },
+    )
+
+    return {"detail": "Registration cancelled"}
+
+
 @router.put("/registrations/{registration_id}")
 async def update_registration(
     registration_id: uuid.UUID,

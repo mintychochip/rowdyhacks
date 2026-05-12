@@ -11,8 +11,9 @@ import WizardShortAnswers from '../components/wizard/WizardShortAnswers';
 import type { AboutYouData, SkillsLinksData, LogisticsData, ShortAnswersData } from '../components/wizard/types';
 import WizardReview from '../components/wizard/WizardReview';
 import {
-  PRIMARY, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED,
+  PRIMARY, TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_WHITE,
   CARD_BG, BORDER, TYPO, RADIUS, SHADOW, TIMING,
+  ERROR, SUCCESS,
 } from '../theme';
 
 const TOTAL_STEPS = 5;
@@ -112,11 +113,11 @@ export default function ApplyPage() {
         </p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
           <button onClick={() => navigate('/')}
-            style={{ padding: '10px 22px', background: PRIMARY, border: 'none', borderRadius: RADIUS.md, color: '#fff', fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: `background ${TIMING.fast}` }}>
+            style={{ padding: '10px 22px', background: PRIMARY, border: 'none', borderRadius: RADIUS.md, color: TEXT_WHITE, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'background ' + TIMING.fast }}>
             Go to Dashboard
           </button>
           <button onClick={() => navigate('/registrations')}
-            style={{ padding: '10px 22px', background: 'none', border: `1px solid ${BORDER}`, borderRadius: RADIUS.md, color: TEXT_SECONDARY, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: `border-color ${TIMING.fast}` }}>
+            style={{ padding: '10px 22px', background: 'none', border: '1px solid ' + BORDER, borderRadius: RADIUS.md, color: TEXT_SECONDARY, fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'border-color ' + TIMING.fast }}>
             View Application
           </button>
         </div>
@@ -164,7 +165,7 @@ export default function ApplyPage() {
           padding: '4px 10px', borderRadius: RADIUS.full,
           border: `1px solid ${BORDER}`,
         }}>
-          <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+          <span style={{ width: 4, height: 4, borderRadius: '50%', background: SUCCESS, display: 'inline-block' }} />
           Apply now to participate
         </div>
         <h1 style={{ ...TYPO.h2, marginBottom: 6, letterSpacing: '-0.03em' }}>{hackathonName}</h1>
@@ -187,7 +188,7 @@ export default function ApplyPage() {
           <div style={{
             background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)',
             borderRadius: RADIUS.md, padding: '10px 14px', marginTop: 20,
-            color: '#ef4444', fontSize: 13, lineHeight: 1.5,
+            color: ERROR, fontSize: 13, lineHeight: 1.5,
           }}>{error}</div>
         )}
 
@@ -208,7 +209,7 @@ export default function ApplyPage() {
               <button type="button" onClick={() => setStep(s => s + 1)}
                 style={{
                   padding: '9px 28px', background: PRIMARY, border: 'none',
-                  borderRadius: RADIUS.md, color: '#fff', fontSize: 14, fontWeight: 500,
+                  borderRadius: RADIUS.md, color: TEXT_WHITE, fontSize: 14, fontWeight: 500,
                   cursor: 'pointer', transition: `opacity ${TIMING.fast}`,
                 }}>
                 Continue

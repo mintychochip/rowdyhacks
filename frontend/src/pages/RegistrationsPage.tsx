@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
-import { getMyRegistrations, getHackathons } from '../services/api';
+import { getMyRegistrations, getHackathons, deleteRegistration } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
-import { PRIMARY, SUCCESS, ERROR_TEXT, TEXT_PRIMARY, TEXT_MUTED, TEXT_WHITE, INPUT_BG, INPUT_BORDER, CARD_BG, BORDER, BORDER_LIGHT, TYPO, SPACE, RADIUS } from '../theme';
+import { PRIMARY, SUCCESS, ERROR, ERROR_TEXT, ERROR_BG10, ERROR_BORDER30, TEXT_PRIMARY, TEXT_MUTED, TEXT_WHITE, INPUT_BG, INPUT_BORDER, CARD_BG, BORDER, BORDER_LIGHT, TYPO, SPACE, RADIUS } from '../theme';
 
 interface Registration {
   id: string; hackathon_id: string; status: string;
@@ -25,9 +25,15 @@ export default function RegistrationsPage() {
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [cancelling, setCancelling] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
+    loadRegistrations();
+  }, [user]);
+
+  const loadRegistrations = () => {
+    setLoading(true);
     Promise.all([getMyRegistrations(), getHackathons()])
       .then(([regData, hackData]) => {
         setRegistrations(regData.registrations || []);
@@ -35,7 +41,20 @@ export default function RegistrationsPage() {
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [user]);
+  };
+
+  const handleCancel = async (regId: string) => {
+    if (!confirm('Are you sure you want to cancel this application?')) return;
+    setCancelling(regId);
+    try {
+      await deleteRegistration(regId);
+      loadRegistrations();
+    } catch (err: any) {
+      setError(err.message || 'Failed to cancel application');
+    } finally {
+      setCancelling(null);
+    }
+  };
 
   const getHackathonName = (id: string) => hackathons.find(h => h.id === id)?.name || 'Unknown';
 
@@ -46,7 +65,7 @@ export default function RegistrationsPage() {
     <div style={{ maxWidth: 600, margin: '0 auto', padding: isMobile ? SPACE.md : SPACE.xl }}>
       <h1 style={{ ...TYPO.h1, marginBottom: SPACE.lg }}>Your Application</h1>
 
-      {error && <div style={{ background: '#ff444420', border: '1px solid #ff4444', borderRadius: 8, padding: 12, marginBottom: 16, color: ERROR_TEXT, fontSize: 14 }}>{error}</div>}
+      {error && <div style={{ background: ERROR_BG10, border: `1px solid ${ERROR}`, borderRadius: RADIUS.md, padding: SPACE.md, marginBottom: SPACE.md, color: ERROR_TEXT, fontSize: 14 }}>{error}</div>}
 
       {registrations.length === 0 && (
         <div style={{ textAlign: 'center', padding: 40, color: TEXT_MUTED }}>
@@ -86,6 +105,25 @@ export default function RegistrationsPage() {
               <button onClick={() => navigate(`/hackathons/${reg.hackathon_id}/hacker-dashboard`)}
                 style={{ padding: '8px 16px', background: SUCCESS, border: 'none', borderRadius: 6, color: '#000', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                 Live Dashboard
+              </button>
+            )}
+            {reg.status !== 'checked_in' && (
+              <button
+                onClick={() => handleCancel(reg.id)}
+                disabled={cancelling === reg.id}
+                style={{
+                  padding: '8px 16px',
+                  background: 'transparent',
+                  border: `1px solid ${ERROR}`,
+                  borderRadius: 6,
+                  color: ERROR,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: cancelling === reg.id ? 'not-allowed' : 'pointer',
+                  opacity: cancelling === reg.id ? 0.6 : 1,
+                }}
+              >
+                {cancelling === reg.id ? 'Cancelling...' : 'Cancel Application'}
               </button>
             )}
           </div>

@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/hackathons", tags=["hacker-dashboard"])
 @router.get("/{hackathon_id}/hacker-dashboard")
 async def get_hacker_dashboard(
     hackathon_id: uuid.UUID,
-    current_user = Depends(get_current_user),
+    current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the hacker dashboard for the current user's registration at a hackathon.

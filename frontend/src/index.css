@@ -1,37 +1,37 @@
 :root {
-  --oh-primary: #2563eb;
-  --oh-theme-color: #060913;
+  --oh-primary: #5e6ad2;
+  --oh-theme-color: #08090a;
 }
 
 /* ============================================================
-   Hackathon Platform — Rocket Theme Design System
-   Space Launch: Deep layers, flame accents, star highlights
+   OpenHack Design System — Linear-Inspired
+   Dark-mode-native: information emerges from darkness
    ============================================================ */
 
 :root {
-  /* Base backgrounds - layered depth */
-  --bg-base: #060913;
-  --bg-primary: #0a0f1e;
-  --bg-secondary: #0f172a;
-  --bg-tertiary: #131d35;
-  --bg-elevated: #1a2542;
-  --bg-overlay: rgba(0, 0, 0, 0.75);
+  /* Base backgrounds — luminance hierarchy */
+  --bg-base: #08090a;
+  --bg-primary: #0f1011;
+  --bg-secondary: #191a1b;
+  --bg-tertiary: #28282c;
+  --bg-elevated: #191a1b;
+  --bg-overlay: rgba(0, 0, 0, 0.85);
 
-  /* Text colors */
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
-  --text-muted: #475569;
+  /* Text colors — cool grayscale */
+  --text-primary: #f7f8f8;
+  --text-secondary: #d0d6e0;
+  --text-tertiary: #8a8f98;
+  --text-muted: #62666d;
   --text-inverse: #020617;
 
-  /* Brand Blue */
-  --accent-primary: #2563eb;
-  --accent-primary-hover: #3b82f6;
-  --accent-secondary: #1d4ed8;
-  --accent-glow: rgba(37, 99, 235, 0.35);
-  --accent-subtle: rgba(37, 99, 235, 0.12);
+  /* Brand Indigo-Violet */
+  --accent-primary: #5e6ad2;
+  --accent-primary-hover: #828fff;
+  --accent-secondary: #7170ff;
+  --accent-glow: rgba(94, 106, 210, 0.35);
+  --accent-subtle: rgba(94, 106, 210, 0.12);
 
-  /* Flame Orange */
+  /* Flame Orange (kept for status/winner contexts) */
   --orange: #f97316;
   --orange-hover: #fb923c;
   --orange-pressed: #ea580c;
@@ -44,20 +44,20 @@
   --gold-glow: rgba(251, 191, 36, 0.3);
 
   /* Semantic colors */
-  --success: #22c55e;
-  --success-subtle: rgba(34, 197, 94, 0.1);
+  --success: #27a644;
+  --success-subtle: rgba(39, 166, 68, 0.12);
   --warning: #eab308;
-  --warning-subtle: rgba(234, 179, 8, 0.1);
+  --warning-subtle: rgba(234, 179, 8, 0.12);
   --error: #ef4444;
-  --error-subtle: rgba(239, 68, 68, 0.1);
+  --error-subtle: rgba(239, 68, 68, 0.12);
   --info: #3b82f6;
-  --info-subtle: rgba(59, 130, 246, 0.1);
+  --info-subtle: rgba(59, 130, 246, 0.12);
 
-  /* Borders */
-  --border-subtle: rgba(148, 163, 184, 0.08);
-  --border-default: rgba(148, 163, 184, 0.15);
-  --border-strong: rgba(148, 163, 184, 0.25);
-  --border-focus: rgba(37, 99, 235, 0.5);
+  /* Borders — semi-transparent white (Linear signature) */
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --border-focus: rgba(94, 106, 210, 0.5);
 
   /* Spacing */
   --space-1: 4px;
@@ -77,15 +77,14 @@
   --radius-xl: 16px;
   --radius-full: 9999px;
 
-  /* Typography */
+  /* Typography — Inter with geometric alternates */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
-  --font-display: 'Space Grotesk', -apple-system, sans-serif;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-sm: rgba(0, 0, 0, 0.03) 0px 1.2px 0px 0px;
+  --shadow-md: rgba(0, 0, 0, 0.4) 0px 2px 4px;
+  --shadow-lg: rgba(0, 0, 0, 0.5) 0px 8px 24px;
   --shadow-glow: 0 0 20px var(--accent-glow);
   --shadow-orange-glow: 0 0 20px var(--orange-glow);
 
@@ -117,6 +116,7 @@ body {
   line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
+  font-feature-settings: 'cv01', 'ss03';
 }
 
 /* Form elements inherit font */
@@ -138,13 +138,13 @@ code, pre, kbd, samp {
   font-size: 0.9em;
 }
 
-/* Selection — blue glow highlight */
+/* Selection — indigo-violet glow */
 ::selection {
-  background: rgba(37, 99, 235, 0.3);
+  background: rgba(94, 106, 210, 0.3);
   color: var(--text-primary);
 }
 
-/* Scrollbar — subtle blue-tinted */
+/* Scrollbar — subtle semi-transparent */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -155,12 +155,12 @@ code, pre, kbd, samp {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.4);
+  background: rgba(255, 255, 255, 0.15);
 }
 
 ::-webkit-scrollbar-corner {
@@ -170,10 +170,12 @@ code, pre, kbd, samp {
 /* Firefox scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
 }
 
 /* Animations */
+@import '@toast-ui/editor/dist/toastui-editor.css';
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -203,7 +205,7 @@ code, pre, kbd, samp {
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.4; }
 }
 
 @keyframes spin {
@@ -211,13 +213,13 @@ code, pre, kbd, samp {
   to { transform: rotate(360deg); }
 }
 
-/* Focus styles — blue glow */
+/* Focus styles — indigo-violet glow */
 *:focus-visible {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 
-/* Input focus — blue glow ring */
+/* Input focus — indigo glow ring */
 input:focus, textarea:focus {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px var(--accent-subtle);
@@ -238,7 +240,7 @@ button:disabled {
 
 /* Input base styles */
 input, textarea {
-  background: var(--bg-tertiary);
+  background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
@@ -251,7 +253,7 @@ input:hover, textarea:hover {
 
 input:focus, textarea:focus {
   border-color: var(--accent-primary);
-  background: var(--bg-elevated);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 input::placeholder, textarea::placeholder {

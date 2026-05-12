@@ -56,7 +56,7 @@ export default function TracksEditorPage() {
       setResourceUrl('');
     } else {
       setEditing({
-        id: '', name: '', description: '', challenge: '', icon: '🛸', color: COLORS[0],
+        id: '', name: '', description: '', challenge: '', icon: '', color: COLORS[0],
         prize: '', track_type: null, criteria: [], resources: [],
       });
       setCriteriaInput('');

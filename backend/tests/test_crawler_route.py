@@ -13,6 +13,7 @@ async def _override_organizer():
     class FakeUser:
         id = "test-user-id"
         role = "organizer"
+
     return FakeUser()
 
 

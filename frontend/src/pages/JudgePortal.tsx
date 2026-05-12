@@ -6,6 +6,8 @@ import {
   PRIMARY, GOLD, SUCCESS,
   TEXT_MUTED, TEXT_WHITE, TEXT_SECONDARY,
   CARD_BG, INPUT_BG, BORDER,
+  ERROR, ERROR_BG10, ERROR_BORDER30,
+  SPACE, RADIUS,
 } from '../theme';
 
 interface Criterion {
@@ -234,8 +236,8 @@ export default function JudgePortal() {
         {/* Error */}
         {error && (
           <div style={{
-            padding: '8px 12px', background: '#ff444418', borderRadius: 6,
-            color: '#ff6666', fontSize: 13, marginBottom: 12,
+            padding: `${SPACE.sm}px ${SPACE.md}px`, background: ERROR_BG10, borderRadius: RADIUS.md,
+            border: `1px solid ${ERROR_BORDER30}`, color: ERROR, fontSize: 13, marginBottom: SPACE.md,
           }}>
             {error}
           </div>

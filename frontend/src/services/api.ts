@@ -360,6 +360,28 @@ export async function getContentPage(slug: string) {
   return res.json();
 }
 
+// Resource editor (MinIO-backed)
+export const createResource = (data: {
+  slug: string;
+  title: string;
+  content: string;
+  tab_group?: string;
+  sort_order?: number;
+  tab_group_order?: number;
+}) => request('/resources', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateResource = (slug: string, data: {
+  title: string;
+  content: string;
+  tab_group?: string;
+  sort_order?: number;
+  tab_group_order?: number;
+}) => request(`/resources/${slug}`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const deleteResource = (slug: string) =>
+  request(`/resources/${slug}`, { method: 'DELETE' });
+
+// Legacy DB-backed content pages (unused by new UI)
 export async function createContentPage(data: {
   title: string;
   slug?: string;

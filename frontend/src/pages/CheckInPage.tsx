@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import * as api from '../services/api';
 import {
@@ -8,6 +9,7 @@ import {
   INPUT_BG, INPUT_BORDER, BORDER, CARD_BG,
   TYPO, SPACE, RADIUS, SHADOW,
 } from '../theme';
+import { Smartphone, AlertTriangle, XCircle, CheckCircle2 } from 'lucide-react';
 
 interface Participant {
   id: string;
@@ -26,6 +28,7 @@ interface Hackathon {
 
 export default function CheckInPage() {
   const { hackathonId: urlHackathonId } = useParams<{ hackathonId?: string }>();
+  const { user } = useAuth();
   const { isMobile } = useMediaQuery();
   // Default to camera on mobile, manual on desktop (camera often blocked on web)
   const [mode, setMode] = useState<'camera' | 'manual' | 'name'>(isMobile ? 'camera' : 'manual');
@@ -145,14 +148,18 @@ export default function CheckInPage() {
       const data = await api.checkIn(token);
       setResult(data);
       setQrInput('');
+      // Refresh participant list so name-search mode reflects the update
+      if (mode === 'name' && selectedHackathonId) {
+        await loadAllParticipants();
+      }
     } catch (err: any) {
       const msg = err.message || 'Check-in failed';
       if (msg.includes('already_checked_in')) {
-        setError('⚠️ Already checked in');
+        setError('Already checked in');
       } else if (msg.includes('invalid_token')) {
-        setError('❌ Invalid QR code');
+        setError('Invalid QR code');
       } else if (msg.includes('not_active')) {
-        setError('⛔ Registration not active');
+        setError('Registration not active');
       } else {
         setError(msg);
       }
@@ -243,14 +250,26 @@ export default function CheckInPage() {
   };
 
   const handleNameCheckIn = async (participant: Participant) => {
-    // For name-based check-in, we need to generate a temporary QR or use a different endpoint
-    // For now, show a message that they need the QR code
     if (participant.status === 'checked_in') {
       setError(`${participant.name} is already checked in!`);
       return;
     }
-    // This would need backend support for name-based check-in
-    setError('Please scan their QR code to complete check-in');
+    if (!selectedHackathonId) {
+      setError('Please select a hackathon first');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setResult(null);
+    try {
+      const data = await api.checkinRegistration(selectedHackathonId, participant.id);
+      setResult(data);
+      await loadAllParticipants();
+    } catch (err: any) {
+      setError(err.message || 'Check-in failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const captureFrame = () => {
@@ -270,11 +289,21 @@ export default function CheckInPage() {
     setError('QR auto-detection requires camera focus. Try manual mode if scanning fails.');
   };
 
+  if (user?.role !== 'organizer' && user?.role !== 'volunteer') {
+    return (
+      <div style={{ textAlign: 'center', padding: SPACE.xl, color: TEXT_MUTED }}>
+        <p>Only organizers and volunteers can access check-in.</p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: 600, margin: isMobile ? '20px auto' : '40px auto', padding: isMobile ? SPACE.md : 0 }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: SPACE.xl }}>
-        <div style={{ fontSize: 48, marginBottom: SPACE.sm }}>📱</div>
+        <div style={{ marginBottom: SPACE.sm, display: 'flex', justifyContent: 'center', color: TEXT_MUTED }}>
+          <Smartphone size={48} />
+        </div>
         <h1 style={{ ...TYPO.h1, marginBottom: SPACE.xs }}>Check-In Scanner</h1>
         <p style={{ color: TEXT_MUTED, fontSize: 14 }}>
           Scan QR codes or search by name to check in participants
@@ -330,9 +359,9 @@ export default function CheckInPage() {
         marginBottom: SPACE.lg,
       }}>
         {[
-          { key: 'camera', label: '📷 Camera', icon: '📷', disabled: !cameraSupported },
-          { key: 'manual', label: '⌨️ Manual', icon: '⌨️', disabled: false },
-          { key: 'name', label: '🔍 Name Search', icon: '🔍', disabled: false },
+          { key: 'camera', label: 'Camera', disabled: !cameraSupported },
+          { key: 'manual', label: 'Manual', disabled: false },
+          { key: 'name', label: 'Name Search', disabled: false },
         ].map((m) => (
           <button
             key={m.key}
@@ -415,8 +444,11 @@ export default function CheckInPage() {
                 borderRadius: RADIUS.full,
                 color: TEXT_WHITE,
                 fontSize: 13,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
               }}>
-                📷 Scanning...
+                <Smartphone size={14} /> Scanning...
               </div>
             )}
           </div>
@@ -440,7 +472,7 @@ export default function CheckInPage() {
                 cursor: 'pointer',
               }}
             >
-              📸 Capture & Scan
+              Capture & Scan
             </button>
           </div>
         </div>
@@ -544,7 +576,7 @@ export default function CheckInPage() {
                   cursor: 'pointer',
                 }}
               >
-                ✕ Clear
+                Clear
               </button>
             )}
           </div>
@@ -573,7 +605,7 @@ export default function CheckInPage() {
                 opacity: loading ? 0.5 : 1,
               }}
             >
-              🔄 Refresh
+              Refresh
             </button>
           </div>
 
@@ -628,7 +660,7 @@ export default function CheckInPage() {
                           fontSize: 12,
                           fontWeight: 600,
                         }}>
-                          ✓ Checked In
+                          Checked In
                         </span>
                       ) : (
                         <button
@@ -679,7 +711,7 @@ export default function CheckInPage() {
           alignItems: 'center',
           gap: SPACE.md,
         }}>
-          <span style={{ fontSize: 24 }}>{error.includes?.('already') ? '⚠️' : '❌'}</span>
+          {error.includes?.('already') ? <AlertTriangle size={24} color={WARNING} /> : <XCircle size={24} color={ERROR} />}
           <span style={{ color: error.includes?.('already') ? WARNING : ERROR_TEXT, fontWeight: 500 }}>
             {typeof error === 'string' ? error : JSON.stringify(error)}
           </span>
@@ -697,7 +729,9 @@ export default function CheckInPage() {
           textAlign: 'center',
           animation: 'successPop 0.3s ease',
         }}>
-          <div style={{ fontSize: 56, marginBottom: SPACE.md }}>✅</div>
+          <div style={{ marginBottom: SPACE.md, display: 'flex', justifyContent: 'center' }}>
+            <CheckCircle2 size={56} color={SUCCESS} />
+          </div>
           <h3 style={{ ...TYPO.h2, color: SUCCESS, marginBottom: SPACE.sm }}>
             Checked In!
           </h3>
@@ -715,11 +749,11 @@ export default function CheckInPage() {
         <div style={{
           marginTop: SPACE.xl,
           padding: SPACE.lg,
-          background: `linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(6,182,212,0.1) 100%)`,
+          background: CARD_BG,
           borderRadius: RADIUS.lg,
           border: `1px solid ${BORDER}`,
         }}>
-          <h4 style={{ ...TYPO.h3, marginBottom: SPACE.md }}>💡 Quick Tips</h4>
+          <h4 style={{ ...TYPO.h3, marginBottom: SPACE.md }}>Quick Tips</h4>
           <ul style={{ color: TEXT_SECONDARY, fontSize: 14, lineHeight: 1.8, margin: 0, paddingLeft: 20 }}>
             {!cameraSupported && <li style={{ color: WARNING }}><strong>Web browser detected:</strong> Camera mode not available. Use Manual or Name Search mode.</li>}
             <li><strong>Camera mode:</strong> {cameraSupported ? 'Best for fast check-ins. Hold phone steady 6-12 inches from QR code.' : 'Not available in this browser.'}</li>

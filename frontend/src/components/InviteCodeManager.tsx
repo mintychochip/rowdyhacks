@@ -3,7 +3,7 @@ import * as api from '../services/api';
 import {
   CARD_BG, INPUT_BG, PRIMARY, SUCCESS, SUCCESS_BG10,
   TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED, TEXT_WHITE,
-  BORDER, BORDER_LIGHT, INPUT_BORDER, ERROR_TEXT,
+  BORDER, BORDER_LIGHT, INPUT_BORDER, ERROR, ERROR_TEXT, ERROR_BG10, ERROR_BORDER30,
   TYPO, SPACE, RADIUS,
 } from '../theme';
 
@@ -90,7 +90,7 @@ export default function InviteCodeManager({ hackathonId }: InviteCodeManagerProp
 
       {error && (
         <div style={{
-          background: '#ff444420', border: '1px solid #ff4444', borderRadius: RADIUS.md,
+          background: ERROR_BG10, border: `1px solid ${ERROR}`, borderRadius: RADIUS.md,
           padding: '10px 16px', marginBottom: SPACE.md, color: ERROR_TEXT, fontSize: 14,
         }}>
           {error}
@@ -99,7 +99,7 @@ export default function InviteCodeManager({ hackathonId }: InviteCodeManagerProp
 
       {actionError && (
         <div style={{
-          background: '#ff444420', border: '1px solid #ff4444', borderRadius: RADIUS.md,
+          background: ERROR_BG10, border: `1px solid ${ERROR}`, borderRadius: RADIUS.md,
           padding: '10px 16px', marginBottom: SPACE.md, color: ERROR_TEXT, fontSize: 14,
         }}>
           {actionError}
@@ -150,7 +150,7 @@ export default function InviteCodeManager({ hackathonId }: InviteCodeManagerProp
                     <button
                       onClick={() => handleRevoke(code.code)}
                       style={{
-                        padding: '4px 10px', background: '#ef4444', border: 'none',
+                        padding: '4px 10px', background: ERROR, border: 'none',
                         borderRadius: RADIUS.sm, color: TEXT_WHITE, fontSize: 12,
                         fontWeight: 600, cursor: 'pointer',
                       }}

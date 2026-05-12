@@ -15,8 +15,8 @@ const DEFAULT_BRANDING: BrandingConfig = {
   hackathon_tagline: 'The open-source hackathon framework',
   hackathon_email: 'noreply@example.com',
   hackathon_primary_color: '#2563eb',
-  hackathon_logo_url: '/openhack-logo.png',
-  hackathon_favicon_url: '/openhack-logo.png',
+  hackathon_logo_url: '/logo.png',
+  hackathon_favicon_url: '/logo.png',
   hackathon_year: 2025,
 };
 

@@ -442,6 +442,15 @@ export default function HackathonDetailPage() {
             <Button onClick={() => navigate(`/hackathons/${id}/settings`)} variant="secondary">
               Event Settings
             </Button>
+            <Button onClick={() => navigate(`/hackathons/${id}/tracks/edit`)} variant="secondary">
+              Edit Tracks
+            </Button>
+            <Button onClick={() => navigate(`/hackathons/${id}/prizes/edit`)} variant="secondary">
+              Edit Prizes
+            </Button>
+            <Button onClick={() => navigate(`/hackathons/${id}/sponsors/edit`)} variant="secondary">
+              Edit Sponsors
+            </Button>
             <Button onClick={() => navigate(`/hackathons/${id}/judging/setup`)} variant="secondary">
               Set Up Judging
             </Button>

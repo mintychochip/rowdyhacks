@@ -7,6 +7,7 @@ import {
   TEXT_PRIMARY, TEXT_SECONDARY, TEXT_MUTED,
   CARD_BG, BORDER,
   TYPO, SPACE, RADIUS,
+  ERROR, ERROR_BG10, ERROR_BORDER30,
 } from '../theme';
 
 interface ContentPage {
@@ -205,12 +206,12 @@ export default function ResourcesPage() {
 
       {!loading && error && (
         <div style={{
-          background: '#ff444420',
-          border: '1px solid #ff444440',
+          background: ERROR_BG10,
+          border: `1px solid ${ERROR_BORDER30}`,
           borderRadius: RADIUS.lg,
           padding: SPACE.lg,
           textAlign: 'center',
-          color: '#ff6b6b',
+          color: ERROR,
         }}>
           <span className="material-symbols-outlined" style={{ fontSize: 48, marginBottom: SPACE.md }}>error_outline</span>
           <p>{error}</p>

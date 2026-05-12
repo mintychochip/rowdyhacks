@@ -44,7 +44,7 @@ router = APIRouter(tags=["assistant"])
 
 
 async def get_hackathon(
-    hackathon_id: Optional[UUID],
+    hackathon_id: Optional[UUID] = None,
     db: AsyncSession = Depends(get_db),
 ) -> Optional[Hackathon]:
     """Get hackathon by ID if provided.
@@ -1301,3 +1301,37 @@ async def delete_document(
         raise HTTPException(status_code=404, detail="Document not found")
 
     return {"status": "deleted"}
+
+
+@router.post("/index-resources")
+async def index_all_resources(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_organizer),
+):
+    """Re-index all published content pages for the AI assistant.
+
+    Organizer-only endpoint that rebuilds the assistant knowledge base
+    for all published site pages (resources, guides, etc.).
+
+    Behavior:
+    1. Query all published ContentPage rows.
+    2. For each page, re-index into Qdrant via DocumentIndexer.
+    3. Return the count of indexed pages.
+
+    Raises: None
+    Side Effects: Writes/updates points in Qdrant and AssistantDocument rows.
+    """
+    from app.assistant.site_pages import index_content_page
+
+    result = await db.execute(select(ContentPage).where(ContentPage.is_published.is_(True)))
+    pages = result.scalars().all()
+
+    indexed_count = 0
+    for page in pages:
+        try:
+            await index_content_page(page, db)
+            indexed_count += 1
+        except Exception as e:
+            logger.error(f"Failed to index page '{page.slug}': {e}")
+
+    return {"indexed_count": indexed_count, "total_pages": len(pages)}

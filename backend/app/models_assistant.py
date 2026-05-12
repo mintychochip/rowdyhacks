@@ -153,7 +153,7 @@ class AssistantDocument(Base):
     hackathon_id = Column(
         UUID(as_uuid=True),
         ForeignKey("hackathons.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     qdrant_id = Column(

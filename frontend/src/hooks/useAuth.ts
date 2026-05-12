@@ -90,16 +90,10 @@ export function useAuth() {
 
   useEffect(() => {
     const init = async () => {
-      const refreshed = await refresh();
-      if (refreshed) {
-        await fetchMe();
-      } else {
-        setIsLoading(false);
-        setUser(null);
-      }
+      await fetchMe();
     };
     init();
-  }, [refresh, fetchMe]);
+  }, [fetchMe]);
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     try {

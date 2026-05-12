@@ -76,7 +76,7 @@ async def get_manifest(db: AsyncSession = Depends(get_db)):
     name = config.get("hackathon_name", "OpenHack")
     short_name = name[:2].upper()
 
-    logo_url = config.get("hackathon_logo_url", "/openhack-logo.png")
+    logo_url = config.get("hackathon_logo_url", "/logo.png")
 
     manifest = {
         "name": name,
@@ -117,8 +117,8 @@ async def get_branding(db: AsyncSession = Depends(get_db)):
         "hackathon_tagline": config.get("hackathon_tagline", "The open-source hackathon framework"),
         "hackathon_email": config.get("hackathon_email", "noreply@example.com"),
         "hackathon_primary_color": config.get("hackathon_primary_color", "#2563eb"),
-        "hackathon_logo_url": config.get("hackathon_logo_url", "/openhack-logo.png"),
-        "hackathon_favicon_url": config.get("hackathon_favicon_url", "/openhack-logo.png"),
+        "hackathon_logo_url": config.get("hackathon_logo_url", "/logo.png"),
+        "hackathon_favicon_url": config.get("hackathon_favicon_url", "/logo.png"),
         "hackathon_year": year,
     }
 
