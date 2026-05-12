@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import * as api from '../services/api';
 import { useBrandingStore } from '../stores/brandingStore';
+import FloatingChatBot from './assistant/FloatingChatBot';
 
 import {
   PRIMARY, PRIMARY_BG20,
@@ -810,6 +811,7 @@ export default function Layout() {
             <Outlet />
           </main>
         </div>
+        <FloatingChatBot />
       </div>
     </HackathonContext.Provider>
   );
